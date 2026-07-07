@@ -1,0 +1,15 @@
+{
+  "ticker": "CEG",
+  "name": "Constellation Energy Corporation",
+  "sector": "Utilities",
+  "profile": "utility",
+  "currency": "$",
+  "price": 240.98,
+  "target": 115.11,
+  "upside": -0.5223,
+  "rating": "UNDERWEIGHT",
+  "date": "2026-07-07",
+  "html": "CEG.html",
+  "pdf": "CEG.pdf",
+  "xlsx": "CEG.xlsx"
+}
