@@ -33,12 +33,22 @@ def _f(x, default=0.0) -> float:
 
 
 
+def _fyear(r):
+    """Year key across legacy (calendarYear) and stable (fiscalYear/date) schemas."""
+    v = r.get("calendarYear") or r.get("fiscalYear")
+    if v:
+        return int(v)
+    d = r.get("date") or ""
+    return int(d[:4]) if d[:4].isdigit() else None
+
+
 def _rows_from_fmp(records: list, skip=("date","symbol","reportedCurrency","cik","fillingDate",
-                                        "acceptedDate","calendarYear","period","link","finalLink")) -> list:
+                                        "filingDate","acceptedDate","calendarYear","fiscalYear",
+                                        "period","link","finalLink")) -> list:
     """FMP statement dicts -> [(label, {year: value})] preserving line order."""
     if not records:
         return []
-    years = [int(r["calendarYear"]) for r in records if r.get("calendarYear")]
+    years = [_fyear(r) for r in records if _fyear(r)]
     keys = [k for k in records[0].keys() if k not in skip]
     out = []
     for k in keys:
@@ -57,7 +67,8 @@ def _rows_from_fmp(records: list, skip=("date","symbol","reportedCurrency","cik"
 #  FMP provider
 # --------------------------------------------------------------------------- #
 class FMPProvider:
-    BASE = "https://financialmodelingprep.com/api/v3"
+    STABLE = "https://financialmodelingprep.com/stable"
+    BASE = "https://financialmodelingprep.com/api/v3"   # legacy fallback
     BASE4 = "https://financialmodelingprep.com/api/v4"
 
     def __init__(self, api_key: str):
@@ -67,18 +78,31 @@ class FMPProvider:
         import requests
         self._s = requests.Session()
 
-    def _get(self, url, **params):
+    def _raw(self, url, **params):
         params["apikey"] = self.key
         r = self._s.get(url, params=params, timeout=30)
         r.raise_for_status()
-        return r.json()
+        data = r.json()
+        if isinstance(data, dict) and data.get("Error Message"):
+            raise RuntimeError(data["Error Message"])
+        return data
+
+    def _stmt(self, name, ticker, years):
+        """Fetch a statement/profile from the stable API (symbol in query)."""
+        return self._raw(f"{self.STABLE}/{name}", symbol=ticker, limit=years)
+
+    def _get(self, url, **params):   # kept for any legacy calls
+        return self._raw(url, **params)
 
     def company(self, ticker: str, years: int = 6) -> CompanyData:
-        inc = self._get(f"{self.BASE}/income-statement/{ticker}", limit=years, period="annual")
-        bs = self._get(f"{self.BASE}/balance-sheet-statement/{ticker}", limit=years, period="annual")
-        cf = self._get(f"{self.BASE}/cash-flow-statement/{ticker}", limit=years, period="annual")
-        prof = self._get(f"{self.BASE}/profile/{ticker}")
-        km = self._get(f"{self.BASE}/key-metrics/{ticker}", limit=years, period="annual")
+        inc = self._stmt("income-statement", ticker, years)
+        bs = self._stmt("balance-sheet-statement", ticker, years)
+        cf = self._stmt("cash-flow-statement", ticker, years)
+        prof = self._raw(f"{self.STABLE}/profile", symbol=ticker)
+        try:
+            km = self._stmt("key-metrics", ticker, years)
+        except Exception:
+            km = []
 
         if not inc or not prof:
             raise ValueError(f"FMP returned no data for {ticker}")
@@ -91,13 +115,13 @@ class FMPProvider:
         km = list(reversed(km))
 
         def _by_year(rows):
-            return {int(r["calendarYear"]): r for r in rows if r.get("calendarYear")}
+            return {_fyear(r): r for r in rows if _fyear(r)}
 
         bsy, cfy, kmy = _by_year(bs), _by_year(cf), _by_year(km)
 
         yfin: list[YearFinancials] = []
         for r in inc:
-            yr = int(r["calendarYear"])
+            yr = _fyear(r)
             b = bsy.get(yr, {})
             c = cfy.get(yr, {})
             k = kmy.get(yr, {})
@@ -129,11 +153,11 @@ class FMPProvider:
 
         est = Estimates()
         try:
-            an = self._get(f"{self.BASE}/analyst-estimates/{ticker}", limit=4, period="annual")
+            an = self._raw(f"{self.STABLE}/analyst-estimates", symbol=ticker, limit=4, period="annual")
             if an:
                 an = list(reversed(an))
                 latest_rev = yfin[-1].revenue
-                future = [a for a in an if int(a["date"][:4]) > yfin[-1].year]
+                future = [a for a in an if a.get("date") and int(a["date"][:4]) > yfin[-1].year]
                 if future and latest_rev:
                     est.revenue_growth_next = _f(future[0].get("estimatedRevenueAvg")) / latest_rev - 1
                     if len(future) > 1 and _f(future[0].get("estimatedRevenueAvg")):
@@ -143,7 +167,7 @@ class FMPProvider:
         except Exception:
             pass
         try:
-            tgt = self._get(f"{self.BASE4}/price-target-consensus", symbol=ticker)
+            tgt = self._raw(f"{self.STABLE}/price-target-consensus", symbol=ticker)
             if tgt:
                 est.target_price_mean = _f(tgt[0].get("targetConsensus")) or None
         except Exception:
@@ -171,10 +195,10 @@ class FMPProvider:
 
     def peer(self, ticker: str) -> Optional[PeerData]:
         try:
-            prof = self._get(f"{self.BASE}/profile/{ticker}")[0]
-            inc = self._get(f"{self.BASE}/income-statement/{ticker}", limit=1, period="annual")[0]
-            bs = self._get(f"{self.BASE}/balance-sheet-statement/{ticker}", limit=1, period="annual")[0]
-            cf = self._get(f"{self.BASE}/cash-flow-statement/{ticker}", limit=1, period="annual")[0]
+            prof = self._raw(f"{self.STABLE}/profile", symbol=ticker)[0]
+            inc = self._stmt("income-statement", ticker, 1)[0]
+            bs = self._stmt("balance-sheet-statement", ticker, 1)[0]
+            cf = self._stmt("cash-flow-statement", ticker, 1)[0]
             mc = _f(prof.get("mktCap"))
             debt = _f(bs.get("totalDebt"))
             cash = _f(bs.get("cashAndShortTermInvestments"))
@@ -193,9 +217,14 @@ class FMPProvider:
 
     def peer_list(self, ticker: str, limit: int = 8) -> list[str]:
         try:
-            data = self._get(f"{self.BASE4}/stock_peers", symbol=ticker)
-            if data and data[0].get("peersList"):
-                return data[0]["peersList"][:limit]
+            data = self._raw(f"{self.STABLE}/stock-peers", symbol=ticker)
+            if data:
+                if isinstance(data, list) and data and isinstance(data[0], dict):
+                    if data[0].get("peersList"):
+                        return data[0]["peersList"][:limit]
+                    syms = [d.get("symbol") for d in data if d.get("symbol")]
+                    if syms:
+                        return syms[:limit]
         except Exception:
             pass
         return []
