@@ -263,13 +263,18 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
         out.append(dict(cat=cat, factor=factor, level=level, evidence=evidence, why=why))
 
     # ---- shared statistics ----
+    import math, statistics as st
+    def _finite(xs):
+        return [x for x in xs if x is not None and isinstance(x, (int, float))
+                and math.isfinite(x)]
     growths = []
     for a, b in zip(data.years[:-1], data.years[1:]):
-        if a.revenue:
-            growths.append(b.revenue / a.revenue - 1)
-    import statistics as st
+        if a.revenue and math.isfinite(a.revenue) and a.revenue != 0:
+            r = b.revenue / a.revenue - 1
+            if math.isfinite(r) and abs(r) < 20:   # drop absurd swings from ~0 bases
+                growths.append(r)
     g_vol = st.pstdev(growths) if len(growths) >= 2 else None
-    margins = [yy.ebit_margin for yy in data.years if yy.ebit_margin is not None]
+    margins = _finite([yy.ebit_margin for yy in data.years])
     m_vol = st.pstdev(margins) if len(margins) >= 2 else None
     ebitda = y.ebitda or (y.ebit + y.depreciation_amort)
     lev = data.net_debt / ebitda if ebitda else None
@@ -383,7 +388,7 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
                 "and cash conversion runs ahead of earnings.")
 
     # ---- MICRO: pricing power ----
-    if m_vol is not None:
+    if m_vol is not None and margins:
         level = "Low" if m_vol < 0.02 else ("Medium" if m_vol < 0.05 else "High")
         add("Micro", "Pricing power / margin stability", level,
             f"EBIT margin \u03c3 = {pct(m_vol,1)} (range {pct(min(margins),0)}\u2013{pct(max(margins),0)})",

@@ -13,6 +13,7 @@ Models:
 """
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass, field
 from typing import Optional
@@ -32,8 +33,7 @@ class MethodResult:
 
 
 def _clean(vals, lo, hi):
-    vals = [v for v in vals if v is not None and lo <= v <= hi]
-    return vals
+    return [v for v in vals if v is not None and isinstance(v,(int,float)) and math.isfinite(v) and lo <= v <= hi]
 
 
 def _norm_roe(data: CompanyData) -> float:

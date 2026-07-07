@@ -8,6 +8,7 @@ All monetary values are in the company's reporting currency, absolute units
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -101,6 +102,7 @@ class CompanyData:
         vals = [getattr(y, attr) for y in self.years]
         if n is not None:
             vals = vals[-(n + 1):]
+        vals = [v for v in vals if v is not None and isinstance(v,(int,float)) and math.isfinite(v)]
         if len(vals) < 2 or vals[0] <= 0 or vals[-1] <= 0:
             return None
         periods = len(vals) - 1
@@ -116,7 +118,7 @@ class CompanyData:
                 vals.append(v)
         if n is not None:
             vals = vals[-n:]
-        vals = [v for v in vals if v is not None]
+        vals = [v for v in vals if v is not None and isinstance(v,(int,float)) and math.isfinite(v)]
         return sum(vals) / len(vals) if vals else None
 
 

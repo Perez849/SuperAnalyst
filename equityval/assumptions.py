@@ -14,6 +14,7 @@ Design principles that keep the forecast honest:
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Optional
 
@@ -39,7 +40,7 @@ class DriverSet:
 
 
 def _clean_mean(vals, lo=-1e9, hi=1e9):
-    vals = [v for v in vals if v is not None and lo <= v <= hi]
+    vals = [v for v in vals if v is not None and isinstance(v,(int,float)) and math.isfinite(v) and lo <= v <= hi]
     return sum(vals) / len(vals) if vals else None
 
 

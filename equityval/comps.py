@@ -1,6 +1,7 @@
 """Relative valuation (comps) and dividend discount model."""
 from __future__ import annotations
 
+import math
 import statistics
 from dataclasses import dataclass, field
 from typing import Optional
@@ -53,7 +54,7 @@ def run_comps(data: CompanyData, peers: list[PeerData]) -> CompsResult:
     if m and eps > 0:
         multiples["P/E"] = {"median": m, "implied_vps": m * eps}
 
-    implied = [d["implied_vps"] for d in multiples.values() if d["implied_vps"] and d["implied_vps"] > 0]
+    implied = [d["implied_vps"] for d in multiples.values() if d["implied_vps"] and math.isfinite(d["implied_vps"]) and d["implied_vps"] > 0]
     blended = statistics.mean(implied) if implied else None
     upside = (blended / data.price - 1) if (blended and data.price) else None
     return CompsResult(peers=peers, multiples=multiples, blended_vps=blended, upside=upside)
