@@ -1,0 +1,15 @@
+{
+  "ticker": "DEMO",
+  "name": "Meridian Industrials (illustrative)",
+  "sector": "Industrials",
+  "profile": "standard",
+  "currency": "$",
+  "price": 182.0,
+  "target": 182.98,
+  "upside": 0.0054,
+  "rating": "NEUTRAL",
+  "date": "2026-07-04",
+  "html": "DEMO.html",
+  "pdf": "DEMO.pdf",
+  "xlsx": "DEMO.xlsx"
+}
