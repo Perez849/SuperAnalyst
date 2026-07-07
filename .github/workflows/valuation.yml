@@ -1,0 +1,78 @@
+name: Equity valuation (on-demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticker:
+        description: "Ticker a valorar (p.ej. AAPL, JPM, O, XOM, SAN.MC)"
+        required: true
+        type: string
+      profile:
+        description: "Forzar perfil (vacío = auto-clasificado)"
+        required: false
+        type: choice
+        default: "auto"
+        options: ["auto", "standard", "bank", "insurance", "reit", "utility", "cyclical", "high_growth"]
+      provider:
+        description: "Fuente de datos"
+        required: false
+        type: choice
+        default: "auto"
+        options: ["auto", "fmp", "yfinance"]
+      risk_free: {description: "Tasa libre de riesgo", required: false, default: "0.043"}
+      erp: {description: "Prima de riesgo de mercado (ERP)", required: false, default: "0.046"}
+      country_premium: {description: "Prima país (0 para EE.UU.)", required: false, default: "0.0"}
+      terminal_growth: {description: "Crecimiento terminal (g)", required: false, default: "0.025"}
+      horizon: {description: "Horizonte explícito en años (vacío = default del perfil)", required: false, default: ""}
+      exit_multiple: {description: "Múltiplo de salida EV/EBITDA (vacío = ninguno)", required: false, default: ""}
+
+jobs:
+  valuation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install PDF engine (wkhtmltopdf)
+        run: sudo apt-get update && sudo apt-get install -y wkhtmltopdf
+
+      - name: Run valuation
+        env:
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+        run: |
+          TICKER="${{ github.event.inputs.ticker }}"
+          ARGS="$TICKER --provider ${{ github.event.inputs.provider }} --pdf --xlsx"
+          ARGS="$ARGS --rf ${{ github.event.inputs.risk_free }}"
+          ARGS="$ARGS --erp ${{ github.event.inputs.erp }}"
+          ARGS="$ARGS --country-premium ${{ github.event.inputs.country_premium }}"
+          ARGS="$ARGS --terminal-growth ${{ github.event.inputs.terminal_growth }}"
+          if [ "${{ github.event.inputs.profile }}" != "auto" ]; then
+            ARGS="$ARGS --profile ${{ github.event.inputs.profile }}"
+          fi
+          if [ -n "${{ github.event.inputs.horizon }}" ]; then
+            ARGS="$ARGS --horizon ${{ github.event.inputs.horizon }}"
+          fi
+          if [ -n "${{ github.event.inputs.exit_multiple }}" ]; then
+            ARGS="$ARGS --exit-multiple ${{ github.event.inputs.exit_multiple }}"
+          fi
+          echo "Ejecutando: python valorar.py $ARGS"
+          python valorar.py $ARGS -o "${TICKER}_valuation.html"
+
+      - name: Upload report (HTML + PDF + XLSX)
+        uses: actions/upload-artifact@v4
+        with:
+          name: valuation-${{ github.event.inputs.ticker }}
+          path: |
+            *_valuation.html
+            *_valuation.pdf
+            *_valuation.xlsx
+          retention-days: 90
