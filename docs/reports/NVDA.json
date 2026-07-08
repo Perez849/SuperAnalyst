@@ -1,0 +1,15 @@
+{
+  "ticker": "NVDA",
+  "name": "NVIDIA Corporation",
+  "sector": "Technology",
+  "profile": "standard",
+  "currency": "$",
+  "price": 204.12,
+  "target": 179.13,
+  "upside": -0.1224,
+  "rating": "REDUCE",
+  "date": "2026-07-08",
+  "html": "NVDA.html",
+  "pdf": "NVDA.pdf",
+  "xlsx": "NVDA.xlsx"
+}
