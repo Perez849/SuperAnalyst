@@ -234,13 +234,41 @@ class FMPProvider:
 #  yfinance provider (keyless fallback)
 # --------------------------------------------------------------------------- #
 class YFinanceProvider:
-    def company(self, ticker: str, years: int = 6) -> CompanyData:
+    @staticmethod
+    def _make_ticker(ticker: str):
+        """Build a yfinance Ticker, forcing a plain requests session where possible
+        to sidestep the curl_cffi SSL bug against fc.yahoo.com on CI runners."""
         import yfinance as yf
-        t = yf.Ticker(ticker)
-        info = t.info
-        fin = t.financials                # income stmt, cols = dates (newest first)
+        try:
+            import requests
+            sess = requests.Session()
+            sess.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                              "AppleWebKit/537.36 (KHTML, like Gecko) "
+                              "Chrome/120.0 Safari/537.36"})
+            return yf.Ticker(ticker, session=sess)
+        except Exception:
+            return yf.Ticker(ticker)
+
+    def company(self, ticker: str, years: int = 6) -> CompanyData:
+        t = self._make_ticker(ticker)
+        # t.info triggers the fc.yahoo.com cookie/crumb fetch that can fail on SSL.
+        # It is not essential to the valuation, so degrade gracefully if it breaks.
+        try:
+            info = t.info or {}
+        except Exception as e:
+            print(f"[warn] yfinance .info unavailable ({type(e).__name__}); "
+                  f"continuing from financial statements")
+            info = {}
+        fin = t.income_stmt               # full income statement (has Total Revenue)
+        if fin is None or fin.empty:
+            fin = t.financials
         bs = t.balance_sheet
         cf = t.cashflow
+        if fin is None or fin.empty or bs is None or bs.empty:
+            raise ValueError(
+                f"yfinance returned no financial statements for {ticker} "
+                f"(likely a temporary Yahoo outage or an invalid ticker).")
 
         def row(df, *names):
             for n in names:
@@ -342,6 +370,29 @@ class YFinanceProvider:
         except Exception:
             pass
 
+        # Absolute revenue & EPS consensus paths -> the projected P&L (financial model).
+        base_rev = yfin[-1].revenue if yfin else 0.0
+        try:
+            re_tbl = t.revenue_estimate
+            if re_tbl is not None and not re_tbl.empty and "avg" in re_tbl.columns and last_year:
+                for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
+                    if key in re_tbl.index:
+                        v = _f(re_tbl.loc[key, "avg"])
+                        if v > 0:
+                            est.revenue_path.append((last_year + off, v))
+        except Exception:
+            pass
+        try:
+            ee = t.earnings_estimate
+            if ee is not None and not ee.empty and "avg" in ee.columns and last_year:
+                for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
+                    if key in ee.index:
+                        v = _f(ee.loc[key, "avg"])
+                        if v == v and v != 0:
+                            est.eps_path.append((last_year + off, v))
+        except Exception:
+            pass
+
         # Build a 10-year levered-FCF path: analyst growth for the covered years,
         # then fade to the long-term/terminal growth. Stored for the FCFE model.
         if base_fcfe > 0 and last_year:
@@ -367,16 +418,44 @@ class YFinanceProvider:
             est.fcfe_path = fcfe_path
             est.fcfe_base = base_fcfe
 
-        shares = _f(info.get("sharesOutstanding")) or 1
+        # --- robust price / shares / market cap, resilient to empty info ------
+        # Prefer info; fall back to fast_info, then to the latest close and the
+        # balance-sheet share count. This keeps the valuation alive even when the
+        # fc.yahoo.com metadata call fails on CI.
+        price = _f(info.get("currentPrice")) or _f(info.get("regularMarketPrice"))
+        shares = (_f(info.get("sharesOutstanding"))
+                  or (float(bs.loc["Ordinary Shares Number"].dropna().iloc[0])
+                      if "Ordinary Shares Number" in bs.index
+                      and not bs.loc["Ordinary Shares Number"].dropna().empty else 0)
+                  or 1)
+        mktcap = _f(info.get("marketCap"))
+        if not price or not mktcap:
+            try:
+                fi = t.fast_info
+                price = price or _f(getattr(fi, "last_price", None) or fi.get("lastPrice"))
+                shares = shares if shares > 1 else (_f(getattr(fi, "shares", None)) or shares)
+                mktcap = mktcap or _f(getattr(fi, "market_cap", None) or fi.get("marketCap"))
+            except Exception:
+                pass
+        if not price:
+            try:
+                h = t.history(period="5d")
+                if h is not None and not h.empty:
+                    price = float(h["Close"].dropna().iloc[-1])
+            except Exception:
+                pass
+        if not mktcap and price and shares:
+            mktcap = price * shares
+
         return CompanyData(
             ticker=ticker.upper(),
-            name=info.get("longName", ticker),
+            name=info.get("longName") or info.get("shortName") or ticker,
             currency=info.get("currency", "USD"),
             sector=info.get("sector", ""),
             industry=info.get("industry", ""),
-            price=_f(info.get("currentPrice")) or _f(info.get("regularMarketPrice")),
+            price=price,
             shares_diluted=shares,
-            market_cap=_f(info.get("marketCap")),
+            market_cap=mktcap,
             beta=_f(info.get("beta")) or None,
             dividend_per_share=_f(info.get("dividendRate")),
             years=yfin, estimates=est, provider="yfinance", raw_statements=raw,
