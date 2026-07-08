@@ -403,18 +403,11 @@ class YFinanceProvider:
         try:
             re_tbl = t.revenue_estimate
             if re_tbl is not None and not re_tbl.empty and "avg" in re_tbl.columns and last_year:
-                prev_rev = base_rev
                 for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
                     if key in re_tbl.index:
                         v = _f(re_tbl.loc[key, "avg"])
-                        # reject implausible jumps (bad yfinance data): a mature
-                        # company doesn't grow revenue >25% or shrink >30% in a year
-                        if v > 0 and prev_rev > 0:
-                            g = v / prev_rev - 1
-                            if -0.30 < g < 0.25:
-                                est.revenue_path.append((last_year + off, v))
-                                prev_rev = v
-                            # else: skip this year's estimate as corrupt
+                        if v > 0:                       # no magnitude cap: real growth kept
+                            est.revenue_path.append((last_year + off, v))
         except Exception:
             pass
         try:
@@ -423,8 +416,33 @@ class YFinanceProvider:
                 for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
                     if key in ee.index:
                         v = _f(ee.loc[key, "avg"])
-                        if v == v and v != 0:
+                        if v == v and v != 0:       # no magnitude cap: real growth kept
                             est.eps_path.append((last_year + off, v))
+        except Exception:
+            pass
+
+        # Drop only INTERNALLY INCONSISTENT points (a value on a different scale
+        # from its own series — a spike that reverts). Never cap magnitude: a
+        # genuine high-growth ramp is preserved. Anchor with the last reported
+        # value so even the first estimate can be checked.
+        try:
+            from .sws_models import _drop_scale_outliers
+            if est.eps_path:
+                a = yfin[-1].eps_diluted if yfin else None
+                raw = sorted(est.eps_path)
+                if a and a > 0:
+                    probe = _drop_scale_outliers([(yfin[-1].year, a)] + raw)
+                    est.eps_path = [(y, v) for (y, v) in probe if y != yfin[-1].year]
+                else:
+                    est.eps_path = _drop_scale_outliers(raw)
+            if est.revenue_path:
+                a = yfin[-1].revenue if yfin else None
+                raw = sorted(est.revenue_path)
+                if a and a > 0:
+                    probe = _drop_scale_outliers([(yfin[-1].year, a)] + raw)
+                    est.revenue_path = [(y, v) for (y, v) in probe if y != yfin[-1].year]
+                else:
+                    est.revenue_path = _drop_scale_outliers(raw)
         except Exception:
             pass
 

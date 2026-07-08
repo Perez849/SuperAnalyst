@@ -99,6 +99,36 @@ def _fade_growth(near_rates: list[float], horizon: int, terminal_g: float) -> li
     return out[:horizon]
 
 
+def _drop_scale_outliers(path: list) -> list:
+    """Remove points that break their OWN series — a spike that reverts, i.e. a
+    value on a different scale from its neighbours (typically a corrupt/misscaled
+    data point). Does NOT cap magnitude: sustained high growth is kept intact.
+
+    A point is dropped only if it is far off from BOTH neighbours in opposite
+    directions (spikes up then reverts down, or vice-versa) — the signature of a
+    bad print like an EPS of 12.76 between neighbours near 5. Monotonic ramps,
+    even huge ones (e.g. NVDA's +126%), never revert and are preserved.
+    """
+    if not path or len(path) < 3:
+        return list(path)
+    kept = list(path)
+    changed = True
+    while changed and len(kept) >= 3:
+        changed = False
+        v = [x for _, x in kept]
+        for i in range(1, len(v) - 1):
+            prev, cur, nxt = v[i - 1], v[i], v[i + 1]
+            if prev <= 0 or cur <= 0:
+                continue
+            up = cur / prev
+            down = nxt / cur if cur else 1
+            if (up > 1.8 and down < 0.75) or (up < 0.55 and down > 1.35):
+                kept.pop(i)          # inconsistent with both sides -> drop
+                changed = True
+                break
+    return kept
+
+
 # --------------------------------------------------------------------------- #
 #  MODEL 1: 2-stage FCFE (the default / general case)
 # --------------------------------------------------------------------------- #
@@ -128,8 +158,7 @@ def two_stage_fcfe(data: CompanyData, ke: float, beta_rows: list,
     elif est.eps_path:
         # No explicit levered-FCF path, but we have the analyst NET INCOME path
         # (EPS × shares). Derive FCFE from it via the company's through-cycle
-        # FCFE/net-income conversion. This is how we capture the analyst growth
-        # ramp (data centres etc.) that a grown-historical base would miss.
+        # FCFE/net-income conversion. This captures the analyst growth ramp.
         ni_hist = [(yy.operating_cash_flow - yy.capex, yy.net_income)
                    for yy in data.years if yy.net_income and yy.net_income > 0
                    and (yy.operating_cash_flow - yy.capex) > 0]
@@ -138,23 +167,44 @@ def two_stage_fcfe(data: CompanyData, ke: float, beta_rows: list,
             conv = ratios[len(ratios) // 2]
         else:
             conv = 1.0
-        conv = min(max(conv, 0.3), 3.0)
-        pth = sorted(est.eps_path)
-        analyst_n = len(pth)
-        for (_, eps) in pth[:horizon]:
-            flows.append(eps * data.shares_diluted * conv); sources.append("Analyst")
-        if len(flows) >= 2:
-            last_g = flows[-1] / flows[-2] - 1 if flows[-2] else terminal_g
+        # NO magnitude cap on conversion — use the company's real ratio.
+
+        # Clean the EPS path for INTERNAL INCONSISTENCY only (not magnitude).
+        # Anchor with the last reported EPS so even the FIRST estimate can be
+        # checked for a scale break (a corrupt first point that reverts).
+        anchor = data.latest.eps_diluted
+        raw = sorted(est.eps_path)
+        if anchor and anchor > 0:
+            probe = _drop_scale_outliers([(data.latest.year, anchor)] + raw)
+            clean = [(y, v) for (y, v) in probe if y != data.latest.year]
         else:
-            last_g = terminal_g
-        while len(flows) < horizon:
-            remaining = horizon - len(flows)
-            g = last_g + (terminal_g - last_g) * (len(flows) - analyst_n + 1) / (remaining + 1)
-            g = max(g, terminal_g)
-            flows.append(flows[-1] * (1 + g)); sources.append(f"Est @ {g:.2%}")
-            last_g = g
-        source = (f"analyst net-income consensus ({analyst_n}y) × {conv:.2f} FCFE "
-                  f"conversion, then fade to {terminal_g:.1%}")
+            clean = _drop_scale_outliers(raw)
+        if clean:
+            analyst_n = len(clean)
+            for (_, eps) in clean[:horizon]:
+                flows.append(eps * data.shares_diluted * conv); sources.append("Analyst")
+            if len(flows) >= 2:
+                last_g = flows[-1] / flows[-2] - 1 if flows[-2] else terminal_g
+            else:
+                last_g = terminal_g
+            while len(flows) < horizon:
+                remaining = horizon - len(flows)
+                g = last_g + (terminal_g - last_g) * (len(flows) - analyst_n + 1) / (remaining + 1)
+                g = max(g, terminal_g)
+                flows.append(flows[-1] * (1 + g)); sources.append(f"Est @ {g:.2%}")
+                last_g = g
+            source = (f"analyst net-income consensus ({analyst_n}y) × {conv:.2f} FCFE "
+                      f"conversion, then fade to {terminal_g:.1%}")
+        else:
+            base = data.latest.operating_cash_flow - data.latest.capex
+            if not base or base <= 0:
+                return None
+            hist_g = data.cagr("revenue") or 0.05
+            rates = _fade_growth([hist_g], horizon, terminal_g)
+            f = base
+            for g in rates:
+                f = f * (1 + g); flows.append(f); sources.append(f"Est @ {g:.2%}")
+            source = f"last levered FCF {cur}{base/1e9:,.1f}bn extrapolated (analyst EPS inconsistent)"
     else:
         base = est.fcfe_base if (est.fcfe_base and est.fcfe_base > 0) else \
                (data.latest.operating_cash_flow - data.latest.capex)
