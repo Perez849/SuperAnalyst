@@ -1,5 +1,6 @@
 name: Equity valuation (on-demand)
 
+# Lanza a mano desde la pestaña Actions: eliges el ticker y los parámetros.
 on:
   workflow_dispatch:
     inputs:
@@ -19,12 +20,6 @@ on:
         type: choice
         default: "auto"
         options: ["auto", "fmp", "yfinance"]
-      risk_free: {description: "Tasa libre de riesgo", required: false, default: "0.043"}
-      erp: {description: "Prima de riesgo de mercado (ERP)", required: false, default: "0.046"}
-      country_premium: {description: "Prima país (0 para EE.UU.)", required: false, default: "0.0"}
-      terminal_growth: {description: "Crecimiento terminal (g)", required: false, default: "0.025"}
-      horizon: {description: "Horizonte explícito en años (vacío = default del perfil)", required: false, default: ""}
-      exit_multiple: {description: "Múltiplo de salida EV/EBITDA (vacío = ninguno)", required: false, default: ""}
 
 jobs:
   valuation:
@@ -47,27 +42,17 @@ jobs:
 
       - name: Run valuation
         env:
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}   # opcional; sin él usa yfinance
         run: |
           TICKER="${{ github.event.inputs.ticker }}"
           ARGS="$TICKER --provider ${{ github.event.inputs.provider }} --pdf --xlsx"
-          ARGS="$ARGS --rf ${{ github.event.inputs.risk_free }}"
-          ARGS="$ARGS --erp ${{ github.event.inputs.erp }}"
-          ARGS="$ARGS --country-premium ${{ github.event.inputs.country_premium }}"
-          ARGS="$ARGS --terminal-growth ${{ github.event.inputs.terminal_growth }}"
           if [ "${{ github.event.inputs.profile }}" != "auto" ]; then
             ARGS="$ARGS --profile ${{ github.event.inputs.profile }}"
-          fi
-          if [ -n "${{ github.event.inputs.horizon }}" ]; then
-            ARGS="$ARGS --horizon ${{ github.event.inputs.horizon }}"
-          fi
-          if [ -n "${{ github.event.inputs.exit_multiple }}" ]; then
-            ARGS="$ARGS --exit-multiple ${{ github.event.inputs.exit_multiple }}"
           fi
           echo "Ejecutando: python valorar.py $ARGS"
           python valorar.py $ARGS -o "${TICKER}_valuation.html"
 
-      - name: Upload report (HTML + PDF + XLSX)
+      - name: Upload report (HTML + PDF)
         uses: actions/upload-artifact@v4
         with:
           name: valuation-${{ github.event.inputs.ticker }}
