@@ -1,0 +1,15 @@
+{
+  "ticker": "GFI",
+  "name": "Gold Fields Limited",
+  "sector": "Basic Materials",
+  "profile": "cyclical",
+  "currency": "$",
+  "price": 32.88,
+  "target": 42.7,
+  "upside": 0.2986,
+  "rating": "OVERWEIGHT",
+  "date": "2026-07-08",
+  "html": "GFI.html",
+  "pdf": "GFI.pdf",
+  "xlsx": "GFI.xlsx"
+}
