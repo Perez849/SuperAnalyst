@@ -403,11 +403,18 @@ class YFinanceProvider:
         try:
             re_tbl = t.revenue_estimate
             if re_tbl is not None and not re_tbl.empty and "avg" in re_tbl.columns and last_year:
+                prev_rev = base_rev
                 for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
                     if key in re_tbl.index:
                         v = _f(re_tbl.loc[key, "avg"])
-                        if v > 0:
-                            est.revenue_path.append((last_year + off, v))
+                        # reject implausible jumps (bad yfinance data): a mature
+                        # company doesn't grow revenue >25% or shrink >30% in a year
+                        if v > 0 and prev_rev > 0:
+                            g = v / prev_rev - 1
+                            if -0.30 < g < 0.25:
+                                est.revenue_path.append((last_year + off, v))
+                                prev_rev = v
+                            # else: skip this year's estimate as corrupt
         except Exception:
             pass
         try:
@@ -422,20 +429,69 @@ class YFinanceProvider:
             pass
 
         # Build a 10-year levered-FCF path: analyst growth for the covered years,
-        # then fade to the long-term/terminal growth. Stored for the FCFE model.
-        if base_fcfe > 0 and last_year:
-            lt = est.eps_growth_lt if (est.eps_growth_lt and 0 < est.eps_growth_lt < 0.4) else None
-            term = 0.035
+        # Build the 10-year levered-FCF (FCFE) path for the DCF.
+        # SWS uses analyst "Levered Free Cash Flow". yfinance doesn't expose that
+        # directly, so we derive it from the analyst NET INCOME path (reliable) via
+        # the company's own through-cycle FCFE/net-income conversion ratio. This is
+        # far more accurate than growing a single low historical FCFE number, which
+        # understated CEG badly (gave $1.3bn vs the ~$4.5bn analysts imply).
+        term = 0.035
+        # through-cycle FCFE/NI conversion, from history (bounded to sane range)
+        ni_hist = [yy.net_income for yy in yfin if yy.net_income and yy.net_income > 0]
+        fcfe_hist = [yy.operating_cash_flow - yy.capex for yy in yfin]
+        conv = None
+        if ni_hist and len(fcfe_hist) == len(yfin):
+            pairs = [(f, y.net_income) for f, y in zip(fcfe_hist, yfin)
+                     if y.net_income and y.net_income > 0 and f > 0]
+            if pairs:
+                ratios = [f / ni for f, ni in pairs]
+                ratios.sort()
+                conv = ratios[len(ratios) // 2]           # median conversion
+        if conv is None or not (0.3 <= conv <= 3.0):
+            conv = 1.0                                     # neutral fallback
+
+        # analyst net income path from eps_path (× shares); else grow last NI
+        _sh_ni = (_f(info.get("sharesOutstanding"))
+                  or (float(bs.loc["Ordinary Shares Number"].dropna().iloc[0])
+                      if "Ordinary Shares Number" in bs.index
+                      and not bs.loc["Ordinary Shares Number"].dropna().empty else 0)
+                  or (yfin[-1].net_income / yfin[-1].eps_diluted
+                      if yfin[-1].eps_diluted else 0) or 1)
+        ni_path = []
+        if est.eps_path:
+            for (yr, eps) in sorted(est.eps_path):
+                ni_path.append((yr, eps * _sh_ni))
+        fcfe_path = []
+        if ni_path:
+            # covered years: FCFE = analyst NI × conversion
+            last_cov_fcfe = None
+            for (yr, ni) in ni_path[:10]:
+                f = ni * conv
+                fcfe_path.append((yr, f))
+                last_cov_fcfe = f
+            # extend to 10 years fading growth to terminal
+            if fcfe_path and len(fcfe_path) < 10:
+                if len(fcfe_path) >= 2:
+                    g_last = fcfe_path[-1][1] / fcfe_path[-2][1] - 1
+                else:
+                    g_last = term
+                yr = fcfe_path[-1][0]; f = fcfe_path[-1][1]
+                n_more = 10 - len(fcfe_path)
+                for k in range(n_more):
+                    g = g_last + (term - g_last) * (k + 1) / (n_more + 1)
+                    g = max(g, term)
+                    yr += 1; f = f * (1 + g)
+                    fcfe_path.append((yr, f))
+            est.fcfe_path = fcfe_path
+            est.fcfe_base = fcfe_path[0][1] if fcfe_path else base_fcfe
+        elif base_fcfe > 0 and last_year:
+            # no analyst earnings estimates: fall back to grown historical FCFE
             path = list(growth_path)
-            if not path and lt:
-                path = [lt]
-            fcfe_path = []
             f = base_fcfe
             for i in range(10):
                 if i < len(path):
                     gr = path[i]
                 elif path:
-                    # fade from last analyst year to terminal over remaining years
                     remain = 10 - len(path)
                     step = (i - len(path) + 1) / max(remain, 1)
                     gr = path[-1] + (term - path[-1]) * step
