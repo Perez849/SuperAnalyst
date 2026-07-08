@@ -1,8 +1,10 @@
-yfinance>=0.2.40
+# Pinned to avoid the curl_cffi SSL bug against fc.yahoo.com on CI runners.
+# 0.2.51 has analyst estimate tables; we force a requests session + guard .info to avoid the curl_cffi SSL bug.
+yfinance==0.2.51
 matplotlib>=3.7
 jinja2>=3.1
-numpy>=1.24
-pandas>=2.0
+numpy>=1.24,<2.1
+pandas>=2.0,<2.3
 requests>=2.31
-streamlit>=1.30      # optional, only for the interactive app
 openpyxl>=3.1
+lxml>=4.9
