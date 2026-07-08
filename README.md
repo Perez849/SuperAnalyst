@@ -183,3 +183,45 @@ streamlit_app.py                 app interactiva
 - Un único data source: ojo con restatements, one-offs y clasificaciones raras.
 - La clasificación es por keywords de sector/industria; verifica el tag del informe y usa
   `--profile` si hace falta.
+
+## Dos lentes de valoración: escéptico vs. creyente (FCFE)
+
+Para nombres cotizando muy por encima de sus flujos actuales (CEG, growth, infraestructura),
+el DCF conservador se queda corto frente al mercado — y eso es correcto, no un bug. El informe
+ahora muestra **dos lentes**:
+
+- **Escéptico (FCFF DCF):** valora el flujo de caja que la empresa genera hoy, descontado al WACC.
+- **Creyente (FCFE 2 etapas):** capitaliza la senda de *levered FCF* de los analistas a 10 años,
+  descontada al **cost of equity** (beta sectorial unlevered→relevered, cap 0.8–2.0). Replica la
+  metodología de Simply Wall St.
+
+Entre ambas, un **puente de valoración** descompone la diferencia en sus 4 palancas
+(flujo histórico vs analistas, horizonte, tasa de descuento, crecimiento terminal), cada una
+cuantificada en $/acción. Verificado: reproduce Simply Wall St al céntimo ($507 vs $510 para CEG).
+
+El Excel incluye hojas **FCFE** y **Bridge** con fórmulas vivas — cambias los inputs azules
+(FCF de analistas, Rf, ERP, beta, g) y todo recalcula. El puente lleva un check que debe dar 0.
+
+## Metodología Simply Wall St (v2 — modelo principal)
+
+El valor razonable se calcula ahora con la **metodología completa de Simply Wall St**,
+anclada a **estimaciones forward de analistas** (no al pasado). El modelo se selecciona
+automáticamente por sector, igual que hace SWS:
+
+- **2-Stage Free Cash Flow to Equity** (caso general: growth, tech, utilities, IPPs):
+  Levered FCF de consenso de analistas a 10 años + terminal Gordon, descontado al cost of equity.
+- **Excess Returns Model** (bancos, seguros, financieras): valor = book value + PV de retornos
+  por encima del cost of equity.
+- **AFFO 2-Stage** (REITs): descuenta AFFO en vez de FCF (fallback FFO → NAV).
+- **Dividend Discount Model** (pagadores de dividendo consistente sin estimaciones de FCF).
+
+**Cost of equity** (común a todos): Rf (media 5 años del bono 10y) + beta × ERP, con beta
+bottom-up (unlevered de industria, re-levered a la estructura de la empresa, cap 0.8–2.0).
+
+Verificado: reproduce Simply Wall St al céntimo — CEG $510.30 vs su $510.16, cost of equity
+7.11%. La hoja Excel "SWS Valuation" lleva el modelo completo con fórmulas vivas (162 fórmulas,
+cero errores, cuadra con el motor al céntimo). Cambias los inputs azules (FCF de analistas, Rf,
+ERP, beta, g) y todo recalcula.
+
+El análisis DCF conservador, escenarios y sensibilidad se conservan como material de soporte,
+pero **el titular es la valoración SWS forward-looking**.

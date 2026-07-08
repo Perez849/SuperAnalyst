@@ -51,7 +51,7 @@ def main(argv=None):
     ap.add_argument("-o", "--output", default=None, help="Output HTML path")
     ap.add_argument("--pdf", action="store_true", help="Also export a PDF")
     ap.add_argument("--xlsx", action="store_true", help="Also export a live-formula Excel model")
-    ap.add_argument("--provider", default="auto", choices=["auto", "fmp", "yfinance"])
+    ap.add_argument("--provider", default="auto", choices=["auto", "fmp", "yfinance", "alphavantage", "av"])
     ap.add_argument("--fmp-key", default=None, help="FMP API key (or set FMP_API_KEY)")
     ap.add_argument("--profile", default=None,
                     choices=["standard", "bank", "insurance", "reit", "utility",
@@ -89,9 +89,11 @@ def main(argv=None):
         ticker = args.ticker.upper()
 
     d = res["data"]
+    sws = res.get("sws")
+    model = sws.label if sws else "n/a"
     print(f"{ticker}: {res['profile'].value} profile | fair value "
           f"{d.currency_symbol}{res['target']:.2f} ({res['upside']:+.1%} vs "
-          f"{d.currency_symbol}{d.price:.2f}) | methods: {', '.join(res['methods'])}")
+          f"{d.currency_symbol}{d.price:.2f}) | model: {model}")
 
     out = Path(args.output or f"{ticker}_valuation.html")
     out.parent.mkdir(parents=True, exist_ok=True)
