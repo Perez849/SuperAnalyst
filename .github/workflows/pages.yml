@@ -1,5 +1,6 @@
 name: Equity valuation → Pages
 
+# Lanza a mano: eliges el ticker y el informe se publica en tu web de GitHub Pages.
 on:
   workflow_dispatch:
     inputs:
@@ -19,14 +20,12 @@ on:
         type: choice
         default: "auto"
         options: ["auto", "fmp", "yfinance"]
-      risk_free: {description: "Tasa libre de riesgo", required: false, default: "0.043"}
-      erp: {description: "Prima de riesgo (ERP)", required: false, default: "0.046"}
-      country_premium: {description: "Prima país", required: false, default: "0.0"}
-      terminal_growth: {description: "Crecimiento terminal g", required: false, default: "0.025"}
 
+# Necesario para que el workflow pueda commitear en /docs
 permissions:
   contents: write
 
+# Evita choques si lanzas varios a la vez
 concurrency:
   group: pages-publish
   cancel-in-progress: false
@@ -53,9 +52,6 @@ jobs:
           mkdir -p docs/reports
           T="${{ github.event.inputs.ticker }}"
           ARGS="$T --provider ${{ github.event.inputs.provider }} --pdf --xlsx"
-          ARGS="$ARGS --rf ${{ github.event.inputs.risk_free }} --erp ${{ github.event.inputs.erp }}"
-          ARGS="$ARGS --country-premium ${{ github.event.inputs.country_premium }}"
-          ARGS="$ARGS --terminal-growth ${{ github.event.inputs.terminal_growth }}"
           if [ "${{ github.event.inputs.profile }}" != "auto" ]; then
             ARGS="$ARGS --profile ${{ github.event.inputs.profile }}"
           fi
