@@ -14,6 +14,7 @@ from . import report as report_mod
 from .assumptions import build_drivers
 from .comps import run_comps
 from .costofcapital import compute_wacc
+# (legacy two-lens bridge removed; SWS methodology is now primary)
 from .dcf import run_dcf, sensitivity_grid, model_diagnostics, reverse_dcf
 from .models import MethodResult
 from .providers import get_company, get_provider
@@ -144,16 +145,46 @@ def value_data(data: CompanyData, prov, cfg: ValuationConfig) -> dict:
         m = M.normalized_cyclical(data, peer_snaps)
         if m: methods["normalized"] = m
 
-    avail = {k: spec.weights[k] for k in methods if k in spec.weights
-             and methods[k].value_per_share and methods[k].value_per_share > 0}
-    if avail:
-        tot = sum(avail.values())
-        target = sum(methods[k].value_per_share * (w / tot) for k, w in avail.items())
-        blend = {k: w / tot for k, w in avail.items()}
+    # ========================================================================
+    # PRIMARY VALUATION: Simply Wall St methodology (analyst-driven, forward).
+    # This is the headline. The FCFF/scenario/sensitivity machinery above is kept
+    # only as supporting analysis, not as the fair-value driver.
+    # ========================================================================
+    from . import sws_models
+    sws = sws_models.select_and_value(
+        data,
+        risk_free=min(cfg.risk_free, 0.036),      # SWS uses a 5y-avg long bond (~3.5%)
+        erp=cfg.erp,
+        tax_rate=base_drivers.tax_rate if base_drivers else 0.21,
+        terminal_g=min(max(cfg.terminal_growth, 0.025), min(cfg.risk_free, 0.036)),
+        profile_key=profile.value,
+    )
+
+    if sws:
+        target = sws.value_per_share
+        blend = {sws.method: 1.0}
+        discount = sws.discount_rate
+    elif methods:
+        avail = {k: spec.weights[k] for k in methods if k in spec.weights
+                 and methods[k].value_per_share and methods[k].value_per_share > 0}
+        if avail:
+            tot = sum(avail.values())
+            target = sum(methods[k].value_per_share * (w / tot) for k, w in avail.items())
+            blend = {k: w / tot for k, w in avail.items()}
+        else:
+            target, blend = data.price, {}
     else:
-        target = data.price
-        blend = {}
+        target, blend = data.price, {}
     upside = target / data.price - 1 if data.price else 0.0
+
+    # Full projected P&L reconciled to the DCF's own cash flows (P&L -> FCF -> $510).
+    fwd_model = None
+    if sws and getattr(sws, "build", None):
+        from .forward_model import build_forward_model
+        try:
+            fwd_model = build_forward_model(data, sws.build)
+        except Exception:
+            fwd_model = None
 
     risks = _build_risks(data, profile, dcf_base, wacc, methods)
 
@@ -162,11 +193,12 @@ def value_data(data: CompanyData, prov, cfg: ValuationConfig) -> dict:
         methods=methods, dcf=dcf_base, scenarios=scenarios, sens=sens, comps=comps,
         base_drivers=base_drivers, diagnostics=diagnostics, reverse=reverse,
         target=target, upside=upside, blend=blend, risks=risks,
+        sws=sws, fwd_model=fwd_model,
     )
     return {
         "data": data, "profile": profile, "spec": spec, "wacc": wacc,
         "methods": methods, "dcf": dcf_base, "scenarios": scenarios, "sens": sens,
         "comps": comps, "base_drivers": base_drivers, "diagnostics": diagnostics,
         "reverse": reverse, "target": target, "upside": upside, "blend": blend,
-        "risks": risks, "html": html,
+        "risks": risks, "html": html, "sws": sws, "fwd_model": fwd_model,
     }

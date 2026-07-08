@@ -504,6 +504,150 @@ def export_model(data: CompanyData, res: dict, path: str) -> str:
         for j in range(len(years)):
             ws.column_dimensions[get_column_letter(2 + j)].width = 13
 
+    # ================= SWS INTRINSIC VALUATION SHEET ======================== #
+    sws = res.get("sws")
+    if sws:
+        ws = wb.create_sheet("SWS Valuation")
+        _title(ws, f"{data.ticker} — {sws.label}",
+               "Simply Wall St methodology. Blue = analyst inputs you can change; "
+               "black = live formulas. Discounted at the cost of equity. Every "
+               "figure is traceable; change a blue cell and the model recalculates.")
+        ws.column_dimensions["A"].width = 40
+        for c in "BCDE":
+            ws.column_dimensions[c].width = 15
+        r = 4
+        # --- cost of equity block (from beta_rows; rebuild live where possible) ---
+        _w(ws, r, 1, "Cost of equity", H2); r += 1
+        # parse numeric inputs out of beta_rows for live formulas
+        vals = {}
+        for k, v in sws.beta_rows:
+            vals[k] = v
+        rf = _pct_from(vals.get("Risk-free rate (5y avg 10y govt bond)"))
+        erp = _pct_from(vals.get("Equity risk premium (Damodaran)"))
+        ke = sws.discount_rate
+        _w(ws, r, 1, "Risk-free rate"); _w(ws, r, 2, rf, BLUE, PCT2); RF = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Equity risk premium"); _w(ws, r, 2, erp, BLUE, PCT2); ERP = f"$B${r}"; r += 1
+        # levered beta as a single editable input (already clamped)
+        # use the exact clamped beta reported by the model (not reversed from Ke)
+        beta_str = None
+        for k, v in sws.beta_rows:
+            if "clamped" in k.lower():
+                beta_str = v
+        try:
+            beta = float(beta_str) if beta_str else (ke - rf) / erp
+        except (TypeError, ValueError):
+            beta = (ke - rf) / erp if erp else 1.0
+        _w(ws, r, 1, "Levered beta (clamped 0.8–2.0)"); _w(ws, r, 2, beta, BLUE, '0.000'); BE = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Cost of equity = Rf + β·ERP")
+        _w(ws, r, 2, f"={RF}+{BE}*{ERP}", BLACK, PCT2, bold=True, border=TOPLINE); KE = f"$B${r}"; r += 2
+
+        if sws.build:      # FCFE / AFFO 2-stage: full 10-year live model
+            g = getattr(sws, "terminal_g", None) or _pct_from_rows(sws.rows, "Perpetual") or 0.035
+            _w(ws, r, 1, "Perpetual growth (g)"); _w(ws, r, 2, g, BLUE, PCT2); G = f"$B${r}"; r += 1
+            _w(ws, r, 1, "Shares outstanding (mn)")
+            _w(ws, r, 2, data.shares_diluted / scale, BLUE, MM); SH = f"$B${r}"; r += 2
+
+            _w(ws, r, 1, "Stage 1 — 10-year cash-flow forecast", H2); r += 1
+            _hdr_row(ws, r, ["Year", "Cash flow (mn)", "Source", "Discount factor", "PV (mn)"]); r += 1
+            first = r
+            for row in sws.build:
+                t = row["year"] - data.latest.year
+                _w(ws, r, 1, row["year"], BLACK, '0')
+                _w(ws, r, 2, row["cf"] / scale, BLUE, MM)              # analyst input (blue)
+                _w(ws, r, 3, row["src"], MUT)
+                _w(ws, r, 4, f"=1/(1+{KE})^{t}", BLACK, '0.000')
+                _w(ws, r, 5, f"=B{r}*D{r}", BLACK, MM)
+                r += 1
+            last = r - 1
+            _w(ws, r, 1, "PV of next 10 years' cash flows", BOLD)
+            _w(ws, r, 2, f"=SUM(E{first}:E{last})", BLACK, MM, bold=True, border=TOPLINE); PV1 = f"$B${r}"; r += 2
+
+            n_last = sws.build[-1]["year"] - data.latest.year
+            _w(ws, r, 1, "Stage 2 — terminal value", H2); r += 1
+            _w(ws, r, 1, "Terminal value = CFn·(1+g)/(Ke−g)")
+            _w(ws, r, 2, f"=B{last}*(1+{G})/({KE}-{G})", BLACK, MM); TV = f"$B${r}"; r += 1
+            _w(ws, r, 1, "PV of terminal value")
+            _w(ws, r, 2, f"={TV}/(1+{KE})^{n_last}", BLACK, MM); PVTV = f"$B${r}"; r += 2
+
+            _w(ws, r, 1, "Total equity value", BOLD)
+            _w(ws, r, 2, f"={PV1}+{PVTV}", BLACK, MM, bold=True, border=TOPLINE); EQV = f"$B${r}"; r += 1
+            _w(ws, r, 1, "Value per share", BOLD)
+            _w(ws, r, 2, f"={EQV}/{SH}", BLACK, PS, bold=True, border=DBL); r += 1
+            _w(ws, r, 1, "Current price"); _w(ws, r, 2, data.price, BLUE, PS); PR = f"$B${r}"; r += 1
+            _w(ws, r, 1, "Upside / (downside)")
+            _w(ws, r, 2, f"=B{r-2}/{PR}-1", BLACK, PCT); r += 1
+
+        else:              # Excess Returns / DDM / NAV: compact live model
+            r = _sws_compact_sheet(ws, r, sws, data, KE, G_ref=None, scale=scale,
+                                   _w=_w, H2=H2, BOLD=BOLD, BLUE=BLUE, BLACK=BLACK,
+                                   PS=PS, PCT2=PCT2, PCT=PCT, MM=MM, TOPLINE=TOPLINE, DBL=DBL)
+
+    # ==================== FINANCIAL MODEL (P&L -> FCF) ====================== #
+    fwd = res.get("fwd_model")
+    if fwd and getattr(fwd, "years", None):
+        ws = wb.create_sheet("Financial Model")
+        _title(ws, f"{data.ticker} — projected P&L & levered FCF (analyst-driven)",
+               "Blue = analyst estimates; black = live formulas. The Levered FCF row is the exact "
+               "cash flow discounted on the 'SWS Valuation' sheet — P&L, cash flow and fair value "
+               "are one reconciled chain.")
+        yrs = [fy.year for fy in fwd.years]
+        n = len(yrs)
+        ws.column_dimensions["A"].width = 26
+        for j in range(n):
+            ws.column_dimensions[get_column_letter(2 + j)].width = 12
+        r = 4
+        _hdr_row(ws, r, ["Line item"] + [f"FY{y}E" for y in yrs]); r += 1
+        # Revenue (analyst inputs, blue)
+        _w(ws, r, 1, "Revenue (mn)", BOLD)
+        rev_row = r
+        for j, fy in enumerate(fwd.years):
+            _w(ws, r, 2 + j, fy.revenue / scale, BLUE if fy.revenue_src == "Analyst" else BLACK, MM)
+        r += 1
+        # Growth (formula off revenue)
+        _w(ws, r, 1, "Revenue growth")
+        for j in range(n):
+            col = get_column_letter(2 + j)
+            if j == 0:
+                _w(ws, r, 2 + j, "—")
+            else:
+                pcol = get_column_letter(1 + j)
+                _w(ws, r, 2 + j, f"={col}{rev_row}/{pcol}{rev_row}-1", BLACK, PCT)
+        r += 1
+        # EBIT margin (blue input) + EBIT (formula)
+        _w(ws, r, 1, "EBIT margin")
+        mrow = r
+        for j, fy in enumerate(fwd.years):
+            _w(ws, r, 2 + j, fy.ebit_margin, BLUE, PCT)
+        r += 1
+        _w(ws, r, 1, "EBIT (mn)")
+        for j in range(n):
+            col = get_column_letter(2 + j)
+            _w(ws, r, 2 + j, f"={col}{rev_row}*{col}{mrow}", BLACK, MM)
+        r += 1
+        # Net income (analyst-driven, blue) + EPS
+        _w(ws, r, 1, "Net income (mn)")
+        ni_row = r
+        for j, fy in enumerate(fwd.years):
+            _w(ws, r, 2 + j, fy.net_income / scale, BLUE if fy.eps_src == "Analyst" else BLACK, MM)
+        r += 1
+        _w(ws, r, 1, "EPS")
+        for j in range(n):
+            col = get_column_letter(2 + j)
+            _w(ws, r, 2 + j, f"={col}{ni_row}*1000000/{data.shares_diluted}", BLACK, PS)
+        r += 2
+        # Levered FCF — the reconciled link to the DCF
+        _w(ws, r, 1, "Levered FCF (mn)", BOLD)
+        fcf_row = r
+        for j, fy in enumerate(fwd.years):
+            _w(ws, r, 2 + j, fy.levered_fcf / scale, BLUE, MM, bold=True, border=TOPLINE)
+        r += 1
+        _w(ws, r, 1, "FCF margin")
+        for j in range(n):
+            col = get_column_letter(2 + j)
+            _w(ws, r, 2 + j, f"={col}{fcf_row}/{col}{rev_row}", BLACK, PCT)
+        r += 2
+        _w(ws, r, 1, "→ These Levered FCF figures feed the DCF on the 'SWS Valuation' sheet.", MUT)
+
     # ============================ COVER ===================================== #
     ws = wb.active
     ws.title = "Cover"
@@ -528,5 +672,71 @@ def export_model(data: CompanyData, res: dict, path: str) -> str:
     ]:
         _w(ws, r, 1, line, MUT); r += 1
 
+    # Order sheets so the SWS-relevant ones lead; supporting DCF sheets follow.
+    preferred = ["Cover", "Financial Model", "SWS Valuation"]
+    order = [s for s in preferred if s in wb.sheetnames]
+    order += [s for s in wb.sheetnames if s not in order]
+    wb._sheets.sort(key=lambda s: order.index(s.title))
+
     wb.save(path)
     return path
+
+
+# --------------------------------------------------------------------------- #
+#  Helpers for the SWS valuation sheet
+# --------------------------------------------------------------------------- #
+def _pct_from(s):
+    """Parse '3.54%' -> 0.0354; returns 0.0 on failure."""
+    if not s:
+        return 0.0
+    try:
+        return float(str(s).strip().rstrip("%")) / 100
+    except ValueError:
+        return 0.0
+
+
+def _pct_from_rows(rows, key_contains):
+    for k, v in rows:
+        if key_contains.lower() in k.lower():
+            return _pct_from(v)
+    return None
+
+
+def _sws_compact_sheet(ws, r, sws, data, KE, G_ref, scale, _w, H2, BOLD,
+                       BLUE, BLACK, PS, PCT2, PCT, MM, TOPLINE, DBL):
+    """Live layout for Excess Returns / DDM / NAV (no 10-year build)."""
+    cur = data.currency_symbol
+    _w(ws, r, 1, "Valuation build", H2); r += 1
+    if sws.method == "excess_returns":
+        y = data.latest
+        bve = y.total_equity - (y.minority_interest or 0)
+        roe = _pct_from_rows(sws.rows, "Return on equity") or 0.0
+        g = _pct_from_rows(sws.rows, "growth") or 0.03
+        _w(ws, r, 1, "Book value of equity (mn)"); _w(ws, r, 2, bve / scale, BLUE, MM); BVE = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Shares outstanding (mn)"); _w(ws, r, 2, data.shares_diluted / scale, BLUE, MM); SH = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Return on equity (ROE)"); _w(ws, r, 2, roe, BLUE, PCT); ROE = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Perpetual growth (g)"); _w(ws, r, 2, g, BLUE, PCT2); G = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Book value / share"); _w(ws, r, 2, f"={BVE}/{SH}", BLACK, PS); BVPS = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Excess return/sh = (ROE−Ke)·BVPS")
+        _w(ws, r, 2, f"=({ROE}-{KE})*{BVPS}", BLACK, PS); ER = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Terminal = ExcessReturn/(Ke−g)")
+        _w(ws, r, 2, f"={ER}/({KE}-{G})", BLACK, PS); TV = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Value per share = BVPS + terminal", BOLD)
+        _w(ws, r, 2, f"={BVPS}+{TV}", BLACK, PS, bold=True, border=DBL); r += 1
+    elif sws.method == "ddm":
+        dps = data.dividend_per_share
+        g = _pct_from_rows(sws.rows, "Perpetual growth") or 0.03
+        _w(ws, r, 1, "Current dividend / share"); _w(ws, r, 2, dps, BLUE, PS); DPS = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Perpetual growth (g)"); _w(ws, r, 2, g, BLUE, PCT2); G = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Expected dividend = DPS·(1+g)")
+        _w(ws, r, 2, f"={DPS}*(1+{G})", BLACK, PS); ED = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Value = ExpDPS/(Ke−g)", BOLD)
+        _w(ws, r, 2, f"={ED}/({KE}-{G})", BLACK, PS, bold=True, border=DBL); r += 1
+    else:  # NAV
+        y = data.latest
+        nav = y.total_equity - (y.minority_interest or 0)
+        _w(ws, r, 1, "Net asset value (mn)"); _w(ws, r, 2, nav / scale, BLUE, MM); NAV = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Shares outstanding (mn)"); _w(ws, r, 2, data.shares_diluted / scale, BLUE, MM); SH = f"$B${r}"; r += 1
+        _w(ws, r, 1, "Value per share = NAV / shares", BOLD)
+        _w(ws, r, 2, f"={NAV}/{SH}", BLACK, PS, bold=True, border=DBL); r += 1
+    return r

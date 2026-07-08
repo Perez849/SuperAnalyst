@@ -301,11 +301,72 @@ class YFinanceProvider:
         raw = {"income": _rows_from_df(fin), "balance": _rows_from_df(bs),
                "cashflow": _rows_from_df(cf)}
 
+        # --- analyst estimates: revenue path, growth, targets, and a levered-FCF
+        #     forecast for the 2-stage FCFE model (Simply-Wall-St style) --------
         est = Estimates(
             revenue_growth_next=_f(info.get("revenueGrowth")) or None,
             target_price_mean=_f(info.get("targetMeanPrice")) or None,
+            target_price_high=_f(info.get("targetHighPrice")) or None,
+            target_price_low=_f(info.get("targetLowPrice")) or None,
             num_analysts=info.get("numberOfAnalystOpinions"),
+            eps_growth_lt=_f(info.get("earningsGrowth")) or None,
         )
+        # base levered FCF (FCFE proxy) = operating cash flow - capex, latest year
+        base_fcfe = yfin[-1].operating_cash_flow - yfin[-1].capex if yfin else 0.0
+        last_year = yfin[-1].year if yfin else None
+
+        # Try to pull a forward revenue growth path from yfinance's estimate tables.
+        growth_path = []          # per-year revenue growth from analysts
+        try:
+            ge = t.growth_estimates          # index like '0y','+1y', etc.
+            if ge is not None and not ge.empty:
+                col = ge.columns[0]
+                for key in ("+1y", "+2y", "+3y", "+4y", "+5y"):
+                    if key in ge.index:
+                        v = _f(ge.loc[key, col])
+                        if v == v and -0.5 < v < 1.0:
+                            growth_path.append(v)
+        except Exception:
+            pass
+        try:
+            re_tbl = t.revenue_estimate      # rows: '0y','+1y',...
+            if re_tbl is not None and not re_tbl.empty and "growth" in re_tbl.columns:
+                gp2 = []
+                for key in ("+1y", "+2y", "+3y", "+4y", "+5y"):
+                    if key in re_tbl.index:
+                        v = _f(re_tbl.loc[key, "growth"])
+                        if v == v and -0.5 < v < 1.5:
+                            gp2.append(v)
+                if len(gp2) > len(growth_path):
+                    growth_path = gp2
+        except Exception:
+            pass
+
+        # Build a 10-year levered-FCF path: analyst growth for the covered years,
+        # then fade to the long-term/terminal growth. Stored for the FCFE model.
+        if base_fcfe > 0 and last_year:
+            lt = est.eps_growth_lt if (est.eps_growth_lt and 0 < est.eps_growth_lt < 0.4) else None
+            term = 0.035
+            path = list(growth_path)
+            if not path and lt:
+                path = [lt]
+            fcfe_path = []
+            f = base_fcfe
+            for i in range(10):
+                if i < len(path):
+                    gr = path[i]
+                elif path:
+                    # fade from last analyst year to terminal over remaining years
+                    remain = 10 - len(path)
+                    step = (i - len(path) + 1) / max(remain, 1)
+                    gr = path[-1] + (term - path[-1]) * step
+                else:
+                    gr = term
+                f = f * (1 + gr)
+                fcfe_path.append((last_year + i + 1, f))
+            est.fcfe_path = fcfe_path
+            est.fcfe_base = base_fcfe
+
         shares = _f(info.get("sharesOutstanding")) or 1
         return CompanyData(
             ticker=ticker.upper(),

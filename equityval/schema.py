@@ -61,7 +61,14 @@ class Estimates:
     eps_next: Optional[float] = None
     eps_growth_lt: Optional[float] = None         # long-term growth estimate
     target_price_mean: Optional[float] = None
+    target_price_high: Optional[float] = None
+    target_price_low: Optional[float] = None
     num_analysts: Optional[int] = None
+    # explicit forward consensus paths (year, value)
+    revenue_path: list = field(default_factory=list)
+    eps_path: list = field(default_factory=list)
+    fcfe_path: list = field(default_factory=list)     # (year, levered_fcf) for 2-stage FCFE
+    fcfe_base: Optional[float] = None                 # base levered FCF the path grows from
 
 
 @dataclass

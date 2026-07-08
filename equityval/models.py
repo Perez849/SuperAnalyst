@@ -131,6 +131,15 @@ def multistage_ddm(data: CompanyData, ke: float, horizon: int = 6,
     dps = data.dividend_per_share
     if not dps or dps <= 0:
         return None
+    # A dividend-discount model is only meaningful when dividends are a *material*
+    # channel for returning value. For minimal-payout growth names (e.g. an IPP
+    # paying a <1% yield with a low payout), the DDM captures almost none of the
+    # economics and would wreck a blended target — so we decline it here.
+    div_yield = dps / data.price if data.price else 0.0
+    eps = data.latest.eps_diluted
+    payout = (dps / eps) if (eps and eps > 0) else 1.0
+    if div_yield < 0.015 or payout < 0.30:
+        return None
     roe = _norm_roe(data)
     b = 1 - _payout(data)
     g1 = min(max(b * roe, 0.0), 0.15)
@@ -251,3 +260,84 @@ def normalized_cyclical(data: CompanyData, peers: Optional[list[PeerData]] = Non
         ],
         note="Commodity spot margins mislead at cycle peaks and troughs; this "
              "normalises to the through-cycle average margin and multiple.")
+
+
+def fcfe_2stage(data: CompanyData, cost_of_equity: float,
+                fcfe_path: Optional[list] = None, fcfe_base: Optional[float] = None,
+                terminal_growth: float = 0.035, horizon: int = 10) -> Optional[MethodResult]:
+    """2-stage Free Cash Flow to Equity — the Simply-Wall-St methodology.
+
+    Stage 1: an explicit levered-FCF forecast over `horizon` years. If analyst
+    estimates are supplied (`fcfe_path`), those drive the near years and the tail
+    fades to terminal growth; otherwise the latest levered FCF is grown from a
+    near-term rate down to terminal. Stage 2: a Gordon terminal on year-N FCFE.
+    Everything is discounted at the cost of EQUITY (not WACC), because FCFE is an
+    equity cash-flow stream.
+
+    This is the 'believe the growth story' lens: for infrastructure / secular-
+    growth names it lands well above the conservative FCFF-DCF because it
+    capitalises the analyst ramp. Every row below is traceable.
+    """
+    ke = cost_of_equity
+    g = min(terminal_growth, ke - 0.005)      # keep r - g > 0
+    if ke <= g or data.shares_diluted <= 0:
+        return None
+    cur = data.currency_symbol
+
+    y = data.latest
+    base = fcfe_base if (fcfe_base and fcfe_base > 0) else (y.operating_cash_flow - y.capex)
+
+    flows: list[float] = []
+    if fcfe_path:
+        pth = [f for (_, f) in sorted(fcfe_path)][:horizon]
+        flows.extend(pth)
+        while len(flows) < horizon:                 # fade tail to terminal g
+            flows.append(flows[-1] * (1 + g))
+        src = f"analyst levered-FCF estimates ({len(pth)}y) then faded to {g:.1%}"
+    else:
+        if not base or base <= 0:
+            return None
+        g1 = 0.10
+        f = base
+        for i in range(horizon):
+            gr = g1 + (g - g1) * i / max(horizon - 1, 1)
+            f *= (1 + gr)
+            flows.append(f)
+        src = f"latest levered FCF {cur}{base/1e9:,.1f}bn grown {g1:.0%}→{g:.1%}"
+
+    pv_flows = [f / (1 + ke) ** (i + 1) for i, f in enumerate(flows)]
+    pv_stage1 = sum(pv_flows)
+    tv = flows[-1] * (1 + g) / (ke - g)
+    pv_tv = tv / (1 + ke) ** horizon
+    equity_value = pv_stage1 + pv_tv
+    vps = equity_value / data.shares_diluted
+    if vps <= 0:
+        return None
+    up = vps / data.price - 1 if data.price else 0.0
+
+    # per-year projection table (auditable)
+    forecast = []
+    for i, (f, pv) in enumerate(zip(flows, pv_flows)):
+        forecast.append({"year": (y.year + i + 1), "fcfe": f, "pv": pv,
+                         "disc": 1 / (1 + ke) ** (i + 1)})
+
+    return MethodResult(
+        "fcfe_2stage", "2-stage FCFE (analyst-driven)", vps, up,
+        rows=[
+            ("Discount rate (cost of equity)", f"{ke:.2%}"),
+            ("Stage-1 horizon", f"{horizon} years"),
+            ("Year-1 levered FCF", f"{cur}{flows[0]/1e9:,.2f}bn"),
+            (f"Year-{horizon} levered FCF", f"{cur}{flows[-1]/1e9:,.2f}bn"),
+            ("Perpetual growth (g)", f"{g:.2%}"),
+            ("PV of stage-1 flows", f"{cur}{pv_stage1/1e9:,.2f}bn"),
+            ("Terminal value (undiscounted)", f"{cur}{tv/1e9:,.2f}bn"),
+            ("PV of terminal value", f"{cur}{pv_tv/1e9:,.2f}bn"),
+            ("Total equity value", f"{cur}{equity_value/1e9:,.2f}bn"),
+            ("Shares outstanding", f"{data.shares_diluted/1e6:,.0f}mn"),
+            ("Value per share", f"{cur}{vps:,.2f}"),
+        ],
+        forecast=forecast,
+        note="Free Cash Flow to Equity discounted at the cost of equity over a "
+             f"{horizon}-year explicit window ({src}). Capitalises the analyst "
+             "growth ramp — the 'believe the story' view; runs high for names "
+             "priced on future rather than current cash flow.")

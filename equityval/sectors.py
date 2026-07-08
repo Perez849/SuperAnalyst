@@ -36,40 +36,40 @@ class ProfileSpec:
 
 PROFILE_SPECS = {
     Profile.STANDARD: ProfileSpec(
-        Profile.STANDARD, "Standard (FCFF-DCF led)",
-        {"fcff_dcf": 0.55, "comps": 0.30, "ddm": 0.15}, "wacc", 5,
-        "Cash-generative operating business: unlevered DCF is the anchor, "
-        "trading comps and a dividend cross-check corroborate."),
+        Profile.STANDARD, "Standard (2-Stage FCFE)",
+        {"fcff_dcf": 0.55, "comps": 0.30, "ddm": 0.15}, "ke", 5,
+        "Fair value from a 2-stage Free Cash Flow to Equity model: analyst levered-FCF "
+        "estimates over 10 years plus a Gordon terminal, discounted at the cost of equity."),
     Profile.BANK: ProfileSpec(
-        Profile.BANK, "Bank / Diversified Financials (residual income led)",
+        Profile.BANK, "Bank / Diversified Financials (Excess Returns)",
         {"residual_income": 0.50, "ddm": 0.30, "pb_roe": 0.20}, "ke", 6,
-        "Leverage is the business, not a financing choice, so FCFF is meaningless. "
-        "Value = book value + PV of excess returns (ROE above cost of equity)."),
+        "Leverage is the business, not a financing choice, so cash-flow models don't apply. "
+        "Value = book value + present value of excess returns (ROE above the cost of equity)."),
     Profile.INSURANCE: ProfileSpec(
-        Profile.INSURANCE, "Insurance (excess-return / P-B–ROE led)",
+        Profile.INSURANCE, "Insurance (Excess Returns)",
         {"residual_income": 0.45, "pb_roe": 0.30, "ddm": 0.25}, "ke", 6,
-        "Valued off book value and sustainable ROE versus cost of equity; "
-        "FCFF does not apply to a balance-sheet-driven model."),
+        "Valued off book value and sustainable ROE versus the cost of equity via the "
+        "Excess Returns model, the balance-sheet-appropriate approach for financials."),
     Profile.REIT: ProfileSpec(
-        Profile.REIT, "REIT (P/FFO & AFFO-yield led)",
+        Profile.REIT, "REIT (AFFO 2-Stage)",
         {"ffo_multiple": 0.45, "affo_yield": 0.35, "ddm": 0.20}, "ke", 5,
-        "Property cash flow is measured by FFO/AFFO, not FCFF; heavy non-cash "
-        "depreciation makes GAAP earnings and DCF misleading."),
+        "Property cash flow is measured by AFFO, not free cash flow. A 2-stage AFFO model "
+        "discounts adjusted funds from operations at the cost of equity (NAV fallback)."),
     Profile.UTILITY: ProfileSpec(
-        Profile.UTILITY, "Utility (dividend-discount led)",
-        {"ddm": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "wacc", 7,
-        "Regulated, low-growth, high-payout: a multi-stage dividend model leads, "
-        "with a slow-growth DCF and comps as support."),
+        Profile.UTILITY, "Utility (2-Stage FCFE)",
+        {"ddm": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "ke", 7,
+        "Regulated, low-growth, high-payout: valued on a 2-stage cash-flow-to-equity model "
+        "off analyst estimates, or a dividend model where FCF estimates are unavailable."),
     Profile.CYCLICAL: ProfileSpec(
-        Profile.CYCLICAL, "Cyclical / Commodities (mid-cycle normalized)",
-        {"normalized": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "wacc", 5,
-        "Spot margins mislead at cycle extremes: value off mid-cycle normalized "
-        "margins and through-cycle multiples."),
+        Profile.CYCLICAL, "Cyclical / Commodities (2-Stage FCFE)",
+        {"normalized": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "ke", 5,
+        "Valued on a 2-stage Free Cash Flow to Equity model off analyst estimates, which "
+        "already reflect through-cycle expectations for cash generation."),
     Profile.HIGH_GROWTH: ProfileSpec(
-        Profile.HIGH_GROWTH, "High-growth (long-horizon DCF & EV/Sales)",
-        {"fcff_dcf": 0.55, "comps": 0.45}, "wacc", 8,
-        "Earnings immature: a longer explicit horizon lets margins mature, with "
-        "EV/Sales comps anchoring the near-term multiple."),
+        Profile.HIGH_GROWTH, "High-growth (2-Stage FCFE)",
+        {"fcff_dcf": 0.55, "comps": 0.45}, "ke", 8,
+        "A 2-stage Free Cash Flow to Equity model captures the analyst growth ramp over a "
+        "10-year explicit horizon before fading to the terminal rate."),
 }
 
 
@@ -78,8 +78,11 @@ _BANK_KW = ("bank", "capital markets", "consumer finance", "financial services",
             "brokerage")
 _INS_KW = ("insurance", "reinsurance", "assurance")
 _REIT_KW = ("reit", "real estate investment trust")
-_UTIL_KW = ("utilit", "electric", "gas distribution", "water", "power",
-            "regulated", "multi-utilities")
+# Only *regulated* utilities belong here (rate-base, high payout). Independent /
+# merchant power producers (IPPs) are NOT regulated utilities and are excluded.
+_UTIL_KW = ("regulated electric", "gas distribution", "water utilit",
+            "multi-utilities", "regulated gas", "electric utilit")
+_IPP_KW = ("independent power", "merchant power", "power producer", "renewable")
 _CYC_KW = ("oil", "gas", "energy", "mining", "metals", "materials", "chemical",
            "steel", "copper", "gold", "uranium", "coal", "aluminum", "commodit",
            "e&p", "exploration", "refining", "paper", "forest")
@@ -99,7 +102,11 @@ def classify(sector: str, industry: str,
         return Profile.INSURANCE
     if any(k in blob for k in _BANK_KW) or s == "financial services" or s == "financials":
         return Profile.BANK
-    if any(k in blob for k in _UTIL_KW) or s == "utilities":
+    # Independent/merchant power producers trade on power prices & growth, not a
+    # regulated dividend — treat as standard cash-flow businesses, not utilities.
+    if any(k in blob for k in _IPP_KW):
+        return Profile.STANDARD
+    if any(k in blob for k in _UTIL_KW) or (s == "utilities" and "independent" not in i):
         return Profile.UTILITY
     if any(k in blob for k in _CYC_KW) or s in ("energy", "basic materials", "materials"):
         return Profile.CYCLICAL

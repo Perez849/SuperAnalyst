@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
+from types import SimpleNamespace
 
 from jinja2 import Template
 
@@ -43,24 +44,21 @@ _METHOD_ORDER = ["fcff_dcf", "residual_income", "ddm", "pb_roe", "ffo_multiple",
 
 
 def build_thesis(data, spec, methods, target, upside, blend, discount_rate,
-                 dcf, diagnostics, reverse):
+                 dcf, diagnostics, reverse, sws=None):
     cur = data.currency_symbol
     y = data.latest
-    primary = max(blend, key=blend.get) if blend else None
-    pm = methods.get(primary)
     direction = "undervalued" if upside > 0.05 else ("overvalued" if upside < -0.05 else "fairly valued")
     rating, _ = derive_rating(upside)
     paras = []
 
+    model_label = sws.label if sws else "an intrinsic cash-flow model"
     p1 = (f"We initiate our independent valuation of <b>{data.name} ({data.ticker})</b> with a "
           f"<b>{rating}</b> stance and a fair value of <b>{fmt_ps(target, cur)}</b>, "
-          f"{spct(upside,0)} against the current {fmt_ps(data.price, cur)}. We frame the company "
-          f"under a {spec.label.lower()} approach — the model set that fits how this business "
-          f"actually creates value.")
-    if pm:
-        p1 += (f" The lead method, {pm.label.lower()}, returns {fmt_ps(pm.value_per_share, cur)} "
-               f"({spct(pm.upside,0)}); the target is a probability-weighted blend across "
-               f"{len(blend)} methods.")
+          f"{spct(upside,0)} against the current {fmt_ps(data.price, cur)}. Fair value is derived "
+          f"using the <b>{model_label}</b>, selected for this company's sector — anchored to "
+          f"forward analyst estimates and discounted at a {pct(discount_rate,1)} cost of equity.")
+    if sws and sws.source:
+        p1 += f" Cash flows are sourced from {sws.source}."
     paras.append(p1)
 
     growth = data.cagr("revenue")
@@ -68,35 +66,27 @@ def build_thesis(data, spec, methods, target, upside, blend, discount_rate,
           f"EBIT margin in the latest fiscal year, having compounded the top line at "
           f"{pct(growth,1) if growth else 'n/a'} over the historical window. "
           f"Market capitalisation stands at {fmt_money(data.market_cap, cur)} with "
-          f"{fmt_money(abs(data.net_debt), cur)} of net {'debt' if data.net_debt>=0 else 'cash'}, "
-          f"and we discount at a {pct(discount_rate,1)} "
-          f"{'WACC' if spec.discount=='wacc' else 'cost of equity'}.")
+          f"{fmt_money(abs(data.net_debt), cur)} of net {'debt' if data.net_debt>=0 else 'cash'}.")
     paras.append(p2)
 
-    if dcf and diagnostics:
-        roic_t = diagnostics.get("roic_term")
-        creates = (roic_t is not None and roic_t > discount_rate)
-        p3 = (f"Our base case carries {pct(dcf.tv_pct_of_ev,0)} of enterprise value in the terminal "
-              f"value, implying a terminal EV/EBITDA of "
-              f"{diagnostics['implied_ev_ebitda']:.1f}x" if diagnostics.get('implied_ev_ebitda') else
-              f"Our base case carries {pct(dcf.tv_pct_of_ev,0)} of enterprise value in the terminal value")
-        if roic_t is not None:
-            p3 += (f". At maturity the business earns a {pct(roic_t,1)} return on invested capital "
-                   f"against a {pct(discount_rate,1)} cost of capital — a "
-                   f"{'positive' if creates else 'negative'} spread of "
-                   f"{abs(roic_t-discount_rate)*10000:.0f}bps, so incremental growth is "
-                   f"{'value-accretive' if creates else 'value-dilutive'} and "
-                   f"{'deserves' if creates else 'does not deserve'} a premium multiple.")
+    if sws and sws.terminal_pct:
+        p3 = (f"Consistent with a long-duration cash-flow profile, {pct(sws.terminal_pct,0)} of the "
+              f"intrinsic value sits in the terminal value — the present value of cash flows beyond "
+              f"the explicit 10-year forecast. This is normal for a growth or infrastructure asset and "
+              f"underlines that the valuation rests on analyst growth expectations being realised.")
         paras.append(p3)
 
-    if reverse and reverse.get("solved"):
-        imp = reverse["implied_y1_growth"]; base = reverse["base_y1_growth"]
-        gap = "more optimistic" if imp > base else "more conservative"
-        paras.append(
-            f"Reverse-engineering the current price, the market is discounting roughly "
-            f"{pct(imp,1)} near-term revenue growth versus our {pct(base,1)} base assumption — "
-            f"the tape is {gap} than our forecast, which is the crux of the {spct(upside,0)} gap to "
-            f"fair value.")
+    # Contrast with the analyst price target — a different question, shown honestly.
+    if sws and data.estimates.target_price_mean:
+        tp = data.estimates.target_price_mean
+        tp_up = tp / data.price - 1 if data.price else 0
+        rel = "below" if tp < target else "above"
+        p4 = (f"By way of contrast, the 12-month analyst price target of {fmt_ps(tp, cur)} "
+              f"({spct(tp_up,0)}) sits {rel} our intrinsic fair value. These measure different things: "
+              f"our fair value is what the business is worth on its projected cash flows, while the price "
+              f"target is where analysts expect the shares to trade near-term. A persistent gap is normal "
+              f"and reflects how much of the intrinsic value the market is currently willing to pay for.")
+        paras.append(p4)
     return paras
 
 
@@ -436,6 +426,8 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
   tr.total td{border-top:1.5px solid var(--ink);font-weight:700;border-bottom:none}
   tr.hist td{background:var(--hist);color:var(--muted)}
   tr.divider td{border-bottom:1.5px solid var(--ink);padding:0;height:0}
+  .src{display:inline-block;font-size:8px;font-weight:700;color:var(--teal);
+    border:1px solid var(--teal);border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
   img.chart{width:100%;margin:10px 0 4px;border:1px solid var(--hair);background:#fff}
   .two{display:table;width:100%;table-layout:fixed;border-spacing:22px 0;margin-left:-22px;
     width:calc(100% + 44px);}
@@ -451,6 +443,19 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
   .callout{border:1px solid var(--teal);background:#fff;padding:14px 16px;margin:14px 0;
     border-left:3px solid var(--teal);}
   .callout .big{font-size:22px;font-weight:600;}
+  .lenses{display:table;width:100%;table-layout:fixed;border-spacing:14px 0;margin:14px -14px;
+    width:calc(100% + 28px);}
+  .lens{display:table-cell;vertical-align:top;border:1px solid var(--hair);background:#fff;
+    padding:16px 18px;width:50%;}
+  .lens.believer{border:1.5px solid var(--teal);}
+  .lenskicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;}
+  .lenstitle{font-size:13px;font-weight:600;margin:2px 0 8px;}
+  .lensbig{font-size:30px;font-weight:600;line-height:1;}
+  .lensup{font-size:13px;margin:4px 0 8px;}
+  table.kv{width:100%;border-collapse:collapse;}
+  table.kv td{padding:4px 0;border-bottom:1px solid var(--hair);font-size:12.5px;}
+  table.kv td:last-child{text-align:right;}
   .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:2px;font-weight:700;
     letter-spacing:.04em;text-transform:uppercase;}
   .tag.ok{background:#E3F0E9;color:var(--up)} .tag.warn{background:#F6E7E3;color:var(--down)}
@@ -519,78 +524,65 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
   <p class="note">{{ finsum.note }}</p>
   {% endif %}
 
-  <div class="keep"><div class="keep"><h2>Valuation summary — football field</h2><div class="hsp"></div></div>
-  <div class="exh">Exhibit 1 · Valuation football field</div>
+  <div class="keep"><div class="keep"><h2>Valuation summary</h2><div class="hsp"></div></div>
+  <div class="exh">Exhibit 1 · Fair value vs. price</div>
   <img class="chart" src="{{ ff_chart }}" alt="Football field"></div>
-  <table><thead><tr><th>Method</th><th>Value / share</th><th>Upside</th><th>Weight</th></tr></thead><tbody>
+  <table><thead><tr><th>Estimate</th><th>Value / share</th><th>Upside</th></tr></thead><tbody>
   {% for r in summary_rows %}
-    <tr><td>{{ r.label }}</td><td class="mono">{{ fmt_ps(r.value) }}</td>
-    <td class="mono {{ 'up' if r.up>=0 else 'down' }}">{{ spct(r.up,0) }}</td>
-    <td class="mono">{{ '%.0f'|format(r.weight*100)+'%' if r.weight else '—' }}</td></tr>
+    <tr{% if r.primary %} class="total"{% endif %}><td>{{ r.label }}</td>
+    <td class="mono">{{ fmt_ps(r.value) }}</td>
+    <td class="mono {{ 'up' if r.up>=0 else 'down' }}">{{ spct(r.up,0) }}</td></tr>
   {% endfor %}
-    <tr class="total"><td>Blended fair value</td><td class="mono">{{ fmt_ps(target) }}</td>
-    <td class="mono {{ 'up' if upside>=0 else 'down' }}">{{ spct(upside,0) }}</td><td></td></tr>
   </tbody></table>
-
-  {% if assumptions %}
-  <div class="keep"><h2>Key assumptions & rationale</h2><div class="hsp"></div></div>
-  <p>Each forward driver is anchored to history or consensus, sanity-checked for internal
-     consistency, and justified below. These are the levers that move the valuation.</p>
-  <table class="assum"><thead><tr><th style="width:16%">Driver</th><th style="width:20%">Trajectory</th>
-    <th>Rationale</th></tr></thead><tbody>
-  {% for drv,path,why in assumptions %}
-    <tr><td><b>{{ drv }}</b></td><td class="path mono">{{ path }}</td><td>{{ why }}</td></tr>
-  {% endfor %}</tbody></table>
-  {% endif %}
-
-  <div class="keep"><div class="keep"><h2>Cost of capital</h2><div class="hsp"></div></div>
-  <div class="two"><div>
-    {% for k,v in wacc_rows %}<div class="kv"><span>{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
-  </div><div>
-    <p class="note">Operative discount rate: <b>{{ pct(discount_rate,2) }}</b>
-      ({{ 'WACC' if spec.discount=='wacc' else 'cost of equity — the correct rate for a balance-sheet-driven model' }}).</p>
-    <p class="note">Cost of equity via CAPM: Rf + β\u00b7ERP. {% for n in wacc.notes %}{{ n }} {% endfor %}
-      Cost of debt from a synthetic rating off interest coverage ({{ wacc.credit_label }}).</p>
-  </div></div></div>
+  <p class="note">The headline fair value is the intrinsic valuation (Simply Wall St methodology,
+     analyst-driven cash flows). The analyst price target is a 12-month price forecast shown for
+     contrast — it answers a different question (where the market may trade the stock) and is not
+     part of the intrinsic value.</p>
 
   {% if model_rows %}
-  <div class="keep"><h2>Financial model — historicals & forecast</h2><div class="hsp"></div></div>
-  <div class="keep"><div class="exh">Exhibit 2 · Revenue &amp; free cash flow projection</div>
-  <img class="chart" src="{{ proj_chart }}" alt="Projection"></div>
-  {% if margins_chart %}<div class="exh">Exhibit 3 · Margin trajectory, actual vs estimate</div>
-  <img class="chart" src="{{ margins_chart }}" alt="Margins">{% endif %}
+  <div class="keep"><h2>Financial model — historicals &amp; analyst forecast</h2><div class="hsp"></div></div>
+  <p>Reported actuals (A) followed by the analyst-estimate forecast (E). The <b>Levered FCF</b> column
+     is the exact cash-flow stream discounted in the intrinsic valuation below — the P&amp;L, the cash
+     flow and the fair value are one reconciled chain.</p>
   <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
-    <th>NOPAT</th><th>FCFF</th><th>FCF conv.</th></tr></thead><tbody>
-  {% for r in model_rows %}
-    <tr class="{{ 'hist' if r.hist else '' }}"><td class="mono">{{ r.year }}{{ 'A' if r.hist else 'E' }}</td>
+    <th>Net income</th><th>EPS</th></tr></thead><tbody>
+  {% for r in model_rows %}{% if r.hist %}
+    <tr class="hist"><td class="mono">{{ r.year }}A</td>
     <td class="mono">{{ fmt_money(r.revenue) }}</td><td class="mono">{{ spct(r.growth,1) }}</td>
     <td class="mono">{{ fmt_money(r.ebit) }}</td><td class="mono">{{ pct(r.margin,1) }}</td>
-    <td class="mono">{{ fmt_money(r.nopat) }}</td><td class="mono">{{ fmt_money(r.fcff) }}</td>
-    <td class="mono">{{ pct(r.conv,0) }}</td></tr>
-    {% if r.last_hist %}<tr class="divider"><td colspan="8"></td></tr>{% endif %}
-  {% endfor %}</tbody></table>
-  <p class="note">Shaded rows are reported actuals (A); unshaded are our estimates (E). NOPAT = EBIT × (1 − tax);
-     FCFF = NOPAT + D&A − capex − ΔNWC; FCF conversion = FCFF / NOPAT.</p>
-
-  <div class="keep"><h3>Discounted cash flow build</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table><thead><tr><th>Year</th><th>FCFF</th><th>Disc. factor</th><th>PV of FCFF</th></tr></thead><tbody>
-  {% for f in dcf.forecast %}
-    <tr><td class="mono">{{ f.year }}E</td><td class="mono">{{ fmt_money(f.fcff) }}</td>
-    <td class="mono">{{ '%.3f'|format(f.discount_factor) }}</td><td class="mono">{{ fmt_money(f.pv_fcff) }}</td></tr>
-  {% endfor %}
-    <tr class="total"><td>PV of explicit FCFF</td><td></td><td></td><td class="mono">{{ fmt_money(dcf.pv_explicit) }}</td></tr>
+    <td class="mono">{{ fmt_money(r.nopat) }}</td><td class="mono">{{ fmt_ps(r.eps) if r.eps else '—' }}</td></tr>
+  {% endif %}{% endfor %}
+  {% if fwd_model %}
+    <tr class="divider"><td colspan="7"></td></tr>
+    {% for f in fwd_model.years %}
+    <tr><td class="mono">{{ f.year }}E</td>
+    <td class="mono">{{ fmt_money(f.revenue) }}{% if f.revenue_src=='Analyst' %} <span class="src">A</span>{% endif %}</td>
+    <td class="mono">{{ spct(f.revenue_growth,1) }}</td>
+    <td class="mono">{{ fmt_money(f.ebit) }}</td><td class="mono">{{ pct(f.ebit_margin,1) }}</td>
+    <td class="mono">{{ fmt_money(f.net_income) }}</td>
+    <td class="mono">{{ fmt_ps(f.eps) }}{% if f.eps_src=='Analyst' %} <span class="src">A</span>{% endif %}</td></tr>
+    {% endfor %}
+  {% endif %}
   </tbody></table>
-  <div class="two" style="margin-top:14px"><div>
-    <div class="kv"><span>PV of explicit FCFF</span><span class="mono">{{ fmt_money(dcf.pv_explicit) }}</span></div>
-    <div class="kv"><span>PV of terminal value</span><span class="mono">{{ fmt_money(dcf.pv_tv) }}</span></div>
-    <div class="kv"><span>Enterprise value</span><span class="mono">{{ fmt_money(dcf.enterprise_value) }}</span></div>
-    <div class="kv"><span>− Net debt</span><span class="mono">{{ fmt_money(dcf.net_debt) }}</span></div>
-    {% if dcf.minority %}<div class="kv"><span>− Minority interest</span><span class="mono">{{ fmt_money(dcf.minority) }}</span></div>{% endif %}
-    <div class="kv"><span><b>Equity value</b></span><span class="mono"><b>{{ fmt_money(dcf.equity_value) }}</b></span></div>
-    <div class="kv"><span><b>Value per share</b></span><span class="mono"><b>{{ fmt_ps(dcf.value_per_share) }}</b></span></div>
-  </div><div>
-    <img class="chart" src="{{ bridge_chart }}" alt="EV bridge" style="margin:0">
-  </div></div>
+
+  {% if fwd_model %}
+  <div class="keep"><h3>Bridge to levered free cash flow (what the DCF discounts)</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Net income</th><th>Levered FCF</th>
+    <th>FCF margin</th><th>Source</th></tr></thead><tbody>
+    {% for f in fwd_model.years %}
+    <tr><td class="mono">{{ f.year }}E</td>
+    <td class="mono">{{ fmt_money(f.revenue) }}</td>
+    <td class="mono">{{ fmt_money(f.net_income) }}</td>
+    <td class="mono"><b>{{ fmt_money(f.levered_fcf) }}</b></td>
+    <td class="mono">{{ pct(f.fcf_margin,1) }}</td>
+    <td style="font-size:11px">{{ f.fcf_src }}</td></tr>
+    {% endfor %}
+  </tbody></table>
+  <p class="note">“A” marks figures taken directly from analyst consensus; unmarked forecast figures are
+     derived by holding the latest reported margin stable. The Levered FCF column ties exactly to the
+     10-year cash-flow forecast in the intrinsic valuation, so every number traces from revenue through
+     to the {{ fmt_ps(sws.vps) }} fair value.</p>
+  {% endif %}
 
   {% if ratios %}
   <div class="keep"><h2>Ratio analysis — leverage, coverage &amp; returns</h2><div class="hsp"></div></div>
@@ -600,87 +592,58 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
   {% endfor %}</tbody></table>
   {% endif %}
 
-  <div class="keep"><div class="keep"><h2>Terminal value & implied multiples</h2><div class="hsp"></div></div>
-  <div class="two"><div>
-    <div class="kv"><span>Terminal value (Gordon, g={{ pct(dcf.terminal_growth,1) }})</span><span class="mono">{{ fmt_money(dcf.tv_gordon) }}</span></div>
-    <div class="kv"><span>PV of terminal value</span><span class="mono">{{ fmt_money(dcf.pv_tv) }}</span></div>
-    <div class="kv"><span>Terminal value as % of EV</span><span class="mono">{{ pct(dcf.tv_pct_of_ev,0) }}</span></div>
-    {% if diagnostics.implied_ev_ebitda %}<div class="kv"><span>Implied terminal EV/EBITDA</span><span class="mono">{{ '%.1f'|format(diagnostics.implied_ev_ebitda) }}x</span></div>{% endif %}
-    {% if diagnostics.implied_fcf_mult %}<div class="kv"><span>Implied terminal P/FCF</span><span class="mono">{{ '%.1f'|format(diagnostics.implied_fcf_mult) }}x</span></div>{% endif %}
-  </div><div>
-    <p class="note">A large terminal value is normal, but it must be defensible. We cross-check the
-      Gordon perpetuity against the exit multiple it implies — if the implied terminal EV/EBITDA
-      sits far above where the stock trades today, the perpetuity growth is doing too much work.</p>
-    {% for label,val,status in diagnostics.flags %}
-      <div class="kv"><span>{{ label }}</span><span><span class="mono">{{ val }}</span>
-        <span class="tag {{ 'ok' if status=='ok' else ('warn' if status in ['rich','value-destructive'] else 'neutral') }}">{{ status }}</span></span></div>
-    {% endfor %}
-  </div></div></div>
+  {% if sws %}
+  <div class="keep"><h2>Intrinsic valuation — {{ sws.label }}</h2><div class="hsp"></div></div>
+  <p>Fair value is built from <b>forward analyst estimates</b>, not historical cash flow — the
+     methodology used by Simply Wall St. The model is selected by sector: a 2-stage cash-flow
+     model for most companies, Excess Returns for financials, AFFO for REITs, or a dividend model
+     for consistent payers. Every figure below is traceable.</p>
 
-  <div class="keep"><div class="keep"><h2>Returns analysis — ROIC vs cost of capital</h2><div class="hsp"></div></div>
-  <div class="two"><div>
-    <div class="kv"><span>Current ROIC</span><span class="mono">{{ pct(diagnostics.roic_now,1) }}</span></div>
-    <div class="kv"><span>Terminal ROIC</span><span class="mono">{{ pct(diagnostics.roic_term,1) }}</span></div>
-    <div class="kv"><span>Cost of capital (WACC)</span><span class="mono">{{ pct(discount_rate,1) }}</span></div>
-    <div class="kv"><span>Reinvestment rate (terminal)</span><span class="mono">{{ pct(diagnostics.reinvest_rate,0) }}</span></div>
-    <div class="kv"><span>Implied self-funding growth</span><span class="mono">{{ pct(diagnostics.fundamental_g,1) }}</span></div>
-  </div><div>
-    <p class="note">{{ returns_comment|safe }}</p>
-  </div></div></div>
-
-  {% if reverse and reverse.solved %}
-  <div class="keep"><div class="keep"><h2>What the market is pricing in</h2><div class="hsp"></div></div>
   <div class="callout">
-    <div>At the current {{ fmt_ps(d.price) }}, a reverse-DCF implies the market is discounting
-      <span class="big mono">{{ pct(reverse.implied_y1_growth,1) }}</span> near-term revenue growth
-      and <span class="mono">{{ pct(reverse.implied_terminal_growth,1) }}</span> in perpetuity.</div>
-    <p class="note" style="margin-top:8px">Our base case assumes {{ pct(reverse.base_y1_growth,1) }} near-term growth.
-      {% if reverse.implied_y1_growth < reverse.base_y1_growth %}The market is <b>more conservative</b> than our
-      forecast — if the company merely executes to our base plan, the shares re-rate upward.
-      {% else %}The market is <b>more optimistic</b> than our forecast — the shares already embed an
-      aggressive growth path, leaving little margin for error.{% endif %}</p>
-  </div></div>
-  {% endif %}
-
-  {% if scenarios %}
-  <div class="keep"><h2>Scenario & sensitivity analysis</h2><div class="hsp"></div></div>
-  <table><thead><tr><th>Scenario</th><th>Yr-1 growth</th><th>Exit margin</th><th>Terminal g</th>
-    <th>Value / share</th><th>Upside</th></tr></thead><tbody>
-  {% for s in scen_rows %}
-    <tr{% if s.name=='Base' %} class="total"{% endif %}><td>{{ s.name }}</td><td class="mono">{{ spct(s.g1,0) }}</td>
-    <td class="mono">{{ pct(s.margin,0) }}</td><td class="mono">{{ pct(s.term,1) }}</td>
-    <td class="mono">{{ fmt_ps(s.vps) }}</td>
-    <td class="mono {{ 'up' if s.up>=0 else 'down' }}">{{ spct(s.up,0) }}</td></tr>
-  {% endfor %}</tbody></table>
-  {% if sens_chart %}<div class="exh">Exhibit 4 · Sensitivity heat map</div><img class="chart" src="{{ sens_chart }}" alt="Sensitivity" style="max-width:580px;margin-top:14px">{% endif %}
-  {% endif %}
-  {% endif %}
-
-  {% for m in method_cards %}
-  <div class="keep"><h2>{{ m.label }}</h2><div class="hsp"></div></div>
-  <div class="methodcard {{ 'primary' if m.is_primary else '' }}">
-    <div class="two"><div>
-      {% for k,v in m.rows %}<div class="kv"><span>{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
-    </div><div>
-      <p class="note">{{ m.note }}</p>
-      {% if m.forecast %}<table style="margin-top:4px"><thead><tr>{% for h in m.fc_head %}<th>{{ h }}</th>{% endfor %}</tr></thead>
-      <tbody>{% for row in m.fc_rows %}<tr>{% for c in row %}<td class="mono">{{ c }}</td>{% endfor %}</tr>{% endfor %}</tbody></table>{% endif %}
-    </div></div>
+    <div>Fair value per share
+      <span class="big mono">{{ fmt_ps(sws.vps) }}</span>
+      <span class="{{ 'up' if sws.upside >= 0 else 'down' }} mono">{{ spct(sws.upside,0) }} vs price {{ fmt_ps(d.price) }}</span></div>
+    <p class="note" style="margin:6px 0 0">Discount rate (cost of equity) {{ pct(sws.discount_rate,2) }}
+      {% if sws.terminal_pct %}· terminal value {{ pct(sws.terminal_pct,0) }} of total{% endif %}
+      · source: {{ sws.source }}</p>
   </div>
-  {% endfor %}
 
-  {% if comps and comps.multiples %}
-  <div class="keep"><h2>Relative valuation — comparable companies</h2><div class="hsp"></div></div>
-  <table><thead><tr><th>Multiple</th><th>Peer median</th><th>Implied value / share</th></tr></thead><tbody>
-  {% for k,v in comps.multiples.items() %}
-    <tr><td>{{ k }}</td><td class="mono">{{ '%.1f'|format(v.median) }}x</td><td class="mono">{{ fmt_ps(v.implied_vps) }}</td></tr>{% endfor %}
+  {% if sws.build %}
+  <div class="keep"><h3>10-year cash-flow forecast</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table><thead><tr><th>Year</th><th>Cash flow ({{ d.currency_symbol }}mn)</th><th>Source</th>
+    <th>Discount factor</th><th>Present value ({{ d.currency_symbol }}mn)</th></tr></thead><tbody>
+    {% for b in sws.build %}
+    <tr><td class="mono">{{ b.year }}</td>
+        <td class="mono">{{ '{:,.0f}'.format(b.cf/1e6) }}</td>
+        <td style="font-size:11.5px">{{ b.src }}</td>
+        <td class="mono">{{ '%.3f'|format(b.disc) }}</td>
+        <td class="mono">{{ '{:,.0f}'.format(b.pv/1e6) }}</td></tr>
+    {% endfor %}
   </tbody></table>
-  <table style="margin-top:14px"><thead><tr><th>Peer</th><th>EV/EBITDA</th><th>EV/Sales</th><th>P/E</th></tr></thead><tbody>
-  {% for p in comps.peers %}<tr><td>{{ p.ticker }}</td>
-    <td class="mono">{{ '%.1f'|format(p.ev_ebitda)+'x' if p.ev_ebitda else '—' }}</td>
-    <td class="mono">{{ '%.1f'|format(p.ev_sales)+'x' if p.ev_sales else '—' }}</td>
-    <td class="mono">{{ '%.1f'|format(p.pe)+'x' if p.pe else '—' }}</td></tr>{% endfor %}
+  {% endif %}
+
+  <div class="keep"><h3>Valuation build</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table class="kv"><tbody>
+    {% for k,v in sws.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}
   </tbody></table>
+
+  <div class="keep"><h3>Discount rate — cost of equity</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <div class="two">
+    <div>
+      <table class="kv"><tbody>
+        {% for k,v in sws.beta_rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+    <div>
+      <p class="note">Cost of equity = risk-free rate + levered beta × equity risk premium. The
+        risk-free rate is a 5-year average of the 10-year government bond (not the spot rate, to avoid
+        volatile valuations). Beta is built bottom-up from the industry unlevered beta, re-levered to
+        the company's capital structure and clamped to a practical 0.8–2.0 band (Damodaran).</p>
+    </div>
+  </div>
+  <p class="note">{{ sws.note }}</p>
+  {% endif %}
+
   {% endif %}
 
   {% if factors %}
@@ -706,39 +669,47 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
 
   <div class="disc"><b>Methodology & disclaimer.</b> Generated by an automated, sector-aware valuation
     engine from public data ({{ d.provider }}). {{ d.ticker }} was classified as <b>{{ spec.label }}</b>
-    and valued with the models appropriate to that profile; the target is a weighted blend. Forward
-    assumptions are derived from historical financials and available consensus, mean-reverted and
-    sanity-checked for internal consistency (reinvestment, ROIC, terminal multiples), then tilted for
-    scenarios — they are not a substitute for fundamental judgement. Nothing here is investment
-    advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
+    and valued with the Simply Wall St methodology: a sector-appropriate intrinsic model (2-stage cash
+    flow to equity, excess returns for financials, AFFO for REITs, or a dividend model) anchored to
+    forward analyst estimates and discounted at the cost of equity. Terminal value uses the Gordon
+    growth method. Forward cash flows come from analyst consensus where available, extrapolated from
+    reported figures otherwise — they are not a substitute for fundamental judgement. Nothing here is
+    investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
 </div></body></html>""")
 
 
 def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenarios,
-                 sens, comps, base_drivers, diagnostics, reverse, target, upside, blend, risks):
+                 sens, comps, base_drivers, diagnostics, reverse, target, upside, blend, risks,
+                 sws=None, fwd_model=None):
     cur = data.currency_symbol
-    primary = max(blend, key=blend.get) if blend else None
 
+    # Football field + summary are built around the SWS intrinsic value (the
+    # headline). Supporting methods (DCF scenario range, comps) are shown only as
+    # context, never blended into the headline — that blending was the source of
+    # the earlier contradictory "$81 + $358 = $510" nonsense.
     ff_rows, summary_rows = [], []
-    for key in _METHOD_ORDER:
-        if key not in methods: continue
-        m = methods[key]
-        if key == "fcff_dcf" and scenarios:
-            lo, hi, pt = scenarios["bear"].value_per_share, scenarios["bull"].value_per_share, m.value_per_share
-        elif key == "comps" and comps:
-            imp = [v["implied_vps"] for v in comps.multiples.values() if v["implied_vps"]]
-            lo, hi, pt = (min(imp), max(imp), m.value_per_share) if imp else (m.value_per_share*0.9, m.value_per_share*1.1, m.value_per_share)
-        else:
-            lo, hi, pt = m.value_per_share*0.9, m.value_per_share*1.1, m.value_per_share
-        ff_rows.append({"label": m.label, "low": lo, "high": hi, "point": pt})
-        summary_rows.append({"label": m.label, "value": m.value_per_share, "up": m.upside, "weight": blend.get(key, 0)})
+    if sws:
+        # primary: the SWS intrinsic value, with a sensible band around it
+        lo = sws.value_per_share * 0.9
+        hi = sws.value_per_share * 1.1
+        ff_rows.append({"label": sws.label, "low": lo, "high": hi,
+                        "point": sws.value_per_share})
+        summary_rows.append({"label": sws.label + " (fair value)",
+                             "value": sws.value_per_share, "up": sws.upside,
+                             "primary": True})
+    # analyst price target as an external cross-check (contrast, not blended)
     if data.estimates.target_price_mean:
         tp = data.estimates.target_price_mean
-        ff_rows.append({"label": "Street target", "low": tp*0.9, "high": tp*1.1, "point": tp})
-        summary_rows.append({"label": "Street consensus", "value": tp, "up": tp/data.price-1, "weight": 0})
+        lo_t = data.estimates.target_price_low or tp * 0.9
+        hi_t = data.estimates.target_price_high or tp * 1.1
+        ff_rows.append({"label": "Analyst price target (12m)", "low": lo_t,
+                        "high": hi_t, "point": tp})
+        summary_rows.append({"label": "Analyst price target (12m consensus)", "value": tp,
+                             "up": tp / data.price - 1 if data.price else 0,
+                             "primary": False})
 
     rating, rdir = derive_rating(upside)
-    thesis = build_thesis(data, spec, methods, target, upside, blend, discount_rate, dcf, diagnostics, reverse)
+    thesis = build_thesis(data, spec, methods, target, upside, blend, discount_rate, dcf, diagnostics, reverse, sws=sws)
 
     # assumptions rationale (FCFF profiles)
     assumptions = base_drivers.rationale if base_drivers else None
@@ -757,7 +728,8 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
             growth = (y.revenue / prev.revenue - 1) if prev else None
             model_rows.append({"year": y.year, "hist": True, "revenue": y.revenue,
                                "growth": growth, "ebit": y.ebit, "margin": y.ebit_margin,
-                               "nopat": nopat, "fcff": fcff, "conv": (fcff/nopat if nopat else None),
+                               "nopat": y.net_income, "eps": y.eps_diluted,
+                               "fcff": fcff, "conv": (fcff/nopat if nopat else None),
                                "last_hist": idx == len(hist)-1})
             prev = y
         prev_rev = hist[-1].revenue
@@ -787,45 +759,30 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
                     f"<b>destroys</b> value, so the terminal assumptions deserve scrutiny: a company that cannot "
                     f"out-earn its capital cost should not trade above replacement value.")
 
-    method_cards = []
-    for key in _METHOD_ORDER:
-        if key in ("fcff_dcf", "comps") or key not in methods: continue
-        m = methods[key]
-        card = {"label": m.label, "rows": m.rows, "note": m.note,
-                "is_primary": key == primary, "forecast": bool(m.forecast)}
-        if m.forecast:
-            if key == "residual_income":
-                card["fc_head"] = ["Year", "Opening BV", "ROE", "Resid. inc.", "PV"]
-                card["fc_rows"] = [[f["year"], fmt_ps(f["bv"], cur), f"{f['roe']:.1%}",
-                                    fmt_ps(f["ri"], cur), fmt_ps(f["pv"], cur)] for f in m.forecast]
-            elif key == "ddm":
-                card["fc_head"] = ["Year", "DPS", "Growth", "PV"]
-                card["fc_rows"] = [[f["year"], fmt_ps(f["dps"], cur), f"{f['g']:.1%}", fmt_ps(f["pv"], cur)] for f in m.forecast]
-        method_cards.append(card)
-
-    scen_rows = []
-    if scenarios:
-        for name, sc in [("Bear", "bear"), ("Base", "base"), ("Bull", "bull")]:
-            s = scenarios[sc]
-            scen_rows.append({"name": name, "g1": s.forecast[0].revenue/data.latest.revenue-1,
-                              "margin": s.forecast[-1].ebit_margin, "term": s.terminal_growth,
-                              "vps": s.value_per_share, "up": s.upside})
-
     key_data = build_key_data(data, dcf, base_drivers)
     finsum = build_finsum(data, dcf, base_drivers)
     ratios = build_ratios(data, base_drivers)
     catalysts = build_catalysts(data, dcf, base_drivers, sens, wacc)
     factors = build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate)
 
+    # --- SWS intrinsic valuation: expose vps for the template -----------------
+    sws_ctx = None
+    if sws:
+        sws_ctx = SimpleNamespace(
+            label=sws.label, method=sws.method, vps=sws.value_per_share,
+            upside=sws.upside, discount_rate=sws.discount_rate,
+            terminal_pct=sws.terminal_pct, rows=sws.rows, build=sws.build,
+            beta_rows=sws.beta_rows, note=sws.note, source=sws.source,
+        )
+
     kw = dict(
         key_data=key_data, finsum=finsum, ratios=ratios, catalysts=catalysts, factors=factors,
+        sws=sws_ctx, fwd_model=fwd_model,
         d=data, spec=spec, report_date=date.today().strftime("%d %b %Y"),
         rating=rating, rating_dir=rdir, target=target, upside=upside, thesis=thesis,
-        wacc=wacc, wacc_rows=wacc.as_rows(), discount_rate=discount_rate,
-        summary_rows=summary_rows, assumptions=assumptions, model_rows=model_rows,
-        method_cards=method_cards, comps=comps, risks=risks, dcf=dcf, scenarios=scenarios,
-        scen_rows=scen_rows, diagnostics=diagnostics or {}, reverse=reverse or {},
-        returns_comment=returns_comment,
+        discount_rate=discount_rate,
+        summary_rows=summary_rows, model_rows=model_rows,
+        comps=comps, risks=risks, dcf=dcf,
         ff_chart=charts.football_field(ff_rows, data.price, cur),
         fmt_money=lambda v: fmt_money(v, cur), fmt_ps=lambda v: fmt_ps(v, cur),
         pct=pct, spct=spct,

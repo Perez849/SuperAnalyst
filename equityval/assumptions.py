@@ -78,15 +78,24 @@ def build_drivers(data: CompanyData, horizon: int = 5,
 
     # --- forward starting growth: consensus blended with history ------------
     est = data.estimates
-    consensus = est.revenue_growth_next
+    raw_consensus = est.revenue_growth_next
+    # Guard against corrupt consensus figures (data-provider errors around
+    # accounting changes or odd base years routinely produce >40% "growth").
+    consensus = raw_consensus
+    consensus_flag = ""
+    if consensus is not None and (consensus > 0.40 or consensus < -0.30):
+        consensus_flag = f" (raw consensus {consensus:.0%} rejected as implausible)"
+        consensus = None
     if consensus is not None:
         start_growth = 0.6 * consensus + 0.4 * hist_cagr_c
         growth_src = (f"year-1 consensus of {consensus:.1%} blended 60/40 with the "
                       f"{len(yrs)-1}-yr historical CAGR of {hist_cagr_c:.1%}")
     else:
         start_growth = hist_cagr_c
-        growth_src = f"the {len(yrs)-1}-yr historical revenue CAGR of {hist_cagr_c:.1%} (no consensus available)"
-    start_growth = min(max(start_growth, -0.05), 0.35)
+        growth_src = (f"the {len(yrs)-1}-yr historical revenue CAGR of {hist_cagr_c:.1%}"
+                      f"{consensus_flag or ' (no reliable consensus available)'}")
+    # No mature company sustains >25% revenue growth in year 1 of a fade; cap it.
+    start_growth = min(max(start_growth, -0.05), 0.25)
 
     # terminal growth: capped at long-run nominal GDP
     term_g = min(terminal_growth, LONG_RUN_NOMINAL_GDP)
