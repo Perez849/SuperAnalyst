@@ -236,39 +236,67 @@ class FMPProvider:
 class YFinanceProvider:
     @staticmethod
     def _make_ticker(ticker: str):
-        """Build a yfinance Ticker, forcing a plain requests session where possible
-        to sidestep the curl_cffi SSL bug against fc.yahoo.com on CI runners."""
+        """Build a yfinance Ticker with a curl_cffi session impersonating Chrome.
+
+        This is the combination that currently gets past Yahoo's 429 rate-limiter
+        on datacentre IPs (e.g. GitHub Actions): Yahoo fingerprints the TLS/HTTP2
+        handshake, and impersonating a real browser makes the request look genuine.
+        A plain requests.Session does NOT work on recent yfinance (it now requires
+        a curl_cffi session). Falls back to a bare Ticker if anything is off.
+        """
         import yfinance as yf
         try:
-            import requests
-            sess = requests.Session()
-            sess.headers.update({
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                              "AppleWebKit/537.36 (KHTML, like Gecko) "
-                              "Chrome/120.0 Safari/537.36"})
+            from curl_cffi import requests as cffi
+            sess = cffi.Session(impersonate="chrome")
             return yf.Ticker(ticker, session=sess)
         except Exception:
-            return yf.Ticker(ticker)
+            try:
+                return yf.Ticker(ticker)
+            except Exception:
+                raise
+
+    @staticmethod
+    def _retry(fn, tries: int = 4, base_delay: float = 3.0):
+        """Call fn(), retrying on 429/rate-limit with exponential backoff."""
+        import time
+        last = None
+        for i in range(tries):
+            try:
+                return fn()
+            except Exception as e:
+                last = e
+                msg = str(e).lower()
+                if "429" in msg or "too many" in msg or "rate" in msg:
+                    time.sleep(base_delay * (2 ** i))   # 3, 6, 12, 24s
+                    continue
+                # non-rate-limit error: one gentle retry then give up
+                if i == 0:
+                    time.sleep(1.0); continue
+                raise
+        if last:
+            raise last
 
     def company(self, ticker: str, years: int = 6) -> CompanyData:
         t = self._make_ticker(ticker)
-        # t.info triggers the fc.yahoo.com cookie/crumb fetch that can fail on SSL.
+        # t.info triggers the cookie/crumb fetch that can 429 or SSL-fail.
         # It is not essential to the valuation, so degrade gracefully if it breaks.
         try:
-            info = t.info or {}
+            info = self._retry(lambda: t.info) or {}
         except Exception as e:
             print(f"[warn] yfinance .info unavailable ({type(e).__name__}); "
                   f"continuing from financial statements")
             info = {}
-        fin = t.income_stmt               # full income statement (has Total Revenue)
+        # Statements share the same session; retry them on rate-limit too.
+        fin = self._retry(lambda: t.income_stmt)
         if fin is None or fin.empty:
-            fin = t.financials
-        bs = t.balance_sheet
-        cf = t.cashflow
+            fin = self._retry(lambda: t.financials)
+        bs = self._retry(lambda: t.balance_sheet)
+        cf = self._retry(lambda: t.cashflow)
         if fin is None or fin.empty or bs is None or bs.empty:
             raise ValueError(
                 f"yfinance returned no financial statements for {ticker} "
-                f"(likely a temporary Yahoo outage or an invalid ticker).")
+                f"(Yahoo rate-limited the request or the ticker is invalid). "
+                f"Retry in a few minutes, or use a paid provider (FMP).")
 
         def row(df, *names):
             for n in names:
