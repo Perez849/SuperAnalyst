@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MU — Equity Research</title>
+<style>
+  :root{--ink:#0E1116;--paper:#FBFBF9;--teal:#0F6466;--up:#1B7A5A;--down:#B23A48;
+    --hair:#C9C9C2;--muted:#6B6F76;--gold:#B9892E;--hist:#F1F0EA;}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:"Helvetica Neue",Arial,system-ui,sans-serif;font-size:14.5px;line-height:1.55;}
+  .wrap{max-width:900px;margin:0 auto;padding:48px 42px 80px;}
+  .serif{font-family:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;}
+  .mono{font-family:ui-monospace,"SF Mono","Menlo",monospace;font-variant-numeric:tabular-nums;}
+  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;}
+  h1{font-size:34px;line-height:1.08;margin:.15em 0 .1em;font-weight:600;}
+  h2{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;
+    margin:42px 0 12px;padding-bottom:8px;border-bottom:1.5px solid var(--ink);}
+  h3{font-size:14.5px;margin:22px 0 4px;font-weight:600;}
+  .masthead{border-top:3px solid var(--ink);padding-top:14px;}
+  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);}
+  .hero{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 6px;}
+  .pill{display:inline-block;padding:5px 14px;border-radius:2px;font-weight:700;font-size:13px;
+    letter-spacing:.08em;color:#fff;}
+  .pill.up{background:var(--up)} .pill.down{background:var(--down)} .pill.flat{background:var(--muted)}
+  .profiletag{display:inline-block;padding:3px 10px;border:1px solid var(--teal);color:var(--teal);
+    font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;border-radius:2px;margin-top:10px;}
+  .stat{flex:1;min-width:140px;border:1px solid var(--hair);padding:11px 14px;background:#fff;}
+  .stat .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .stat .v{font-size:25px;font-weight:600;margin-top:2px}
+  .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
+  p{margin:0 0 13px} .lead p:first-child{font-size:16px}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
+  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--hair)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{border-bottom:1.5px solid var(--ink);font-size:10.5px;letter-spacing:.05em;
+    text-transform:uppercase;color:var(--muted)}
+  tr.total td{border-top:1.5px solid var(--ink);font-weight:700;border-bottom:none}
+  tr.hist td{background:var(--hist);color:var(--muted)}
+  tr.divider td{border-bottom:1.5px solid var(--ink);padding:0;height:0}
+  .src{display:inline-block;font-size:8px;font-weight:700;color:var(--teal);
+    border:1px solid var(--teal);border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
+  img.chart{width:100%;margin:10px 0 4px;border:1px solid var(--hair);background:#fff}
+  .two{display:table;width:100%;table-layout:fixed;border-spacing:22px 0;margin-left:-22px;
+    width:calc(100% + 44px);}
+  .two>div{display:table-cell;vertical-align:top;}
+  .note{font-size:11.5px;color:var(--muted);margin-top:6px}
+  ul{margin:6px 0 13px;padding-left:20px} li{margin:3px 0}
+  .kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--hair);padding:5px 0;font-size:12.5px}
+  .kv .mono{font-weight:600}
+  .methodcard{border:1px solid var(--hair);background:#fff;padding:16px 18px;margin:14px 0;}
+  .methodcard.primary{border-left:3px solid var(--teal);}
+  .assum td:last-child{text-align:left;color:var(--ink);font-size:12px;line-height:1.5}
+  .assum td.path{white-space:nowrap;color:var(--teal);font-weight:600}
+  .callout{border:1px solid var(--teal);background:#fff;padding:14px 16px;margin:14px 0;
+    border-left:3px solid var(--teal);}
+  .callout .big{font-size:22px;font-weight:600;}
+  .lenses{display:table;width:100%;table-layout:fixed;border-spacing:14px 0;margin:14px -14px;
+    width:calc(100% + 28px);}
+  .lens{display:table-cell;vertical-align:top;border:1px solid var(--hair);background:#fff;
+    padding:16px 18px;width:50%;}
+  .lens.believer{border:1.5px solid var(--teal);}
+  .lenskicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;}
+  .lenstitle{font-size:13px;font-weight:600;margin:2px 0 8px;}
+  .lensbig{font-size:30px;font-weight:600;line-height:1;}
+  .lensup{font-size:13px;margin:4px 0 8px;}
+  table.kv{width:100%;border-collapse:collapse;}
+  table.kv td{padding:4px 0;border-bottom:1px solid var(--hair);font-size:12.5px;}
+  table.kv td:last-child{text-align:right;}
+  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:2px;font-weight:700;
+    letter-spacing:.04em;text-transform:uppercase;}
+  .tag.ok{background:#E3F0E9;color:var(--up)} .tag.warn{background:#F6E7E3;color:var(--down)}
+  .tag.neutral{background:#EDEDE7;color:var(--muted)}
+  .cols{display:table;width:100%;table-layout:fixed;border-spacing:0;}
+  .cols>div{display:table-cell;vertical-align:top;padding-right:26px;}
+  .cols>aside{display:table-cell;vertical-align:top;width:255px;}
+  .sidebar{border:1px solid var(--hair);background:#fff;padding:12px 14px;margin-top:24px;}
+  .sidetitle{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);
+    font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:6px;margin-bottom:4px;}
+  tr.grptop td{border-top:1.5px solid var(--ink);}
+  .exh{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
+    font-weight:700;margin:14px 0 2px;}
+  @media(max-width:760px){.cols,.cols>div,.cols>aside{display:block;width:auto;padding-right:0}}
+  .keep{page-break-inside:avoid;}
+  .hsp{height:150px;margin-bottom:-150px;}
+  .tag.high{background:#F6E7E3;color:var(--down)} .tag.med{background:#F5EEDC;color:var(--gold)}
+  .tag.low{background:#E3F0E9;color:var(--up)}
+  .disc{font-size:11px;color:var(--muted);margin-top:40px;border-top:1px solid var(--hair);padding-top:14px;line-height:1.5}
+  .pdfbtn{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;border:none;padding:11px 18px;
+    font-size:13px;font-weight:600;border-radius:3px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:99;}
+  @media(max-width:660px){.two,.two>div{display:block;width:auto;margin-left:0}.wrap{padding:28px 18px 60px}h1{font-size:27px}}
+  @media print{.wrap{max-width:100%}body{font-size:11px}.pdfbtn{display:none}h2{margin-top:24px}
+    .methodcard,.callout,img.chart{page-break-inside:avoid}tr{page-break-inside:avoid}thead{display:table-header-group}}
+</style></head><body>
+<button class="pdfbtn" onclick="window.print()">Save as PDF</button>
+<div class="wrap">
+
+  <div class="masthead">
+    <div class="topline"><span class="eyebrow">Equity Research · Independent Valuation</span>
+      <span class="mono">08 Jul 2026</span></div>
+    <div class="eyebrow" style="margin-top:18px">Technology · Semiconductors</div>
+    <h1 class="serif">Micron Technology, Inc. <span class="mono" style="font-size:22px;color:var(--muted)">MU</span></h1>
+    <div><span class="profiletag">Standard (2-Stage FCFE)</span></div>
+    <div class="hero">
+      <div class="stat"><div class="k">Rating</div><div class="v"><span class="pill up">OVERWEIGHT</span></div></div>
+      <div class="stat"><div class="k">Fair value</div><div class="v mono">$2,389.31</div></div>
+      <div class="stat"><div class="k">Price</div><div class="v mono">$948.80</div></div>
+      <div class="stat"><div class="k">Upside</div>
+        <div class="v mono up">+152%</div></div>
+    </div>
+    <div class="note mono">Discount rate 9.18% · data: yfinance</div>
+  </div>
+
+  <div class="cols">
+    <div>
+      <h2 style="margin-top:24px">Investment thesis</h2>
+      <div class="lead"><p>We initiate our independent valuation of <b>Micron Technology, Inc. (MU)</b> with a <b>OVERWEIGHT</b> stance and a fair value of <b>$2,389.31</b>, +152% against the current $948.80. Fair value is derived using the <b>2-Stage Free Cash Flow to Equity</b>, selected for this company's sector — anchored to forward analyst estimates and discounted at a 9.2% cost of equity. Cash flows are sourced from analyst levered-FCF consensus (10y) then fade to 2.5%.</p><p>Micron Technology, Inc. generated $37.38bn of revenue at a 26% EBIT margin in the latest fiscal year, having compounded the top line at 6.7% over the historical window. Market capitalisation stands at $1.07trn with $4.97bn of net debt.</p><p>Consistent with a long-duration cash-flow profile, 54% of the intrinsic value sits in the terminal value — the present value of cash flows beyond the explicit 10-year forecast. This is normal for a growth or infrastructure asset and underlines that the valuation rests on analyst growth expectations being realised.</p><p>By way of contrast, the 12-month analyst price target of $1,486.00 (+57%) sits below our intrinsic fair value. These measure different things: our fair value is what the business is worth on its projected cash flows, while the price target is where analysts expect the shares to trade near-term. A persistent gap is normal and reflects how much of the intrinsic value the market is currently willing to pay for.</p></div>
+      <p class="note">Fair value from a 2-stage Free Cash Flow to Equity model: analyst levered-FCF estimates over 10 years plus a Gordon terminal, discounted at the cost of equity.</p>
+    </div>
+    <aside class="sidebar">
+      <div class="sidetitle">Key data</div>
+      <div class="kv"><span>Market cap</span><span class="mono">$1.07trn</span></div><div class="kv"><span>Enterprise value</span><span class="mono">$1.08trn</span></div><div class="kv"><span>Net debt</span><span class="mono">$4.97bn</span></div><div class="kv"><span>Net debt / EBITDA</span><span class="mono">0.3x</span></div><div class="kv"><span>EV / EBITDA (LTM)</span><span class="mono">58.2x</span></div><div class="kv"><span>P/E (LTM)</span><span class="mono">125.0x</span></div><div class="kv"><span>FCF yield (LTM)</span><span class="mono">0.0%</span></div><div class="kv"><span>Dividend yield</span><span class="mono">0.1%</span></div><div class="kv"><span>Beta</span><span class="mono">2.14</span></div><div class="kv"><span>Diluted shares</span><span class="mono">1,129mn</span></div>
+    </aside>
+  </div>
+
+  
+  <div class="keep"><h2>Financial summary &amp; valuation</h2><div class="hsp"></div></div>
+  <table><thead><tr><th>$, per share where noted</th>
+    <th>FY2024A</th><th>FY2025A</th><th>FY2026E</th><th>FY2027E</th><th>FY2028E</th><th>FY2029E</th></tr></thead><tbody>
+  
+    <tr >
+      <td>Revenue</td>
+      <td class="mono">$25.11bn</td><td class="mono">$37.38bn</td><td class="mono">$39.89bn</td><td class="mono">$42.15bn</td><td class="mono">$44.09bn</td><td class="mono">$45.65bn</td></tr>
+  
+    <tr >
+      <td style="color:var(--muted);padding-left:18px">growth</td>
+      <td class="mono">+61.6%</td><td class="mono">+48.9%</td><td class="mono">+6.7%</td><td class="mono">+5.7%</td><td class="mono">+4.6%</td><td class="mono">+3.6%</td></tr>
+  
+    <tr >
+      <td>EBITDA</td>
+      <td class="mono">$9.58bn</td><td class="mono">$18.48bn</td><td class="mono">$23.07bn</td><td class="mono">$23.57bn</td><td class="mono">$23.81bn</td><td class="mono">$23.78bn</td></tr>
+  
+    <tr >
+      <td>EBIT margin</td>
+      <td class="mono">5.2%</td><td class="mono">26.2%</td><td class="mono">26.2%</td><td class="mono">24.3%</td><td class="mono">22.4%</td><td class="mono">20.5%</td></tr>
+  
+    <tr >
+      <td>EPS</td>
+      <td class="mono">$0.70</td><td class="mono">$7.59</td><td class="mono">$7.16</td><td class="mono">$7.00</td><td class="mono">$6.73</td><td class="mono">$6.36</td></tr>
+  
+    <tr >
+      <td>FCFF/share</td>
+      <td class="mono">($0.83)</td><td class="mono">$0.44</td><td class="mono">$3.94</td><td class="mono">$3.62</td><td class="mono">$3.21</td><td class="mono">$2.73</td></tr>
+  
+    <tr class="grptop">
+      <td>EV/EBITDA</td>
+      <td class="mono">112.4x</td><td class="mono">58.2x</td><td class="mono">46.7x</td><td class="mono">45.7x</td><td class="mono">45.2x</td><td class="mono">45.3x</td></tr>
+  
+    <tr >
+      <td>P/E</td>
+      <td class="mono">1363.4x</td><td class="mono">125.0x</td><td class="mono">132.6x</td><td class="mono">135.5x</td><td class="mono">140.9x</td><td class="mono">149.2x</td></tr>
+  
+    <tr >
+      <td>FCF yield</td>
+      <td class="mono">-0.1%</td><td class="mono">0.0%</td><td class="mono">0.4%</td><td class="mono">0.4%</td><td class="mono">0.3%</td><td class="mono">0.3%</td></tr>
+  </tbody></table>
+  <p class="note">Multiples struck at the current price/EV against each year's estimates. Forecast EPS approximates net income as (EBIT − LTM interest) × (1−t).</p>
+  
+
+  <div class="keep"><div class="keep"><h2>Valuation summary</h2><div class="hsp"></div></div>
+  <div class="exh">Exhibit 1 · Fair value vs. price</div>
+  <img class="chart" src="data:image/png;base64,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" alt="Football field"></div>
+  <table><thead><tr><th>Estimate</th><th>Value / share</th><th>Upside</th></tr></thead><tbody>
+  
+    <tr class="total"><td>2-Stage Free Cash Flow to Equity (fair value)</td>
+    <td class="mono">$2,389.31</td>
+    <td class="mono up">+152%</td></tr>
+  
+    <tr><td>Analyst price target (12m consensus)</td>
+    <td class="mono">$1,486.00</td>
+    <td class="mono up">+57%</td></tr>
+  
+  </tbody></table>
+  <p class="note">The headline fair value is the intrinsic valuation (Simply Wall St methodology,
+     analyst-driven cash flows). The analyst price target is a 12-month price forecast shown for
+     contrast — it answers a different question (where the market may trade the stock) and is not
+     part of the intrinsic value.</p>
+
+  
+  <div class="keep"><h2>Financial model — historicals &amp; analyst forecast</h2><div class="hsp"></div></div>
+  <p>Reported actuals (A) followed by the analyst-estimate forecast (E). The <b>Levered FCF</b> column
+     is the exact cash-flow stream discounted in the intrinsic valuation below — the P&amp;L, the cash
+     flow and the fair value are one reconciled chain.</p>
+  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
+    <th>Net income</th><th>EPS</th></tr></thead><tbody>
+  
+    <tr class="hist"><td class="mono">2022A</td>
+    <td class="mono">$30.76bn</td><td class="mono">—</td>
+    <td class="mono">$9.71bn</td><td class="mono">31.6%</td>
+    <td class="mono">$8.69bn</td><td class="mono">$7.74</td></tr>
+  
+    <tr class="hist"><td class="mono">2023A</td>
+    <td class="mono">$15.54bn</td><td class="mono">-49.5%</td>
+    <td class="mono">($5.41bn)</td><td class="mono">-34.8%</td>
+    <td class="mono">($5.83bn)</td><td class="mono">($5.34)</td></tr>
+  
+    <tr class="hist"><td class="mono">2024A</td>
+    <td class="mono">$25.11bn</td><td class="mono">+61.6%</td>
+    <td class="mono">$1.30bn</td><td class="mono">5.2%</td>
+    <td class="mono">$778mn</td><td class="mono">$0.70</td></tr>
+  
+    <tr class="hist"><td class="mono">2025A</td>
+    <td class="mono">$37.38bn</td><td class="mono">+48.9%</td>
+    <td class="mono">$9.81bn</td><td class="mono">26.2%</td>
+    <td class="mono">$8.54bn</td><td class="mono">$7.59</td></tr>
+  
+  
+    <tr class="divider"><td colspan="7"></td></tr>
+    
+    <tr><td class="mono">2026E</td>
+    <td class="mono">$234.24bn <span class="src">A</span></td>
+    <td class="mono">+526.7%</td>
+    <td class="mono">$61.47bn</td><td class="mono">26.2%</td>
+    <td class="mono">$169.00bn</td>
+    <td class="mono">$149.64 <span class="src">A</span></td></tr>
+    
+    <tr><td class="mono">2027E</td>
+    <td class="mono">$241.27bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$63.32bn</td><td class="mono">26.2%</td>
+    <td class="mono">$55.12bn</td>
+    <td class="mono">$48.80</td></tr>
+    
+    <tr><td class="mono">2028E</td>
+    <td class="mono">$248.51bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$65.22bn</td><td class="mono">26.2%</td>
+    <td class="mono">$56.77bn</td>
+    <td class="mono">$50.27</td></tr>
+    
+    <tr><td class="mono">2029E</td>
+    <td class="mono">$255.97bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$67.17bn</td><td class="mono">26.2%</td>
+    <td class="mono">$58.48bn</td>
+    <td class="mono">$51.78</td></tr>
+    
+    <tr><td class="mono">2030E</td>
+    <td class="mono">$263.64bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$69.19bn</td><td class="mono">26.2%</td>
+    <td class="mono">$60.23bn</td>
+    <td class="mono">$53.33</td></tr>
+    
+    <tr><td class="mono">2031E</td>
+    <td class="mono">$271.55bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$71.26bn</td><td class="mono">26.2%</td>
+    <td class="mono">$62.04bn</td>
+    <td class="mono">$54.93</td></tr>
+    
+    <tr><td class="mono">2032E</td>
+    <td class="mono">$279.70bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$73.40bn</td><td class="mono">26.2%</td>
+    <td class="mono">$63.90bn</td>
+    <td class="mono">$56.58</td></tr>
+    
+    <tr><td class="mono">2033E</td>
+    <td class="mono">$288.09bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$75.60bn</td><td class="mono">26.2%</td>
+    <td class="mono">$65.81bn</td>
+    <td class="mono">$58.27</td></tr>
+    
+    <tr><td class="mono">2034E</td>
+    <td class="mono">$296.73bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$77.87bn</td><td class="mono">26.2%</td>
+    <td class="mono">$67.79bn</td>
+    <td class="mono">$60.02</td></tr>
+    
+    <tr><td class="mono">2035E</td>
+    <td class="mono">$305.64bn</td>
+    <td class="mono">+3.0%</td>
+    <td class="mono">$80.21bn</td><td class="mono">26.2%</td>
+    <td class="mono">$69.82bn</td>
+    <td class="mono">$61.82</td></tr>
+    
+  
+  </tbody></table>
+
+  
+  <div class="keep"><h3>Bridge to levered free cash flow (what the DCF discounts)</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Net income</th><th>Levered FCF</th>
+    <th>FCF margin</th><th>Source</th></tr></thead><tbody>
+    
+    <tr><td class="mono">2026E</td>
+    <td class="mono">$234.24bn</td>
+    <td class="mono">$169.00bn</td>
+    <td class="mono"><b>$169.00bn</b></td>
+    <td class="mono">72.1%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2027E</td>
+    <td class="mono">$241.27bn</td>
+    <td class="mono">$55.12bn</td>
+    <td class="mono"><b>$174.92bn</b></td>
+    <td class="mono">72.5%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2028E</td>
+    <td class="mono">$248.51bn</td>
+    <td class="mono">$56.77bn</td>
+    <td class="mono"><b>$181.04bn</b></td>
+    <td class="mono">72.8%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2029E</td>
+    <td class="mono">$255.97bn</td>
+    <td class="mono">$58.48bn</td>
+    <td class="mono"><b>$187.37bn</b></td>
+    <td class="mono">73.2%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2030E</td>
+    <td class="mono">$263.64bn</td>
+    <td class="mono">$60.23bn</td>
+    <td class="mono"><b>$193.93bn</b></td>
+    <td class="mono">73.6%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2031E</td>
+    <td class="mono">$271.55bn</td>
+    <td class="mono">$62.04bn</td>
+    <td class="mono"><b>$200.72bn</b></td>
+    <td class="mono">73.9%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2032E</td>
+    <td class="mono">$279.70bn</td>
+    <td class="mono">$63.90bn</td>
+    <td class="mono"><b>$207.74bn</b></td>
+    <td class="mono">74.3%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2033E</td>
+    <td class="mono">$288.09bn</td>
+    <td class="mono">$65.81bn</td>
+    <td class="mono"><b>$215.02bn</b></td>
+    <td class="mono">74.6%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2034E</td>
+    <td class="mono">$296.73bn</td>
+    <td class="mono">$67.79bn</td>
+    <td class="mono"><b>$222.54bn</b></td>
+    <td class="mono">75.0%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+    <tr><td class="mono">2035E</td>
+    <td class="mono">$305.64bn</td>
+    <td class="mono">$69.82bn</td>
+    <td class="mono"><b>$230.33bn</b></td>
+    <td class="mono">75.4%</td>
+    <td style="font-size:11px">Analyst</td></tr>
+    
+  </tbody></table>
+  <p class="note">“A” marks figures taken directly from analyst consensus; unmarked forecast figures are
+     derived by holding the latest reported margin stable. The Levered FCF column ties exactly to the
+     10-year cash-flow forecast in the intrinsic valuation, so every number traces from revenue through
+     to the $2,389.31 fair value.</p>
+  
+
+  
+  <div class="keep"><h2>Ratio analysis — leverage, coverage &amp; returns</h2><div class="hsp"></div></div>
+  <table><thead><tr><th>Metric</th><th>FY2022A</th><th>FY2023A</th><th>FY2024A</th><th>FY2025A</th></tr></thead><tbody>
+  
+    <tr><td>Net debt / EBITDA</td><td class="mono">-0.1x</td><td class="mono">1.7x</td><td class="mono">0.6x</td><td class="mono">0.3x</td></tr>
+  
+    <tr><td>EBIT / interest</td><td class="mono">51.4x</td><td class="mono">-13.9x</td><td class="mono">2.3x</td><td class="mono">20.6x</td></tr>
+  
+    <tr><td>ROE</td><td class="mono">17.4%</td><td class="mono">-13.2%</td><td class="mono">1.7%</td><td class="mono">15.8%</td></tr>
+  
+    <tr><td>ROIC (NOPAT/IC)</td><td class="mono">16.3%</td><td class="mono">-9.0%</td><td class="mono">2.1%</td><td class="mono">13.4%</td></tr>
+  
+    <tr><td>FCF conversion (FCFF/NOPAT)</td><td class="mono">21%</td><td class="mono">165%</td><td class="mono">-68%</td><td class="mono">-3%</td></tr>
+  
+    <tr><td>Capex / D&A</td><td class="mono">1.70x</td><td class="mono">0.99x</td><td class="mono">1.08x</td><td class="mono">1.90x</td></tr>
+  </tbody></table>
+  
+
+  
+  <div class="keep"><h2>Intrinsic valuation — 2-Stage Free Cash Flow to Equity</h2><div class="hsp"></div></div>
+  <p>Fair value is built from <b>forward analyst estimates</b>, not historical cash flow — the
+     methodology used by Simply Wall St. The model is selected by sector: a 2-stage cash-flow
+     model for most companies, Excess Returns for financials, AFFO for REITs, or a dividend model
+     for consistent payers. Every figure below is traceable.</p>
+
+  <div class="callout">
+    <div>Fair value per share
+      <span class="big mono">$2,389.31</span>
+      <span class="up mono">+152% vs price $948.80</span></div>
+    <p class="note" style="margin:6px 0 0">Discount rate (cost of equity) 9.18%
+      · terminal value 54% of total
+      · source: analyst levered-FCF consensus (10y) then fade to 2.5%</p>
+  </div>
+
+  
+  <div class="keep"><h3>10-year cash-flow forecast</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table><thead><tr><th>Year</th><th>Cash flow ($mn)</th><th>Source</th>
+    <th>Discount factor</th><th>Present value ($mn)</th></tr></thead><tbody>
+    
+    <tr><td class="mono">2026</td>
+        <td class="mono">169,001</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.916</td>
+        <td class="mono">154,786</td></tr>
+    
+    <tr><td class="mono">2027</td>
+        <td class="mono">174,916</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.839</td>
+        <td class="mono">146,728</td></tr>
+    
+    <tr><td class="mono">2028</td>
+        <td class="mono">181,038</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.768</td>
+        <td class="mono">139,090</td></tr>
+    
+    <tr><td class="mono">2029</td>
+        <td class="mono">187,374</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.704</td>
+        <td class="mono">131,850</td></tr>
+    
+    <tr><td class="mono">2030</td>
+        <td class="mono">193,932</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.644</td>
+        <td class="mono">124,986</td></tr>
+    
+    <tr><td class="mono">2031</td>
+        <td class="mono">200,720</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.590</td>
+        <td class="mono">118,480</td></tr>
+    
+    <tr><td class="mono">2032</td>
+        <td class="mono">207,745</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.541</td>
+        <td class="mono">112,312</td></tr>
+    
+    <tr><td class="mono">2033</td>
+        <td class="mono">215,016</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.495</td>
+        <td class="mono">106,466</td></tr>
+    
+    <tr><td class="mono">2034</td>
+        <td class="mono">222,542</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.454</td>
+        <td class="mono">100,923</td></tr>
+    
+    <tr><td class="mono">2035</td>
+        <td class="mono">230,331</td>
+        <td style="font-size:11.5px">Analyst</td>
+        <td class="mono">0.415</td>
+        <td class="mono">95,670</td></tr>
+    
+  </tbody></table>
+  
+
+  <div class="keep"><h3>Valuation build</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <table class="kv"><tbody>
+    <tr><td>PV of next 10 years' cash flows</td><td class="mono">$1,231.29bn</td></tr><tr><td>Terminal value (Gordon)</td><td class="mono">$3,532.32bn</td></tr><tr><td>PV of terminal value</td><td class="mono">$1,467.18bn</td></tr><tr><td>Total equity value</td><td class="mono">$2,698.47bn</td></tr><tr><td>Shares outstanding</td><td class="mono">1,129mn</td></tr><tr><td>Value per share</td><td class="mono">$2,389.31</td></tr><tr><td>Discount to fair value</td><td class="mono">-151.8%</td></tr>
+  </tbody></table>
+
+  <div class="keep"><h3>Discount rate — cost of equity</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
+  <div class="two">
+    <div>
+      <table class="kv"><tbody>
+        <tr><td>Risk-free rate (5y avg 10y govt bond)</td><td class="mono">3.60%</td></tr><tr><td>Equity risk premium (Damodaran)</td><td class="mono">4.60%</td></tr><tr><td>Industry unlevered beta (technology)</td><td class="mono">1.200</td></tr><tr><td>Debt / equity</td><td class="mono">1.4%</td></tr><tr><td>Levered beta = unlev·(1+(1−t)·D/E)</td><td class="mono">1.214</td></tr><tr><td>Levered beta (clamped 0.8–2.0)</td><td class="mono">1.214</td></tr><tr><td>Cost of equity = Rf + β·ERP</td><td class="mono">9.18%</td></tr>
+      </tbody></table>
+    </div>
+    <div>
+      <p class="note">Cost of equity = risk-free rate + levered beta × equity risk premium. The
+        risk-free rate is a 5-year average of the 10-year government bond (not the spot rate, to avoid
+        volatile valuations). Beta is built bottom-up from the industry unlevered beta, re-levered to
+        the company's capital structure and clamped to a practical 0.8–2.0 band (Damodaran).</p>
+    </div>
+  </div>
+  <p class="note">Levered FCF to equity from analyst consensus, discounted at the cost of equity over 10 years plus a Gordon terminal. The forward estimates are the central input — history is used only where estimates are absent.</p>
+  
+
+  
+
+  
+  <div class="keep"><h2>Factor sensitivity map — what moves this stock</h2><div class="hsp"></div></div>
+  <p>Exposure levels are scored from the model and the historicals, with the mechanism spelled out.</p>
+  <table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
+    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th>Why / mechanism</th></tr></thead><tbody>
+  
+    <tr><td>Macro</td><td><b>Interest rates / discount rate</b></td>
+    <td><span class="tag med">Medium</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">75bps of WACC ≈ $2.26/sh (7%); TV = 68% of EV</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Long-duration cash flows: the further out the value sits (terminal-heavy), the more a shift in rates or the equity risk premium re-prices the stock, independent of operations.</td></tr>
+  
+    <tr><td>Macro</td><td><b>Economic cycle / demand</b></td>
+    <td><span class="tag high">High</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">Revenue growth volatility σ = 49.6% over 3y</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Historical top-line dispersion is the cleanest read on cyclicality: a stable compounding base decouples from GDP; a volatile one imports the macro cycle into earnings.</td></tr>
+  
+    <tr><td>Macro</td><td><b>Inflation / input costs</b></td>
+    <td><span class="tag high">High</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">−100bps EBIT margin ≈ −$2.50/sh; margin σ = 26.1%</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Cost pass-through is the test: firms with pricing power hold margin through inflation; historical margin volatility shows how much of past cost shocks reached the P&L.</td></tr>
+  
+    <tr><td>Macro</td><td><b>Credit & refinancing</b></td>
+    <td><span class="tag low">Low</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">Net debt/EBITDA = 0.3x; EBIT/interest = 20.6x</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Leverage converts operating shortfalls into equity stress: the higher the stack, the more a slowdown or a repricing of debt costs flows straight to the equity holder.</td></tr>
+  
+    <tr><td>Micro</td><td><b>Competitive erosion</b></td>
+    <td><span class="tag high">High</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">ROIC−WACC spread = 31bps</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Excess returns invite entry: the wider the spread, the bigger the prize for competitors — but also the bigger the buffer before growth stops creating value. A thin spread means small competitive slippage flips growth to value destruction.</td></tr>
+  
+    <tr><td>Micro</td><td><b>Capital intensity</b></td>
+    <td><span class="tag med">Medium</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">Capex/D&A = 1.30x; capex = 41.1% of sales</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Above 1x, the business must keep buying its own growth — FCF conversion stays hostage to the reinvestment cycle; below 1x, depreciation overstates true capital needs and cash conversion runs ahead of earnings.</td></tr>
+  
+    <tr><td>Micro</td><td><b>Pricing power / margin stability</b></td>
+    <td><span class="tag high">High</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">EBIT margin σ = 26.1% (range -35%–32%)</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Stable margins across cycles are the fingerprint of pricing power; wide swings say the company is a price-taker whose profitability belongs to the environment, not the franchise.</td></tr>
+  </tbody></table>
+  
+
+  
+  <div class="keep"><h2>Catalysts &amp; what each lever is worth</h2><div class="hsp"></div></div>
+  <ul><li><b>Cost of capital:</b> every 75bps of WACC moves fair value by ≈$2.26/share (7%). Rate path and the equity risk premium are the single biggest swing factor.</li><li><b>Terminal growth:</b> 50bps of perpetuity growth is worth ≈$0.12/share — the market's read on the company's long-run competitive position.</li><li><b>Operating margin:</b> each 100bps of EBIT margin across the forecast is worth ≈$2.50/share — watch pricing power, mix and cost discipline in quarterly prints.</li><li><b>Top-line delivery:</b> our base assumes 6.7% year-one growth fading to 2.5%; sustained beats/misses versus that glide path are the cleanest re-rating trigger either way.</li></ul>
+  
+
+  <div class="keep"><h2>Key risks</h2><div class="hsp"></div></div>
+  <ul><li>Single third-party data source: restatements, non-recurring items or classification differences can shift the output.</li></ul>
+
+  <div class="disc"><b>Methodology & disclaimer.</b> Generated by an automated, sector-aware valuation
+    engine from public data (yfinance). MU was classified as <b>Standard (2-Stage FCFE)</b>
+    and valued with the Simply Wall St methodology: a sector-appropriate intrinsic model (2-stage cash
+    flow to equity, excess returns for financials, AFFO for REITs, or a dividend model) anchored to
+    forward analyst estimates and discounted at the cost of equity. Terminal value uses the Gordon
+    growth method. Forward cash flows come from analyst consensus where available, extrapolated from
+    reported figures otherwise — they are not a substitute for fundamental judgement. Nothing here is
+    investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
+</div></body></html>
