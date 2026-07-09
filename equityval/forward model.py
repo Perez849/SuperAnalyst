@@ -74,21 +74,42 @@ def build_forward_model(data: CompanyData, sws_build: list) -> Optional[Forecast
     eps_by_year = _clean(est.eps_path, y0.eps_diluted, y0.year)
     # net margin anchor (trailing), used to derive NI where analysts give only EPS
     ni_margin = (y0.net_income / y0.revenue) if y0.revenue else 0.08
+    # analyst long-term growth (for years past the explicit +1y estimate), fading
+    # to a terminal rate — NOT a hard-coded 3%. If no explicit LT estimate exists,
+    # start the fade from the growth rate implied between the two analyst years,
+    # so a cyclical like MU keeps a realistic ramp instead of snapping to 2.5%.
+    lt_g = est.eps_growth_lt if (est.eps_growth_lt and -0.2 < est.eps_growth_lt < 2.0) else None
+    if lt_g is None and est.revenue_path and len(est.revenue_path) >= 2:
+        rp = sorted(est.revenue_path)
+        if rp[-2][1] > 0:
+            near_g = rp[-1][1] / rp[-2][1] - 1
+            if -0.2 < near_g < 2.0:
+                lt_g = near_g
+    term_g = 0.025
 
     years: list[ForecastYear] = []
     prev_rev = base_rev
+    last_analyst_ni_margin = None
     notes = []
-    for row in sws_build:
+    n_rows = len(sws_build)
+    for idx, row in enumerate(sws_build):
         yr = row["year"]
         fcf = row["cf"]
 
-        # revenue: analyst consensus if present, else grow at the FCF's implied rate
+        # revenue: analyst consensus where the year is covered; beyond that, grow
+        # at the analyst long-term rate fading toward the terminal rate.
         if yr in rev_by_year:
             rev = rev_by_year[yr]
             rev_src = "Analyst"
         else:
-            # derive: keep FCF/revenue ratio stable off the last analyst revenue
-            rev = prev_rev * (1 + _implied_growth(prev_rev, fcf, last_margin))
+            if lt_g is not None:
+                # fade from lt_g toward term_g across the remaining horizon
+                remaining = max(n_rows - idx, 1)
+                g = lt_g + (term_g - lt_g) * (idx / n_rows)
+                g = max(g, term_g)
+            else:
+                g = term_g
+            rev = prev_rev * (1 + g)
             rev_src = "Derived"
         rev_g = (rev / prev_rev - 1) if prev_rev else 0.0
 
@@ -97,16 +118,17 @@ def build_forward_model(data: CompanyData, sws_build: list) -> Optional[Forecast
         ebit_margin = last_margin
 
         # net income & EPS. Use the analyst EPS directly (no magnitude cap — a
-        # 60% net margin can be real, e.g. NVDA). We only reject a point that is
-        # internally inconsistent with its own series (handled upstream when the
-        # eps_path is cleaned); here we trust whatever survived.
-        ni_from_margin = rev * ni_margin
+        # 60% net margin can be real, e.g. NVDA). For years the analysts don't
+        # cover, hold the LAST ANALYST net margin (not the trailing one) so the
+        # series continues smoothly instead of stepping down.
         if yr in eps_by_year:
             eps = eps_by_year[yr]
             ni = eps * data.shares_diluted
             eps_src = "Analyst"
+            last_analyst_ni_margin = (ni / rev) if rev else last_analyst_ni_margin
         else:
-            ni = ni_from_margin
+            m = last_analyst_ni_margin if last_analyst_ni_margin else ni_margin
+            ni = rev * m
             eps = ni / data.shares_diluted if data.shares_diluted else 0.0
             eps_src = "Derived"
 

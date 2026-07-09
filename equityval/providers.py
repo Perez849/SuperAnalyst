@@ -428,16 +428,29 @@ class YFinanceProvider:
             # equal ~base; that's fine. We DON'T invent scale — just take avg as-is.
             return pts
 
-        # long-term analyst growth rate for extending beyond +1y
+        # long-term analyst growth rate for extending beyond +1y.
+        # growth_estimates is indexed ['0q','+1q','0y','+1y','+5y','-5y'] with
+        # columns ['stock','industry','sector','index']. The '+5y' row of the
+        # 'stock' column is the analysts' long-term annual growth estimate for the
+        # company. (Earlier code looked for a non-existent 'stockTrend' column,
+        # so this LT rate was never picked up and the model fell back to a flat
+        # terminal 2.5% — wrong for a company like MU in a strong cycle.)
         lt_growth = None
         try:
             ge = t.growth_estimates
             if ge is not None and not ge.empty:
-                col = "stockTrend" if "stockTrend" in ge.columns else ge.columns[0]
+                # pick the company column, tolerating naming differences
+                col = None
+                for cand in ("stock", "stockTrend", "growth"):
+                    if cand in ge.columns:
+                        col = cand
+                        break
+                if col is None:
+                    col = ge.columns[0]
                 for key in ("+5y", "+1y", "0y"):
                     if key in ge.index:
                         g = _f(ge.loc[key, col])
-                        if g == g and -0.5 < g < 2.0:
+                        if g == g and -0.5 < g < 3.0:      # accept strong growth
                             lt_growth = g
                             break
         except Exception:
