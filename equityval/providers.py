@@ -428,33 +428,48 @@ class YFinanceProvider:
             # equal ~base; that's fine. We DON'T invent scale — just take avg as-is.
             return pts
 
-        # long-term analyst growth rate for extending beyond +1y.
-        # growth_estimates is indexed ['0q','+1q','0y','+1y','+5y','-5y'] with
-        # columns ['stock','industry','sector','index']. The '+5y' row of the
-        # 'stock' column is the analysts' long-term annual growth estimate for the
-        # company. (Earlier code looked for a non-existent 'stockTrend' column,
-        # so this LT rate was never picked up and the model fell back to a flat
-        # terminal 2.5% — wrong for a company like MU in a strong cycle.)
+        # long-term analyst growth rate for extending revenue beyond the explicit
+        # analyst years. Priority: (1) analysts' +5y long-term growth, (2) the
+        # growth embedded in the next-year revenue estimate, (3) historical CAGR.
+        # This is the "guidance" used to project years 3-10, so it must never be a
+        # flat 2.5% default when analysts actually expect more.
         lt_growth = None
         try:
             ge = t.growth_estimates
             if ge is not None and not ge.empty:
-                # pick the company column, tolerating naming differences
                 col = None
-                for cand in ("stock", "stockTrend", "growth"):
+                for cand in ("stock", "stockTrend", "growth", "0"):
                     if cand in ge.columns:
-                        col = cand
-                        break
-                if col is None:
+                        col = cand; break
+                if col is None and len(ge.columns):
                     col = ge.columns[0]
                 for key in ("+5y", "+1y", "0y"):
-                    if key in ge.index:
+                    if key in ge.index and col is not None:
                         g = _f(ge.loc[key, col])
-                        if g == g and -0.5 < g < 3.0:      # accept strong growth
-                            lt_growth = g
-                            break
+                        if g == g and -0.5 < g < 3.0:
+                            lt_growth = g; break
         except Exception:
             lt_growth = None
+        # fallback (2): growth in the revenue_estimate table
+        if lt_growth is None:
+            try:
+                re_g = t.revenue_estimate
+                if re_g is not None and not re_g.empty and "growth" in re_g.columns:
+                    for key in ("+1y", "0y"):
+                        if key in re_g.index:
+                            g = _f(re_g.loc[key, "growth"])
+                            if g == g and -0.5 < g < 3.0:
+                                lt_growth = g; break
+            except Exception:
+                pass
+        # fallback (3): historical revenue CAGR
+        if lt_growth is None:
+            try:
+                revs = [yy.revenue for yy in yfin if yy.revenue and yy.revenue > 0]
+                if len(revs) >= 2 and revs[0] > 0:
+                    lt_growth = (revs[-1] / revs[0]) ** (1 / (len(revs) - 1)) - 1
+            except Exception:
+                pass
 
         # revenue path
         try:

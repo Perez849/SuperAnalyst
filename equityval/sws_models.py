@@ -99,44 +99,216 @@ def _fade_growth(near_rates: list[float], horizon: int, terminal_g: float) -> li
     return out[:horizon]
 
 
+def _extend_flows(flows: list, sources: list, analyst_n: int, horizon: int,
+                  terminal_g: float, lt_growth: float = None) -> None:
+    """Extend `flows` from the analyst-covered years out to `horizon`, fading the
+    growth rate LINEARLY from a sane starting rate down to the terminal rate.
+
+    Critically, the starting growth is bounded: we take the analysts' long-term
+    growth estimate if available, otherwise the last observed YoY growth, but we
+    cap it at a reasonable ceiling so a corrupt/one-off jump between the last two
+    analyst points can't compound into a runaway (the MU bug, where FCF exploded
+    to trillions because a +100% step was applied for 8 straight years).
+    """
+    if len(flows) >= horizon or not flows:
+        return
+    # starting growth for the fade
+    if lt_growth is not None and -0.2 < lt_growth < 1.0:
+        start_g = lt_growth
+    elif len(flows) >= 2 and flows[-2] > 0:
+        start_g = flows[-1] / flows[-2] - 1
+    else:
+        start_g = terminal_g
+    # bound it: a forecast can't sustain >25%/yr into a fade without becoming
+    # implausible; and never below terminal. This is a projection-stability
+    # guardrail on the FADE rate, not a cap on the analyst data itself.
+    start_g = max(min(start_g, 0.25), terminal_g)
+    n_extra = horizon - len(flows)
+    for k in range(n_extra):
+        # linear fade from start_g (first extended year) to terminal_g (last)
+        frac = (k + 1) / n_extra
+        g = start_g + (terminal_g - start_g) * frac
+        flows.append(flows[-1] * (1 + g))
+        sources.append(f"Est @ {g:.2%}")
+
+
+def _drop_scale_outliers(path: list) -> list:
+    """Remove points that break their OWN series — data on a different scale from
+    the rest. Does NOT cap magnitude: a genuine, *continuous* high-growth ramp is
+    kept in full. Two corruption signatures are caught:
+
+    1) Spike-and-revert: a point far above BOTH neighbours that reverts back down
+       (e.g. an EPS of 12.76 sitting between values near 5). Classic bad print.
+
+    2) Isolated step that stays up but is disconnected from the trend: the value
+       jumps by a huge factor from the previous point and then the following
+       points grow only gently from that inflated base (e.g. MU revenue leaping
+       6.3x to $234bn, then +3%/yr). A real ramp (NVDA +114% then +65%) keeps
+       compounding hard, so it is NOT dropped; a corrupt step lands and flatlines.
+
+    Detection is by SHAPE, not magnitude — sustained growth of any size survives.
+    """
+    if not path or len(path) < 3:
+        # with <3 points we can't judge shape; guard the 2-point step case only
+        if len(path) == 2:
+            (_, a), (_, b) = path
+            # a lone doubling+ with nothing to corroborate is left alone (could be real)
+            return list(path)
+        return list(path)
+
+    kept = list(path)
+    changed = True
+    while changed and len(kept) >= 3:
+        changed = False
+        v = [x for _, x in kept]
+        for i in range(1, len(v) - 1):
+            prev, cur, nxt = v[i - 1], v[i], v[i + 1]
+            if prev <= 0 or cur <= 0:
+                continue
+            up = cur / prev
+            down = nxt / cur if cur else 1
+            # signature 1: spike then revert (or dip then rebound)
+            if (up > 1.8 and down < 0.75) or (up < 0.55 and down > 1.35):
+                kept.pop(i); changed = True; break
+            # signature 2: huge isolated step that then flatlines. cur jumps >2.5x
+            # from prev, but nxt grows <25% from cur — the ramp didn't continue,
+            # so cur is a displaced/misscaled point, not a real acceleration.
+            if up > 2.5 and down < 1.25:
+                kept.pop(i); changed = True; break
+        # also guard the FIRST point when it's the corrupt step (anchor handles
+        # this when provided; here we catch a first estimate that dwarfs point 2)
+        if not changed and len(kept) >= 3:
+            v = [x for _, x in kept]
+            if v[0] > 0 and v[1] / v[0] < 0.4 and v[2] / v[1] > 0.8:
+                # v[0] is a giant isolated first value the series drops away from
+                kept.pop(0); changed = True
+
+    # If cleaning shredded the series (a corrupt step contaminated the whole path,
+    # so we're left with a stub), signal "unusable" by returning empty — the caller
+    # then falls back to a historical extrapolation rather than trusting fragments.
+    if path and len(kept) < max(2, len(path) // 2):
+        return []
+    return kept
+
+
 # --------------------------------------------------------------------------- #
 #  MODEL 1: 2-stage FCFE (the default / general case)
 # --------------------------------------------------------------------------- #
+def _build_revenue_path(data, est, horizon: int) -> list:
+    """Project revenue for `horizon` years: use analyst absolute revenue estimates
+    where available (the reliable, bounded figures), then grow at the analyst
+    long-term rate fading toward a low terminal rate. Revenue can't run away
+    because it compounds at bounded, fading growth — unlike the old EPS chain."""
+    last_rev = data.latest.revenue
+    if not last_rev or last_rev <= 0:
+        return []
+    term = 0.025
+    # covered years from analyst revenue estimates
+    covered = sorted(est.revenue_path or [])
+    out = []
+    prev = last_rev
+    for (yr, rev) in covered[:horizon]:
+        if rev and rev > 0:
+            out.append((yr, rev)); prev = rev
+    # starting growth for the fade beyond covered years
+    if est.eps_growth_lt and -0.2 < est.eps_growth_lt < 2.0:
+        start_g = est.eps_growth_lt
+    elif len(out) >= 2 and out[-2][1] > 0:
+        start_g = out[-1][1] / out[-2][1] - 1
+    elif out:
+        start_g = out[0][1] / last_rev - 1
+    else:
+        start_g = data.cagr("revenue") or 0.05
+    start_g = max(min(start_g, 0.30), term)     # bound the fade start, never runaway
+    last_yr = out[-1][0] if out else data.latest.year
+    n_extra = horizon - len(out)
+    for k in range(n_extra):
+        frac = (k + 1) / n_extra if n_extra else 1
+        g = start_g + (term - start_g) * frac
+        prev = prev * (1 + g)
+        last_yr += 1
+        out.append((last_yr, prev))
+    return out[:horizon]
+
+
 def two_stage_fcfe(data: CompanyData, ke: float, beta_rows: list,
                    terminal_g: float, horizon: int = 10) -> Optional[SWSResult]:
     est = data.estimates
     cur = data.currency_symbol
-    # Build the 10-year levered-FCF path.
     flows, sources = [], []
+
     if est.fcfe_path:
+        # Explicit analyst levered-FCF path: use it directly, then fade.
         pth = sorted(est.fcfe_path)
-        analyst_n = len(pth)
+        analyst_n = min(len(pth), horizon)
         for (_, f) in pth[:horizon]:
-            flows.append(f); sources.append(f"Analyst")
-        # fade remaining years: taper the last analyst YoY growth toward terminal
-        if len(flows) >= 2:
-            last_g = flows[-1] / flows[-2] - 1 if flows[-2] else terminal_g
-        else:
-            last_g = terminal_g
-        while len(flows) < horizon:
-            remaining = horizon - len(flows)
-            g = last_g + (terminal_g - last_g) * (len(flows) - analyst_n + 1) / (remaining + 1)
-            g = max(g, terminal_g)
-            flows.append(flows[-1] * (1 + g)); sources.append(f"Est @ {g:.2%}")
-            last_g = g
+            flows.append(f); sources.append("Analyst")
+        _extend_flows(flows, sources, analyst_n, horizon, terminal_g,
+                      lt_growth=est.eps_growth_lt)
         source = f"analyst levered-FCF consensus ({analyst_n}y) then fade to {terminal_g:.1%}"
+
+    elif est.revenue_path:
+        # ROBUST APPROACH: anchor FCFE to PROJECTED REVENUE × a normalised FCF
+        # margin. Revenue is the most reliable analyst figure and can't run away.
+        # The FCF margin is the company's own free-cash-flow-to-revenue ratio, but
+        # a single year of heavy capex can push OCF−capex negative even for a
+        # profitable company — so we take the MEDIAN over history and, if that is
+        # distorted (<=0) while the business is actually profitable, fall back to a
+        # margin implied by projected profitability (net income margin × a payout).
+        fcf_margins = []
+        for yy in data.years:
+            fcf = yy.operating_cash_flow - yy.capex
+            if yy.revenue and yy.revenue > 0:
+                fcf_margins.append(fcf / yy.revenue)
+        fcf_margin = None
+        if fcf_margins:
+            fcf_margins.sort()
+            fcf_margin = fcf_margins[len(fcf_margins) // 2]      # median
+
+        # profitability check: is the company actually making money (recent NI>0
+        # or analysts projecting positive EPS)?
+        recent_ni = [yy.net_income for yy in data.years[-3:] if yy.net_income]
+        profitable = (recent_ni and sum(recent_ni) > 0) or bool(est.eps_path)
+
+        if fcf_margin is None or fcf_margin <= 0:
+            if profitable:
+                # derive a sensible FCF margin from operating profitability instead
+                # of giving up: use the median EBIT margin × a cash-conversion haircut
+                ebit_margins = [yy.ebit / yy.revenue for yy in data.years
+                                if yy.revenue and yy.revenue > 0 and yy.ebit]
+                if ebit_margins:
+                    ebit_margins.sort()
+                    m = ebit_margins[len(ebit_margins) // 2]
+                    fcf_margin = max(m * 0.6, 0.03)     # ~60% of EBIT converts to FCF
+                else:
+                    fcf_margin = 0.06
+            else:
+                # genuinely cash-burning with no profit in sight — FCFE not suitable
+                return None
+        # clamp to a sane floor so a near-zero historical year doesn't zero it out
+        fcf_margin = max(fcf_margin, 0.03)
+
+        rev_path = _build_revenue_path(data, est, horizon)
+        if not rev_path:
+            return None
+        for (yr, rev) in rev_path:
+            flows.append(rev * fcf_margin)
+            sources.append("Analyst" if yr in {y for y, _ in (est.revenue_path or [])} else f"Est")
+        source = (f"projected revenue × {fcf_margin:.1%} normalised FCF margin "
+                  f"(company median), fading revenue to {terminal_g:.1%}")
+
     else:
+        # No analyst revenue path: extrapolate the last positive levered FCF.
         base = est.fcfe_base if (est.fcfe_base and est.fcfe_base > 0) else \
                (data.latest.operating_cash_flow - data.latest.capex)
         if not base or base <= 0:
             return None
-        hist_g = data.cagr("revenue") or 0.05
-        hist_g = min(max(hist_g, 0.0), 0.25)
+        hist_g = min(max(data.cagr("revenue") or 0.05, 0.0), 0.25)
         rates = _fade_growth([hist_g], horizon, terminal_g)
         f = base
         for g in rates:
             f = f * (1 + g); flows.append(f); sources.append(f"Est @ {g:.2%}")
-        source = f"last levered FCF {cur}{base/1e9:,.1f}bn extrapolated at {hist_g:.1%} (no analyst FCF)"
+        source = f"last levered FCF {cur}{base/1e9:,.1f}bn extrapolated at {hist_g:.1%} (no analyst estimates)"
 
     if not flows or ke <= terminal_g:
         return None
