@@ -1,0 +1,15 @@
+{
+  "ticker": "SNDK",
+  "name": "Sandisk Corporation",
+  "sector": "Technology",
+  "profile": "standard",
+  "currency": "$",
+  "price": 1727.18,
+  "target": 389747.63,
+  "upside": 224.6555,
+  "rating": "OVERWEIGHT",
+  "date": "2026-07-09",
+  "html": "SNDK.html",
+  "pdf": "SNDK.pdf",
+  "xlsx": "SNDK.xlsx"
+}
