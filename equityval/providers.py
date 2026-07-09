@@ -398,55 +398,68 @@ class YFinanceProvider:
         except Exception:
             pass
 
-        # Absolute revenue & EPS consensus paths -> the projected P&L (financial model).
-        base_rev = yfin[-1].revenue if yfin else 0.0
-        try:
-            re_tbl = t.revenue_estimate
-            if re_tbl is not None and not re_tbl.empty and "avg" in re_tbl.columns and last_year:
-                for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
-                    if key in re_tbl.index:
-                        v = _f(re_tbl.loc[key, "avg"])
-                        if v > 0:                       # no magnitude cap: real growth kept
-                            est.revenue_path.append((last_year + off, v))
-        except Exception:
-            pass
-        try:
-            ee = t.earnings_estimate
-            if ee is not None and not ee.empty and "avg" in ee.columns and last_year:
-                for off, key in enumerate(("+1y", "+2y", "+3y", "+4y", "+5y"), start=1):
-                    if key in ee.index:
-                        v = _f(ee.loc[key, "avg"])
-                        if v == v and v != 0:       # no magnitude cap: real growth kept
-                            est.eps_path.append((last_year + off, v))
-        except Exception:
-            pass
+        # ------------------------------------------------------------------ #
+        #  Analyst consensus paths, read from yfinance's ACTUAL table shape.
+        #  revenue_estimate / earnings_estimate are indexed by period:
+        #     '0q','+1q'  = current / next quarter (ignored here)
+        #     '0y'        = current fiscal year estimate
+        #     '+1y'       = next fiscal year estimate
+        #  There are only TWO annual points (0y, +1y) — not five. Columns include
+        #  'avg' (the consensus level: revenue in $, EPS in $/sh) and 'growth'.
+        #  For years beyond +1y we extend using the analysts' long-term growth
+        #  rate (growth_estimates '+5y'), NOT a hard-coded 3%.
+        # ------------------------------------------------------------------ #
+        last_rev = yfin[-1].revenue if yfin else 0.0
+        last_eps = yfin[-1].eps_diluted if yfin else 0.0
+        fy = last_year or 0
 
-        # Drop only INTERNALLY INCONSISTENT points (a value on a different scale
-        # from its own series — a spike that reverts). Never cap magnitude: a
-        # genuine high-growth ramp is preserved. Anchor with the last reported
-        # value so even the first estimate can be checked.
+        def _annual_points(tbl, base_level):
+            """Return [(year, level)] for 0y and +1y, sanity-checked against base."""
+            pts = []
+            if tbl is None or getattr(tbl, "empty", True) or "avg" not in tbl.columns:
+                return pts
+            # map the period label to an absolute fiscal year
+            for label, yr in (("0y", fy + 1), ("+1y", fy + 2)):
+                if label in tbl.index:
+                    v = _f(tbl.loc[label, "avg"])
+                    if v and v > 0:
+                        pts.append((yr, v))
+            # If '0y' actually corresponds to the current (unreported) year it may
+            # equal ~base; that's fine. We DON'T invent scale — just take avg as-is.
+            return pts
+
+        # long-term analyst growth rate for extending beyond +1y
+        lt_growth = None
         try:
-            from .sws_models import _drop_scale_outliers
-            if est.eps_path:
-                a = yfin[-1].eps_diluted if yfin else None
-                raw = sorted(est.eps_path)
-                if a and a > 0:
-                    probe = _drop_scale_outliers([(yfin[-1].year, a)] + raw)
-                    est.eps_path = [(y, v) for (y, v) in probe if y != yfin[-1].year]
-                else:
-                    est.eps_path = _drop_scale_outliers(raw)
-            if est.revenue_path:
-                a = yfin[-1].revenue if yfin else None
-                raw = sorted(est.revenue_path)
-                if a and a > 0:
-                    probe = _drop_scale_outliers([(yfin[-1].year, a)] + raw)
-                    est.revenue_path = [(y, v) for (y, v) in probe if y != yfin[-1].year]
-                else:
-                    est.revenue_path = _drop_scale_outliers(raw)
+            ge = t.growth_estimates
+            if ge is not None and not ge.empty:
+                col = "stockTrend" if "stockTrend" in ge.columns else ge.columns[0]
+                for key in ("+5y", "+1y", "0y"):
+                    if key in ge.index:
+                        g = _f(ge.loc[key, col])
+                        if g == g and -0.5 < g < 2.0:
+                            lt_growth = g
+                            break
+        except Exception:
+            lt_growth = None
+
+        # revenue path
+        try:
+            rev_pts = _annual_points(t.revenue_estimate, last_rev)
+            if rev_pts:
+                est.revenue_path = list(rev_pts)
         except Exception:
             pass
+        # eps path
+        try:
+            eps_pts = _annual_points(t.earnings_estimate, last_eps)
+            if eps_pts:
+                est.eps_path = list(eps_pts)
+        except Exception:
+            pass
+        if lt_growth is not None:
+            est.eps_growth_lt = lt_growth
 
-        # Build a 10-year levered-FCF path: analyst growth for the covered years,
         # Build the 10-year levered-FCF (FCFE) path for the DCF.
         # SWS uses analyst "Levered Free Cash Flow". yfinance doesn't expose that
         # directly, so we derive it from the analyst NET INCOME path (reliable) via

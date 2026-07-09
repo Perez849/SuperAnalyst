@@ -100,17 +100,29 @@ def _fade_growth(near_rates: list[float], horizon: int, terminal_g: float) -> li
 
 
 def _drop_scale_outliers(path: list) -> list:
-    """Remove points that break their OWN series — a spike that reverts, i.e. a
-    value on a different scale from its neighbours (typically a corrupt/misscaled
-    data point). Does NOT cap magnitude: sustained high growth is kept intact.
+    """Remove points that break their OWN series — data on a different scale from
+    the rest. Does NOT cap magnitude: a genuine, *continuous* high-growth ramp is
+    kept in full. Two corruption signatures are caught:
 
-    A point is dropped only if it is far off from BOTH neighbours in opposite
-    directions (spikes up then reverts down, or vice-versa) — the signature of a
-    bad print like an EPS of 12.76 between neighbours near 5. Monotonic ramps,
-    even huge ones (e.g. NVDA's +126%), never revert and are preserved.
+    1) Spike-and-revert: a point far above BOTH neighbours that reverts back down
+       (e.g. an EPS of 12.76 sitting between values near 5). Classic bad print.
+
+    2) Isolated step that stays up but is disconnected from the trend: the value
+       jumps by a huge factor from the previous point and then the following
+       points grow only gently from that inflated base (e.g. MU revenue leaping
+       6.3x to $234bn, then +3%/yr). A real ramp (NVDA +114% then +65%) keeps
+       compounding hard, so it is NOT dropped; a corrupt step lands and flatlines.
+
+    Detection is by SHAPE, not magnitude — sustained growth of any size survives.
     """
     if not path or len(path) < 3:
+        # with <3 points we can't judge shape; guard the 2-point step case only
+        if len(path) == 2:
+            (_, a), (_, b) = path
+            # a lone doubling+ with nothing to corroborate is left alone (could be real)
+            return list(path)
         return list(path)
+
     kept = list(path)
     changed = True
     while changed and len(kept) >= 3:
@@ -122,10 +134,27 @@ def _drop_scale_outliers(path: list) -> list:
                 continue
             up = cur / prev
             down = nxt / cur if cur else 1
+            # signature 1: spike then revert (or dip then rebound)
             if (up > 1.8 and down < 0.75) or (up < 0.55 and down > 1.35):
-                kept.pop(i)          # inconsistent with both sides -> drop
-                changed = True
-                break
+                kept.pop(i); changed = True; break
+            # signature 2: huge isolated step that then flatlines. cur jumps >2.5x
+            # from prev, but nxt grows <25% from cur — the ramp didn't continue,
+            # so cur is a displaced/misscaled point, not a real acceleration.
+            if up > 2.5 and down < 1.25:
+                kept.pop(i); changed = True; break
+        # also guard the FIRST point when it's the corrupt step (anchor handles
+        # this when provided; here we catch a first estimate that dwarfs point 2)
+        if not changed and len(kept) >= 3:
+            v = [x for _, x in kept]
+            if v[0] > 0 and v[1] / v[0] < 0.4 and v[2] / v[1] > 0.8:
+                # v[0] is a giant isolated first value the series drops away from
+                kept.pop(0); changed = True
+
+    # If cleaning shredded the series (a corrupt step contaminated the whole path,
+    # so we're left with a stub), signal "unusable" by returning empty — the caller
+    # then falls back to a historical extrapolation rather than trusting fragments.
+    if path and len(kept) < max(2, len(path) // 2):
+        return []
     return kept
 
 
