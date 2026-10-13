@@ -1,7 +1,8 @@
 # equityval — motor de valoración sector-aware
 
-Genera una **nota de equity research completa** (HTML + PDF de ~10 páginas, estilo sell-side) a
-partir del ticker, con un resumen de una página (*tear sheet*) lleno de gráficos y tablas. **No aplica el mismo método a todo**: clasifica la compañía por sector y corre
+Genera una **nota de equity research completa** (HTML + PDF de 15 páginas A4, estilo sell-side) a
+partir del ticker: una portada con el resumen y ~6.000 palabras de análisis escrito, con los gráficos
+y tablas (*exhibits*) en la columna lateral y a pie de página, como en un informe de analista. **No aplica el mismo método a todo**: clasifica la compañía por sector y corre
 los modelos correctos para ese modelo de negocio, luego mezcla en un precio objetivo.
 
 No es asesoramiento de inversión. Los inputs se derivan de forma mecánica; el juicio
@@ -216,8 +217,12 @@ equityval/
   data/reloj_snapshot.json  copia versionada de los datos del Reloj (offline / sin red)
   analysis.py       estados financieros, ROE/ROIC/DuPont, Piotroski, Altman Z, Sloan, capital circulante, scorecard
   charts.py         esfera, waterfall, football field, plano crecimiento×inflación, radar, precio (SVG)
-  notectx.py        prepara todos los números ya formateados para la plantilla
-  note_template.py  plantilla Jinja del informe (tear sheet + secciones)
+  charts_side.py    gráficos compactos para la columna lateral (puente, football, múltiplos, evidencia por fase)
+  prose.py          hechos y frases auxiliares (todas las cifras en bruto)
+  narrative.py      el análisis escrito, una función por página
+  pages.py          compone cada página: texto + exhibits + numeración de exhibits
+  pages_template.py plantilla Jinja del documento y script de ajuste de páginas
+  notectx.py        cifras ya formateadas (tablas, KPIs, ciclo) que alimentan los exhibits
   report.py         ensambla el informe HTML + Save-as-PDF
   excel_export.py   modelo Excel con fórmulas vivas (+ hoja Target Price)
   engine.py         orquestador
@@ -231,18 +236,25 @@ streamlit_app.py                 app interactiva
 
 ## El informe
 
-Una **hoja resumen** (se imprime en una página A4) y siete secciones técnicas:
+Un documento paginado (A4, cabecera con ticker/rating/precio objetivo y pie con fuentes y número de
+página). Cada página lleva **texto a la izquierda** y **exhibits numerados a la derecha** (con
+fuente al pie); las tablas largas ocupan una banda al pie de la página.
 
-| Bloque | Qué contiene |
+| Pág. | Contenido |
 |---|---|
-| Tear sheet | esfera del precio objetivo, puente precio → objetivo, KPIs con sparklines, valor por lente (football field), escenarios bear/base/bull con probabilidades, ingresos/margen, BPA, caja y ROIC vs WACC |
-| Resumen II | múltiplos vs sector (bullets + tabla), lectura del **Reloj de inversión**, visión de inversión, riesgos y scorecard de seis ejes |
-| Veredicto | tesis, cómo se construye el objetivo lente a lente, guardrails y confianza |
-| Lentes | cada input de cada lente, para poder discutirlo |
-| Financieros | cuenta de resultados, balance y flujos (histórico + estimado), ROE/ROA/ROIC, DuPont, Piotroski, Altman, Sloan, DSO/DIO/DPO, múltiplos por año, calidad de beneficios |
-| DCF | drivers, FCFF año a año, gráficos, sensibilidad WACC × g, comprobaciones de la salida |
-| Ciclo | plano crecimiento × inflación, probabilidades de fase, retorno excedente del sector por fase, playbook y ETF |
-| Factores y riesgos | qué mueve la acción, palancas valoradas en $ por acción, riesgos y método |
+| 1 | Portada: titular, rating, resumen de la inversión, esfera del objetivo, datos clave, puente precio → objetivo y tabla de financieros resumidos |
+| 2 | Tesis: poder de beneficios, valoración, balance, qué descuenta el precio y dónde discrepamos de la calle; football field, scorecard, modelo vs calle |
+| 3–5 | Valoración: método y guardrails lente a lente, múltiplos frente al sector, escenarios bear/base/bull, sensibilidades y tests de estrés |
+| 6–8 | Análisis financiero: crecimiento y márgenes, caja y balance, calidad de beneficios (Piotroski, Altman, Sloan, ciclo de caja) |
+| 9–10 | DCF: supuestos, coste de capital, valor terminal y DCF inverso |
+| 11–12 | Ciclo: lectura del **Reloj de inversión**, qué ha pagado el sector en cada fase, playbook y ETF |
+| 13 | Factores, catalizadores y riesgos cuantificados |
+| 14–15 | Apéndices: estados financieros y metodología/definiciones/avisos |
+
+Todo el texto sale de los números del modelo (`equityval/narrative.py`, sobre los hechos de
+`equityval/prose.py`): si un dato falta, la frase no se escribe; no hay relleno. Un script en la propia
+página (`pages_template.py`) ajusta cada página —tamaño de letra, espaciado, bloques opcionales y
+exhibits extra— para que ninguna acabe a medias ni se desborde, tanto en pantalla como al imprimir.
 
 ## Vínculo con el Reloj de inversión
 
@@ -270,7 +282,7 @@ los cuatro colores de fase (verde bosque, ocre, terracota, índigo) y un único 
 rentabilidad esperada a 12 m, el arco ocre el rango bear–bull y la "S" el consenso de la calle.
 
 Todo sale de dos archivos: `equityval/theme.py` (tokens) y `equityval/design.py` (hoja de estilos
-compartida, incluidas las reglas `@media print` que encajan el resumen en una página). Cambiar ahí
+compartida, incluidas las reglas de página A4 y de impresión). Cambiar ahí
 reestiliza informes y biblioteca.
 
 ## Offline y tests

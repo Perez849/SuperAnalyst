@@ -61,9 +61,9 @@ def _ang(ret: float) -> float:
 
 def valuation_clock(total_return: float, bear_ret: float, bull_ret: float,
                     street_ret: float | None, rating: str, rdir: str, target_txt: str,
-                    price_txt: str, rated: bool = True, confidence: str = "Medium") -> str:
+                    price_txt: str, rated: bool = True, confidence: str = "Medium", view: str = "0 0 360 360") -> str:
     """The signature element: a gauge whose face is a clock."""
-    out = [f'<svg class="dial" viewBox="0 0 360 360" role="img" aria-label="12-month expected '
+    out = [f'<svg class="dial" viewBox="{view}" role="img" aria-label="12-month expected '
            f'return {total_return:+.0%}, rating {escape(rating)}">']
     # minute ring (60 ticks) and hour ticks (12) around the full circle: the clock face
     for i in range(60):
@@ -209,11 +209,12 @@ def _scale(v):
 
 def ev_bridge(pv_explicit, pv_tv, net_debt, minority, equity_value, cur="$", width=520, height=230) -> str:
     sc, unit = _scale(max(abs(pv_explicit + pv_tv), abs(equity_value), 1))
-    steps = [("PV explicit FCFF", pv_explicit / sc, "pos"), ("PV terminal", pv_tv / sc, "pos"),
-             ("Net debt", -net_debt / sc, "neg")]
+    narrow = width < 320
+    steps = [("PV FCFF" if narrow else "PV explicit FCFF", pv_explicit / sc, "pos"), ("PV TV" if narrow else "PV terminal", pv_tv / sc, "pos"),
+             ("Net debt" if net_debt >= 0 else "Net cash", -net_debt / sc, "neg")]
     if minority:
         steps.append(("Minorities", -minority / sc, "neg"))
-    steps.append(("Equity value", equity_value / sc, "tot"))
+    steps.append(("Equity" if narrow else "Equity value", equity_value / sc, "tot"))
     run, tops = 0.0, []
     for lab, v, kind in steps:
         if kind == "tot":
@@ -274,6 +275,9 @@ def projection(years, revenue, fcff, cur="$", width=520, height=230) -> str:
 def margin_lines(years_h, margins_h, years_f, margins_f, width=520, height=230) -> str:
     xs_h = list(range(len(years_h)))
     xs_f = list(range(len(years_h), len(years_h) + len(years_f)))
+    clamp = lambda m: max(min(m, 1.5), -1.0)
+    margins_h = [clamp(m) for m in margins_h]
+    margins_f = [clamp(m) for m in margins_f]
     allm = [m * 100 for m in margins_h + margins_f]
     lo, hi = min(allm + [0]), max(allm) * 1.12 or 1
     left, bottom, top = 34, 30, 22
@@ -297,10 +301,12 @@ def margin_lines(years_h, margins_h, years_f, margins_f, width=520, height=230) 
     out.append(f'<polyline class="l-est" points="{pts_f}"/>')
     sep = left + len(xs_h) / n * pw
     out.append(f'<line class="grid sep" x1="{sep:.1f}" y1="{top}" x2="{sep:.1f}" y2="{height - bottom}"/>')
-    for i, yr in zip(xs_h, years_h):
-        out.append(f'<text class="axis" x="{px(i):.1f}" y="{height - 10}" text-anchor="middle">{str(yr)[-2:]}A</text>')
+    thin = width < 320
+    for k, (i, yr) in enumerate(zip(xs_h, years_h)):
+        if not thin or k % 2 == 1:
+            out.append(f'<text class="axis" x="{px(i):.1f}" y="{height - 10}" text-anchor="middle">{str(yr)[-2:]}A</text>')
     for k, (i, yr) in enumerate(zip(xs_f, years_f)):
-        if n <= 12 or k % 2 == 0:
+        if (n <= 12 and not thin) or k % 2 == 0:
             out.append(f'<text class="axis" x="{px(i):.1f}" y="{height - 10}" text-anchor="middle">{str(yr)[-2:]}E</text>')
     out.append(f'<text class="axis" x="{left}" y="12"><tspan class="k-act">● actual</tspan>  <tspan class="k-est">● estimate</tspan></text>')
     out.append('</svg>')
@@ -561,7 +567,8 @@ def line_chart(labels: list[str], series: list[tuple[str, list, str]], pct: bool
         for px, py in pts:
             out.append(f'<circle class="{cls}-dot" cx="{px:.1f}" cy="{py:.1f}" r="2.6"/>')
     for i, lab in enumerate(labels):
-        out.append(f'<text class="axis" x="{x(i):.1f}" y="{height - 10}" text-anchor="middle">{escape(str(lab))}</text>')
+        if width >= 320 or n <= 6 or i % 2 == 0:
+            out.append(f'<text class="axis" x="{x(i):.1f}" y="{height - 10}" text-anchor="middle">{escape(str(lab))}</text>')
     legend = "  ".join(f'<tspan class="k-{cls}">● {escape(name)}</tspan>' for name, _, cls in series)
     out.append(f'<text class="axis" x="{left}" y="13">{legend}</text></svg>')
     return "".join(out)
@@ -625,7 +632,8 @@ def scenario_strip(price: float, rows: list[dict], cur: str = "$", width: int = 
     names = {"Bear": "sc-bear", "Base": "sc-base", "Bull": "sc-bull"}
     for r in rows:
         out.append(f'<circle class="{names[r["name"]]}" cx="{x(r["pt"]):.1f}" cy="{cy}" r="{6 if r["name"] == "Base" else 5}"/>')
-        out.append(f'<text class="lbl2" x="{x(r["pt"]):.1f}" y="{cy - 20}" text-anchor="middle">{r["name"].upper()} · {int(r["p"] * 100)}%</text>')
+        ly = cy - 20 - (11 if (width < 320 and r["name"] == "Base") else 0)
+        out.append(f'<text class="lbl2" x="{x(r["pt"]):.1f}" y="{ly}" text-anchor="middle">{r["name"].upper()} · {int(r["p"] * 100)}%</text>')
         out.append(f'<text class="val" x="{x(r["pt"]):.1f}" y="{cy + 28}" text-anchor="middle">{_cs(cur, _fmtn(r["pt"]))}</text>')
         out.append(f'<text class="sub" x="{x(r["pt"]):.1f}" y="{cy + 41}" text-anchor="middle">{r["ret"]:+.0%}</text>')
     px = x(price)
@@ -756,11 +764,11 @@ def prob_bars(probs: dict, current: str, lang: str = "en") -> str:
     return "".join(out)
 
 
-def radar(axes: list[dict], width: int = 400, height: int = 310) -> str:
+def radar(axes: list[dict], width: int = 400, height: int = 310, R: int = 98) -> str:
     n = len(axes)
     if n < 3:
         return ""
-    cx, cy, R = width / 2, height / 2 + 4, 98
+    cx, cy = width / 2, height / 2 + 4
     P = lambda k, r: (cx + r * math.cos(-math.pi / 2 + 2 * math.pi * k / n), cy + r * math.sin(-math.pi / 2 + 2 * math.pi * k / n))
     out = [f'<svg class="radar" viewBox="0 0 {width} {height}" role="img" aria-label="Factor scorecard">']
     for ring in (25, 50, 75, 100):

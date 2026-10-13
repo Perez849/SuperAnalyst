@@ -28,6 +28,14 @@ def test_css_has_no_unresolved_variables():
     assert used <= defined, used - defined
 
 
+def test_document_css_has_no_unresolved_variables():
+    css = design.css("fonts/", doc=True)
+    defined = set(re.findall(r"--([a-z0-9-]+):", css))
+    used = set(re.findall(r"var\(--([a-z0-9-]+)", css))
+    assert used <= defined | {"pz", "n", "fs", "lh", "pgap"}, used - defined
+    assert "@page" in css and ".pmain" in css
+
+
 def test_embedded_fonts_are_self_contained():
     css = design.css("embed")
     assert "data:font/woff2;base64," in css and "url(\"fonts/" not in css

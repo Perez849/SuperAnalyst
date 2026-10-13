@@ -3,8 +3,9 @@ from __future__ import annotations
 
 from datetime import date
 
-from . import charts, design, notectx, theme
-from .note_template import TEMPLATE
+from . import analysis as A
+from . import charts, clockdata, design, notectx, pages as pages_mod, prose, theme
+from .pages_template import TEMPLATE
 
 
 def fmt_money(v, cur="$"):
@@ -30,72 +31,6 @@ def spct(v, dp=1):
 def derive_rating(u, rated: bool = True):
     """Rating from the 12-month expected total return (price move + dividend yield)."""
     return theme.rating_for(u, rated)
-
-
-def build_thesis(data, spec, tr, fwd, dcf, reverse, rating):
-    cur = data.currency_symbol
-    y = data.latest
-    used = [l for l in tr.lenses if l.eff_weight > 0]
-    names = ", ".join(l.label for l in used) or "no lens"
-    paras = []
-
-    if tr.rated:
-        direction = ("undervalued" if tr.total_return > 0.05 else
-                     "overvalued" if tr.total_return < -0.05 else "fairly valued")
-        p1 = (f"We rate <b>{data.name} ({data.ticker})</b> <b>{rating}</b> with a 12-month price target of "
-              f"<b>{fmt_ps(tr.target, cur)}</b> — a {spct(tr.upside, 0)} move from "
-              f"{fmt_ps(data.price, cur)}"
-              + (f" and a {spct(tr.total_return, 0)} total return including the dividend" if tr.dps else "")
-              + f". The shares look {direction} on {len(used)} lens{'es' if len(used) != 1 else ''}: {names}. "
-              f"Their weighted fair value today is <b>{fmt_ps(tr.fair_value, cur)}</b>, rolled forward at the "
-              f"{pct(tr.ke, 1)} cost of equity.")
-    else:
-        p1 = (f"We do <b>not rate {data.name} ({data.ticker})</b>: {tr.rating_note}. The indicative value of "
-              f"{fmt_ps(tr.fair_value, cur)} per share is shown for reference only and should not be read "
-              f"as a call against the current price of {fmt_ps(data.price, cur)}.")
-    paras.append(p1)
-
-    growth = data.cagr("revenue")
-    paras.append(
-        f"{data.name} generated {fmt_money(y.revenue, cur)} of revenue at a {pct(y.ebit_margin,0)} EBIT margin "
-        f"in the latest fiscal year, having compounded the top line at "
-        f"{pct(growth,1) if growth is not None else 'n/a'} over the historical window. Market capitalisation "
-        f"stands at {fmt_money(data.market_cap, cur)} with {fmt_money(abs(data.net_debt), cur)} of net "
-        f"{'debt' if data.net_debt >= 0 else 'cash'}.")
-
-    if fwd.eps_ntm:
-        base = (f"Consensus EPS of {fmt_ps(fwd.eps_fy1, cur)}"
-                + (f" and {fmt_ps(fwd.eps_fy2, cur)}" if fwd.eps_fy2 else "")
-                + f" gives an NTM figure of {fmt_ps(fwd.eps_ntm, cur)}, i.e. {data.price/fwd.eps_ntm:.1f}x at "
-                  f"today's price." if fwd.eps_ntm > 0 else
-                f"Consensus EPS is negative (\u2212{cur}{abs(fwd.eps_ntm):,.2f}), so earnings-based lenses do not apply.")
-        if fwd.cycle.durability < 0.999:
-            base += (f" Because forward earnings are {fwd.cycle.peak_ratio:.1f}x what the business has earned "
-                     f"through the cycle, we scale target multiples by {fwd.cycle.durability:.2f} — the "
-                     f"market pays less for peak earnings, and so do we.")
-        paras.append(base)
-
-    if tr.street:
-        st = tr.street
-        rel = "above" if tr.model_target > st.mean else "below"
-        p = (f"For context, the Street's mean 12-month target is {fmt_ps(st.mean, cur)} "
-             f"({spct(st.upside, 0)}{', ' + str(st.n) + ' analysts' if st.n else ''}). Our model-only target of "
-             f"{fmt_ps(tr.model_target, cur)} sits {abs(tr.divergence):.0%} {rel} it")
-        if tr.street_weight > 0:
-            p += (f"; the published target gives the consensus a {tr.street_weight:.0%} weight, a deliberate "
-                  f"hedge against model error that we disclose rather than hide.")
-        else:
-            p += "; the published target is purely model-driven."
-        paras.append(p)
-
-    if dcf and reverse and reverse.get("solved"):
-        paras.append(
-            f"A reverse DCF shows the market is discounting year-one revenue growth of "
-            f"{pct(reverse['implied_y1_growth'],1)} against our {pct(reverse['base_y1_growth'],1)} base — "
-            + ("the price demands less than we model." if reverse["base_y1_growth"] > reverse["implied_y1_growth"]
-               else "the price already discounts more than we model."))
-    return paras
-
 
 
 def build_key_data(data, dcf, bd):
@@ -172,33 +107,6 @@ def build_finsum(data, dcf, bd):
     return {"cols": cols, "rows": rows,
             "note": ("Multiples struck at the current price/EV against each year's estimates. "
                      "Forecast EPS approximates net income as (EBIT \u2212 LTM interest) \u00d7 (1\u2212t).")}
-
-
-def build_ratios(data, bd):
-    """Historical credit & returns ratios."""
-    cur = data.currency_symbol
-    hist = data.years[-4:] if len(data.years) >= 4 else data.years
-    cols = [f"FY{y.year}A" for y in hist]
-    def row(fn, fmt):
-        out = []
-        for y in hist:
-            try:
-                v = fn(y)
-                out.append(fmt(v) if v is not None else "\u2014")
-            except ZeroDivisionError:
-                out.append("\u2014")
-        return out
-    ic = lambda y: (y.total_debt + y.total_equity - y.cash_and_sti)
-    tax = bd.tax_rate if bd else 0.25
-    rows = [
-        ("Net debt / EBITDA", row(lambda y: (y.total_debt - y.cash_and_sti)/y.ebitda if y.ebitda else None, lambda v: f"{v:.1f}x")),
-        ("EBIT / interest", row(lambda y: y.ebit/y.interest_expense if y.interest_expense else None, lambda v: f"{v:.1f}x")),
-        ("ROE", row(lambda y: y.net_income/y.total_equity if y.total_equity else None, lambda v: pct(v,1))),
-        ("ROIC (NOPAT/IC)", row(lambda y: y.ebit*(1-tax)/ic(y) if ic(y) else None, lambda v: pct(v,1))),
-        ("FCF conversion (FCFF/NOPAT)", row(lambda y: (y.ebit*(1-tax)+y.depreciation_amort-y.capex-y.change_in_nwc)/(y.ebit*(1-tax)) if y.ebit else None, lambda v: pct(v,0))),
-        ("Capex / D&A", row(lambda y: y.capex/y.depreciation_amort if y.depreciation_amort else None, lambda v: f"{v:.2f}x")),
-    ]
-    return {"cols": cols, "rows": rows}
 
 
 def build_catalysts(data, dcf, bd, sens, wacc_res):
@@ -395,18 +303,6 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
 
 
 
-def _families(tr):
-    """Group lenses for the dark verdict block: relative / intrinsic / sector."""
-    titles = {"relative": "Relative \u00b7 multiples", "intrinsic": "Intrinsic \u00b7 cash flows",
-              "sector": "Sector models"}
-    out = []
-    for fam in ("relative", "intrinsic", "sector"):
-        ls = [l for l in tr.lenses if l.family == fam]
-        if ls:
-            out.append({"title": titles[fam], "lenses": ls, "weight": sum(l.eff_weight for l in ls)})
-    return out
-
-
 def _football_rows(tr, data):
     rows = []
     for l in tr.lenses:
@@ -437,45 +333,36 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
     street_ret = (tr.street.mean / price - 1 + yld) if tr.street else None
     clock = charts.valuation_clock(
         tr.total_return, bear_ret, bull_ret, street_ret, rating, rdir,
-        fmt_ps(tr.target, cur) if tr.rated else "n/a", fmt_ps(price, cur), tr.rated, tr.confidence)
+        fmt_ps(tr.target, cur) if tr.rated else "n/a", fmt_ps(price, cur), tr.rated, tr.confidence, view="0 6 360 300")
 
-    extras = notectx.build(data, profile, spec, wacc, dcf, scenarios, sens, base_drivers, diagnostics, reverse,
-                           tr, fwd, ref, fwd_model, peers, cycle_raw, _football_rows(tr, data))
-
-    returns_comment = ""
-    if diagnostics:
-        rt, wc = diagnostics.get("roic_term"), discount_rate
-        if rt is not None:
-            spread = (rt - wc) * 10000
-            if rt > wc:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital versus a <b>{pct(wc,1)}</b> cost of capital "
-                    f"\u2014 a positive spread of <b>{spread:.0f}bps</b>, so growth creates value. Self-funding growth of "
-                    f"{pct(diagnostics.get('fundamental_g'),1)} (reinvestment {pct(diagnostics.get('reinvest_rate'),0)} \u00d7 ROIC) "
-                    f"frames how much of the terminal growth is organically financed rather than assumed.")
-            else:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital against a <b>{pct(wc,1)}</b> cost of capital "
-                    f"\u2014 a negative spread of <b>{abs(spread):.0f}bps</b>. Growth here <b>destroys</b> value, so terminal "
-                    f"assumptions deserve scrutiny.")
-
-    kw = dict(
-        design_css=design.css(font_base), brand=theme.brand_mark(30), library_href=library_href,
-        d=data, spec=spec, ref=ref, report_date=date.today().strftime("%d %b %Y"),
-        rating=rating, rating_dir=rdir, tr=tr, fwd=fwd, families=_families(tr), clock_svg=clock,
-        thesis=build_thesis(data, spec, tr, fwd, dcf, reverse, rating), risks=risks, dcf=dcf,
-        key_data=build_key_data(data, dcf, base_drivers), finsum=build_finsum(data, dcf, base_drivers),
+    football = _football_rows(tr, data)
+    ctx = dict(notectx.build(data, profile, spec, wacc, dcf, scenarios, sens, base_drivers, diagnostics, reverse,
+                             tr, fwd, ref, fwd_model, peers, cycle_raw, football))
+    levers = pages_mod.compute_levers(data, dcf, base_drivers, sens)
+    ctx.update(
+        clock_svg=clock, key_data=build_key_data(data, dcf, base_drivers), finsum=build_finsum(data, dcf, base_drivers),
         catalysts=build_catalysts(data, dcf, base_drivers, sens, wacc),
         factors=build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate),
-        assumptions=base_drivers.rationale if base_drivers else None, diagnostics=diagnostics,
-        returns_comment=returns_comment, sens_html="", proj_svg="", margin_svg="", evbridge_svg="",
-        fmt_ps=lambda v: fmt_ps(v, cur), pct=pct, spct=spct,
-    )
-    kw.update(extras)
+        risks=risks, football_rows=football, levers=levers, cycle_raw=cycle_raw, margin_lever=levers.get("margin_ps"),
+        ft_raw=A.financial_tables(data, dcf, fwd_model, fwd))
     if dcf:
+        sw = pages_mod.SW
         hist = data.years[-4:] if len(data.years) >= 4 else data.years
-        kw["margin_svg"] = charts.margin_lines([y.year for y in hist], [y.ebit_margin or 0 for y in hist],
-                                               [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast], 340, 220)
-        kw["proj_svg"] = charts.projection([f.year for f in dcf.forecast], [f.revenue for f in dcf.forecast],
-                                           [f.fcff for f in dcf.forecast], cur, 340, 220)
-        kw["evbridge_svg"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt, dcf.minority, dcf.equity_value, cur, 340, 220)
-        kw["sens_html"] = charts.sensitivity_table(sens, price, cur) if sens else ""
-    return TEMPLATE.render(**kw)
+        ctx["margin_svg_side"] = charts.margin_lines([y.year for y in hist], [y.ebit_margin or 0 for y in hist],
+                                                     [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast], sw, 158)
+        ctx["proj_svg_side"] = charts.projection([f.year for f in dcf.forecast], [f.revenue for f in dcf.forecast],
+                                                 [f.fcff for f in dcf.forecast], cur, sw, 168)
+        ctx["evbridge_svg_side"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt, dcf.minority, dcf.equity_value, cur, sw, 170)
+        ctx["sens_html"] = charts.sensitivity_table(sens, price, cur) if sens else ""
+
+    cyc = clockdata.cycle_view(data.sector, data.industry, data.ticker, cycle_raw) if cycle_raw else None
+    facts = prose.build_facts(data, profile, spec, wacc, dcf, scenarios, sens, base_drivers, diagnostics, reverse, tr, fwd, ref,
+                              fwd_model, peers, cyc, rating, rdir, ctx)
+    pages = pages_mod.compose(facts)
+    report_date = date.today().strftime("%d %b %Y")
+    return TEMPLATE.render(
+        design_css=design.css(font_base, doc=True), brand=theme.brand_mark(30), brand_small=theme.brand_mark(15), library_href=library_href,
+        d=data, pages=pages, rating=rating, rating_dir=rdir, tr=tr, pt_txt=fmt_ps(tr.target if tr.rated else tr.fair_value, cur),
+        price_date=getattr(data, "asof", None) or report_date, report_date=report_date,
+        fmt_ps=lambda v: fmt_ps(v, cur), spct=spct, pct=pct,
+        default_source=f"Source: SuperAnalyst valuation model; {data.provider}; analyst consensus. Methodology and disclosures on page {len(pages)}.")
