@@ -203,7 +203,7 @@ def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float =
              f"{rev_growth[0]:.1%} → {rev_growth[-1]:.1%} over {H}y",
              f"{'Year 1 follows' if len(explicit) == 1 else 'Years 1–' + str(len(explicit)) + ' follow'} {growth_src}. Growth then decays geometrically "
              f"from {g_start:.1%} to the {term_g_s:.1%} terminal rate as revenue compounds toward "
-             f"{cur}{term_rev/1e9:,.0f}bn — competitive entry and the law of large numbers "
+             f"{(cur + format(term_rev / 1e9, ',.0f') + 'bn') if term_rev >= 1e10 else (cur + format(term_rev / 1e9, ',.2f') + 'bn') if term_rev >= 1e9 else (cur + format(term_rev / 1e6, ',.0f') + 'mn')} — competitive entry and the law of large numbers "
              f"compress incremental growth; no single year's step is ever extrapolated."),
             ("EBIT margin",
              f"{last_margin:.1%} → {margins[0]:.1%} → {margins[-1]:.1%} ({margin_dir})",
@@ -218,7 +218,7 @@ def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float =
              f"funds growth without permanent over- or under-investment."),
             ("Working capital",
              f"{nwc_pct:.1%} of Δrevenue",
-             f"Incremental working capital absorbs {nwc_pct:.1%} of each year's revenue increase "
+             f"Incremental working capital {'absorbs' if nwc_pct > 0 else 'releases'} {abs(nwc_pct):.1%} of each year's revenue increase "
              f"(historical median) — "
              f"{'a cash drag as the business scales' if nwc_pct > 0 else 'a source of cash (negative working-capital model)'}."),
             ("Tax rate",

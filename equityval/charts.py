@@ -343,7 +343,8 @@ def _nice_ticks(lo: float, hi: float, n: int = 4) -> list[float]:
     start = math.floor(lo / step) * step
     ticks, v = [], start
     while v <= hi + step * 0.01:
-        ticks.append(round(v, 10))
+        if v >= lo - step * 0.01:            # never draw a tick label below the plot area
+            ticks.append(round(v, 10))
         v += step
     return ticks
 

@@ -177,7 +177,7 @@ def triangulate(lenses: list[Lens], weights: dict, data: CompanyData, ke: float,
     clamped = False
     if target > t_hi or target < t_lo:
         clamped = True
-        guard.append(f"Target {target:,.2f} fell outside {PLAUSIBLE_TARGET[0]:.1f}x–"
+        guard.append(f"Target {data.currency_symbol}{target:,.2f} fell outside {PLAUSIBLE_TARGET[0]:.1f}x–"
                      f"{PLAUSIBLE_TARGET[1]:.1f}x the price and was limited to the band edge.")
         target = min(max(target, t_lo), t_hi)
     bear = min(max(bear, t_lo * 0.8), target)
@@ -208,7 +208,7 @@ def triangulate(lenses: list[Lens], weights: dict, data: CompanyData, ke: float,
         if abs(divergence) < 0.25:
             pts += 1; why.append("model target is within 25% of the Street")
         elif abs(divergence) > 0.60:
-            pts -= 1; why.append(f"model target is {divergence:+.0%} away from the Street")
+            pts -= 1; why.append(f"model target is {abs(divergence):.0%} {'above' if divergence > 0 else 'below'} the Street, a wide gap")
     if tv_share is not None and tv_share > 0.85:
         pts -= 0.5; why.append(f"terminal value is {tv_share:.0%} of DCF enterprise value")
     if flags:

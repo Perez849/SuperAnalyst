@@ -23,35 +23,64 @@ def ok(v) -> bool:
     return isinstance(v, (int, float)) and math.isfinite(v)
 
 
+def _neg(t: str) -> str:
+    """Typographic minus for negative figures (and no negative zero)."""
+    import re
+    if re.fullmatch(r"-0(\.0+)?(%|x| pp)?", t) or re.fullmatch(r"-0(\.0+)?%?", t.lstrip("+")):
+        return t[1:]
+    return "\u2212" + t[1:] if t.startswith("-") else t
+
+
 def money(v, cur="$", dp=2):
     if not ok(v):
         return "n/a"
     a = abs(v)
     body = (f"{cur}{a/1e12:,.{dp}f}trn" if a >= 1e12 else f"{cur}{a/1e9:,.{dp}f}bn" if a >= 1e9
             else f"{cur}{a/1e6:,.0f}mn" if a >= 1e6 else f"{cur}{a:,.0f}")
-    return f"-{body}" if v < 0 else body
+    return f"\u2212{body}" if v < 0 else body
 
 
 def ps(v, cur="$"):
     if not ok(v):
         return "n/a"
-    return f"-{cur}{abs(v):,.2f}" if v < 0 else f"{cur}{v:,.2f}"
+    return f"\u2212{cur}{abs(v):,.2f}" if v < 0 else f"{cur}{v:,.2f}"
 
 
 def pct(v, dp=1):
-    return "n/a" if not ok(v) else f"{v*100:.{dp}f}%"
+    return "n/a" if not ok(v) else _neg(f"{v*100:.{dp}f}%")
 
 
 def spct(v, dp=0):
-    return "n/a" if not ok(v) else f"{v*100:+.{dp}f}%"
+    return "n/a" if not ok(v) else _neg(f"{v*100:+.{dp}f}%")
 
 
 def xm(v, dp=1):
-    return "n/a" if not ok(v) else f"{v:.{dp}f}x"
+    return "n/a" if not ok(v) else _neg(f"{v:.{dp}f}x")
 
 
 def pp(v, dp=1):
-    return "n/a" if not ok(v) else f"{v:+.{dp}f} pp"
+    return "n/a" if not ok(v) else _neg(f"{v:+.{dp}f} pp")
+
+
+_VOWEL_ACRONYMS = ("EBIT", "EBITDA", "ROIC", "ROE", "ROA", "EV", "FCFF", "FCF", "NTM", "LTM", "EPS", "AFFO", "FFO", "SOXX", "SMH", "MSCI", "NOPAT")
+
+
+def fix_articles(text: str) -> str:
+    """'a 11.3%' -> 'an 11.3%', 'a EBIT' -> 'an EBIT' (generated prose only; HTML tags are skipped)."""
+    import re
+
+    def num_an(m):
+        art, tail = m.group(1), m.group(2)
+        digits = re.sub(r"\D", "", re.split(r"[.]", tail)[0].replace(",", ""))
+        an = (digits.startswith("8") or (digits[:2] in ("11", "18") and (len(digits) == 2 or len(digits) >= 4)))
+        if not an:
+            return m.group(0)
+        return ("An" if art == "A" else "an") + m.group(0)[1:]
+
+    text = re.sub(r"(?<![/\w])([Aa]) ((?:<[^>]+>)*[\u2212+\-$\u20ac\u00a3]?\d[\d,]*(?:\.\d+)?)", num_an, text)
+    acr = "|".join(_VOWEL_ACRONYMS)
+    text = re.sub(rf"(?<![/\w])([Aa]) ((?:<[^>]+>)*(?:{acr})\b)", lambda m: ("An" if m.group(1) == "A" else "an") + " " + m.group(2), text)
+    return text
 
 
 def join(items: Iterable[str], last="and") -> str:
@@ -104,7 +133,7 @@ def margin_word(m) -> str:
         return "thin"
     if m >= 0:
         return "razor-thin"
-    return "negative"
+    return "loss-making"
 
 
 def lev_word(nd_ebitda, net_cash: bool) -> str:
@@ -270,3 +299,23 @@ def build_facts(data, profile, spec, wacc, dcf, scenarios, sens, drivers, diagno
         f.phase, f.phase_en = cyc["phase"], PHASE_EN[cyc["phase"]]
         f.asset_en = clockdata.en(cyc["asset"]) if cyc["asset"] else None
     return f
+
+
+def fix_typography(text: str) -> str:
+    """Typographic minus for negative figures in prose (text nodes only, never inside tags)."""
+    import re
+    parts = re.split(r"(<[^>]*>)", text)
+    for i in range(0, len(parts), 2):
+        parts[i] = re.sub(r"(?<![\w/\u2212.])-(?=\d)", "\u2212", parts[i])
+    return "".join(parts)
+
+
+def g_txt(g, dp=0):
+    """Growth / margin for prose: absurd magnitudes (tiny bases) are capped instead of printed."""
+    if not ok(g):
+        return "n/a"
+    if g > 5:
+        return "above +500%"
+    if g < -5:
+        return "below \u2212500%"
+    return spct(g, dp)

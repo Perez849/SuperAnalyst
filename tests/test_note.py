@@ -93,6 +93,16 @@ def test_note_is_a_fifteen_page_document_with_exhibits_and_no_leaks(mu):
     assert "@page" in html and "print=1" in html
 
 
+@pytest.mark.parametrize("ticker", ["MU", "UEC", "GFI", "SNDK"])
+def test_no_code_or_template_fragments_leak_into_the_text(ticker):
+    import re
+    data, prov = load_snapshot(os.path.join(FIX, f"{ticker}.json"))
+    html = value_data(data, prov, ValuationConfig(reloj_live=False))["html"]
+    text = re.sub(r"<[^>]+>", " ", _visible_text(html))
+    assert not re.search(r"[{}]|\bf\.|\bif \w+\.|\[\[|\bnan\b|\$-\d", text), re.search(r"[{}]|\bf\.|\bif \w+\.|\[\[", text)
+    assert not re.search(r"\ba (8|11|18)\b", text), "article agreement (a 11.3% -> an 11.3%)"
+
+
 def test_note_has_real_prose(mu):
     import re
     html = _visible_text(mu[1]["html"])

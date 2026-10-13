@@ -517,7 +517,7 @@ body.doc{background:#E7DFCB;font-family:var(--sans);-webkit-font-smoothing:antia
 .xt tr.b td{font-weight:700}.xt tr.sub td{color:var(--ink-faint);font-size:7.8px}.xt tr.sub td:first-child{padding-left:9px}
 .xt tr.sec td{font:600 7px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;background:var(--paper-deep);color:var(--ink-soft);padding:3px}
 .xt tr.tot td{border-top:1px solid var(--ink);font-weight:700}
-.xt .fc{background:rgba(62,78,122,.07)}.xt .up{color:var(--rec)}.xt .down,.xt .neg{color:var(--stag)}.xt td.l{text-align:left;font-family:var(--sans);white-space:normal}
+.xt .fc{background:rgba(62,78,122,.07)}.xt .up{color:var(--rec)}.xt .down,.xt .neg{color:var(--stag)}.xt td.l{text-align:left;font-family:var(--sans);white-space:normal}.xt td.w{white-space:normal;word-break:break-word}
 .xt.app{font-size:9.5px}.xt.app td{padding:3.7px 4px}.xt.app td:first-child{font-size:9.5px}.xt.wide{font-size:8.9px}.xt.wide th{font-size:7.4px}.xt.wide td:first-child{font-size:8.9px}
 .xt .tag{font:600 6.8px var(--mono);padding:1px 5px;border-radius:99px;border:1px solid var(--line-strong);letter-spacing:.05em;text-transform:uppercase}
 .xt .tag.ok{color:var(--rec);border-color:rgba(63,107,82,.45);background:rgba(63,107,82,.1)}.xt .tag.med{color:var(--accent-ink);border-color:rgba(169,117,44,.5);background:rgba(169,117,44,.1)}

@@ -77,7 +77,7 @@ def _build_risks(data, profile, dcf, tr, fwd) -> list[str]:
         r.append(f"Elevated leverage (debt/equity {de:.1f}x at market) amplifies equity-value "
                  "sensitivity to the cost of capital.")
     if tr.street and tr.divergence is not None and abs(tr.divergence) > 0.35:
-        r.append(f"Our model-only target is {tr.divergence:+.0%} versus the Street consensus "
+        r.append(f"Our model-only target is {abs(tr.divergence):.0%} {'above' if tr.divergence > 0 else 'below'} the Street consensus "
                  f"({cur}{tr.street.mean:,.2f}); where the model is right the stock has an "
                  "information edge, where it is wrong the Street's inputs deserve more weight.")
     if tr.confidence == "Low":

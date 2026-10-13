@@ -264,7 +264,7 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
         spread = diagnostics["roic_term"] - discount_rate
         level = "Low" if spread > 0.10 else ("Medium" if spread > 0.02 else "High")
         add("Micro", "Competitive erosion", level,
-            f"ROIC\u2212WACC spread = {spread*10000:,.0f}bps",
+            f"Terminal ROIC\u2212WACC spread = {spread*10000:,.0f}bps",
             "Excess returns invite entry: the wider the spread, the bigger the prize for competitors "
             "\u2014 but also the bigger the buffer before growth stops creating value. A thin spread "
             "means small competitive slippage flips growth to value destruction.")
@@ -273,8 +273,8 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
     if reverse and reverse.get("solved"):
         gap = reverse["base_y1_growth"] - reverse["implied_y1_growth"]
         level = "High" if abs(gap) > 0.03 else ("Medium" if abs(gap) > 0.01 else "Low")
-        direction = ("Market expects LESS than our base \u2014 upside on delivery"
-                     if gap > 0 else "Market expects MORE than our base \u2014 priced for execution")
+        direction = ("The market expects less than our base \u2014 upside on delivery"
+                     if gap > 0 else "The market expects more than our base \u2014 priced for execution")
         add("Micro", "Execution vs expectations", level,
             f"Implied y1 growth {pct(reverse['implied_y1_growth'],1)} vs base {pct(reverse['base_y1_growth'],1)}",
             direction + ". The equity reprices on the gap between delivery and what the tape already "

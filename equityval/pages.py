@@ -15,7 +15,7 @@ from . import analysis as A
 from . import charts, charts_side as cs, clockdata
 from . import narrative as N
 from .clockdata import PHASE_EN
-from .prose import money, ok, pct, ps, spct, xm
+from .prose import fix_articles, fix_typography, money, ok, pct, ps, spct, xm
 
 SW = 246                      # side-exhibit drawing width (px)
 
@@ -138,7 +138,7 @@ def stress_rows(data, dcf, drivers, wacc_res):
             if mut:
                 mut(dr)
             v = run_dcf(data, dr, wacc if wacc is not None else dcf.wacc).value_per_share
-            out.append((label, v, v / base - 1 if base else None))
+            out.append((label, v, (v - base) / abs(base) if base else None))
         except Exception:
             pass
 
@@ -148,9 +148,9 @@ def stress_rows(data, dcf, drivers, wacc_res):
     run("Terminal growth +50bps", None, lambda d: setattr(d, "terminal_growth", d.terminal_growth + 0.005))
     run("EBIT margin −300bps", None, lambda d: setattr(d, "ebit_margin", [m - 0.03 for m in d.ebit_margin]))
     run("EBIT margin +300bps", None, lambda d: setattr(d, "ebit_margin", [m + 0.03 for m in d.ebit_margin]))
-    run("Revenue growth −20% (relative)", None, lambda d: setattr(d, "revenue_growth", [g * 0.8 for g in d.revenue_growth]))
-    run("Revenue growth +20% (relative)", None, lambda d: setattr(d, "revenue_growth", [g * 1.2 for g in d.revenue_growth]))
-    run("Capex +5pts of revenue", None, lambda d: setattr(d, "capex_pct", [c + 0.05 for c in d.capex_pct]))
+    run("Revenue growth 20% lower", None, lambda d: setattr(d, "revenue_growth", [g * 0.8 for g in d.revenue_growth]))
+    run("Revenue growth 20% higher", None, lambda d: setattr(d, "revenue_growth", [g * 1.2 for g in d.revenue_growth]))
+    run("Capex +5 points of revenue", None, lambda d: setattr(d, "capex_pct", [c + 0.05 for c in d.capex_pct]))
     return out
 
 
@@ -180,11 +180,11 @@ def tilt_bars(rows, mine, width=SW) -> str:
         mine_ = name in mine
         w = abs(t) / m * half
         bx = cx if t >= 0 else cx - w
-        out.append(f'<text class="t" x="4" y="{yy + 10}" style="font-weight:{700 if mine_ else 500};{"fill:var(--accent-ink)" if mine_ else ""}">{escape(clockdata.en(name)[:20])}</text>')
+        out.append(f'<text class="t" x="4" y="{yy + 10}" style="font-weight:{700 if mine_ else 500};{"fill:var(--accent-ink)" if mine_ else ""}">{escape(clockdata.en(name).replace("Consumer ", "Cons. "))}</text>')
         out.append(f'<rect class="{"wf-up" if t >= 0 else "wf-down"}" x="{bx:.1f}" y="{yy + 3}" width="{max(w, 1):.1f}" height="8" rx="1" style="opacity:{1 if mine_ else .5}"/>')
         tx = (bx + w + 3) if t >= 0 else (bx - 3)
         out.append(f'<text class="v" x="{tx:.1f}" y="{yy + 10}" text-anchor="{"start" if t >= 0 else "end"}">{t:+.1f}</text>')
-    out.append(f'<text class="ax" x="{cx:.1f}" y="{height - 1}" text-anchor="middle">pp/yr vs US market, probability-weighted</text>')
+    out.append(f'<text class="ax" x="{width / 2:.1f}" y="{height - 1}" text-anchor="middle">pp/yr vs US market · weighted by phase probability</text>')
     out.append("</svg>")
     return "".join(out)
 
@@ -264,6 +264,14 @@ def _page(spec: dict, side=None, band=None, source=None, wide=False) -> NS:
     return NS(groups=_groups(spec["main"]), key=spec["key"], nav=spec.get("nav"), cover=spec.get("cover"), kicker=spec.get("kicker"), title=spec.get("title"),
               sub=spec.get("sub"), main=spec["main"], side=side or [], band=band or [], source=source, wide=wide or spec.get("wide", False),
               cols2=spec.get("cols2", False))
+
+
+def _short(v) -> str:
+    """Compact a lens-input value for the narrow side column: drop the em-dash gloss and long parentheticals."""
+    t = str(v).split(" — ")[0].split("  — ")[0]
+    t = re.sub(r"\s*\((?=[^)]{15,})[^)]*\)", "", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 
 
 def _first(v) -> str:
@@ -379,7 +387,7 @@ def compose(f) -> list[NS]:
             ex("famw", "Weight by family of lens", stack_bar([(famlab[k], v) for k, v in fam.items()]) if fam else "", src_model),
             ex("arith", "From fair value to published target", table(None, arith), src_model)]
     for i, l in enumerate(f.used[:3]):
-        side.append(ex(f"lens_{l.key}", f"{l.label}: inputs", table(None, [{"label": escape(k_), "cells": [(escape(str(v_)), "")]} for k_, v_ in l.rows[:8]]), src_model, opt=i >= 1))
+        side.append(ex(f"lens_{l.key}", f"{l.label}: inputs", table(None, [{"label": escape(k_), "cells": [(escape(_short(v_)), "w")]} for k_, v_ in l.rows[:8]]), src_model, opt=i >= 1))
     if tr.confidence_reasons:
         side.append(ex("conf", f"Confidence: {tr.confidence}", '<ul class="chk">' + "".join(f'<li class="u"><i></i>{escape(r_)}</li>' for r_ in tr.confidence_reasons) + "</ul>",
                        "Grade from lens agreement, dispersion, distance to the Street and data-quality flags.", opt=True))
@@ -501,8 +509,8 @@ def compose(f) -> list[NS]:
         side = [ex("wacc", "Cost of capital build", table(None, wrows) + _take(f"Beta: {w.beta_method}."), src_model),
                 ex("drivers", "DCF drivers along the forecast", table([""] + [f"{fc[i].year}E" for i in idx], drows), src_model),
                 ex("fade", "Revenue growth: consensus, then geometric decay", charts.line_chart(yl, [("Revenue growth", gser, "lc-roic")], pct=True, width=SW, height=150), src_model),
-                ex("reinv", "Reinvestment and profitability path", charts.line_chart(yl, [("EBIT mgn", [x.ebit_margin for x in fc], "lc-roic"), ("Capex", [abs(x.capex) / x.revenue for x in fc], "lc-roe"),
-                                                                                              ("FCFF mgn", [x.fcff / x.revenue for x in fc], "lc-wacc")], pct=True, width=SW, height=150), src_model, opt=True)]
+                ex("reinv", "Reinvestment and profitability path", charts.line_chart(yl, [("EBIT margin", [x.ebit_margin for x in fc], "lc-roic"), ("Capex/rev", [abs(x.capex) / x.revenue for x in fc], "lc-roe"),
+                                                                                              ("FCFF/rev", [x.fcff / x.revenue for x in fc], "lc-wacc")], pct=True, width=SW, height=150), src_model, opt=True)]
         band = [ex("fcff", f"Free-cash-flow build · {ft.unit_label}", table([""] + [f"{r_['year']}E" for r_ in cx["fcff_rows"]], [{"label": lab, "cells": [r_[key] for r_ in cx["fcff_rows"]], "cls": cls} for lab, key, cls in cx["fcff_lines"]], cls="wide"), src_model)]
         pages.append(_page(p9, side, band))
 
@@ -596,6 +604,7 @@ def _number(pages):
     def sub(text):
         if not isinstance(text, str):
             return text
+        text = fix_typography(fix_articles(text))
         text = re.sub(r"\[\[ex:([a-z0-9_]+)\]\]", lambda m: f"Exhibit {nums[m.group(1)]}" if m.group(1) in nums else "the exhibit", text)
         return re.sub(r"\[\[pg:([a-z0-9_]+)\]\]", lambda m: str(pnums[m.group(1)]) if m.group(1) in pnums else "—", text)
 
