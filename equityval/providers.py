@@ -190,6 +190,16 @@ class FMPProvider:
 
         raw = {"income": _rows_from_fmp(inc), "balance": _rows_from_fmp(bs),
                "cashflow": _rows_from_fmp(cf)}
+        price_hist = []
+        try:
+            eod = self._raw(f"{self.STABLE}/historical-price-eod/light", symbol=ticker)
+            rows = [(r["date"], float(r["price"])) for r in eod if r.get("date") and r.get("price")]
+            rows.sort()
+            price_hist = rows[-1300::5]            # ~5y, one point per week
+            if rows and (not price_hist or price_hist[-1][0] != rows[-1][0]):
+                price_hist.append(rows[-1])
+        except Exception:
+            price_hist = []
         shares = _f(inc[-1].get("weightedAverageShsOutDil")) or _f(prof.get("mktCap")) / _f(prof.get("price"), 1)
         return CompanyData(
             ticker=ticker.upper(),
@@ -206,6 +216,7 @@ class FMPProvider:
             estimates=est,
             provider="FMP",
             raw_statements=raw,
+            price_history=price_hist,
         )
 
     def peer(self, ticker: str) -> Optional[PeerData]:
@@ -589,6 +600,14 @@ class YFinanceProvider:
         if not mktcap and price and shares:
             mktcap = price * shares
 
+        price_hist = []
+        try:
+            h = self._retry(lambda: t.history(period="5y", interval="1wk"), tries=2, base_delay=2.0)
+            if h is not None and not h.empty:
+                price_hist = [(idx.strftime("%Y-%m-%d"), float(v)) for idx, v in h["Close"].dropna().items()]
+        except Exception:
+            price_hist = []
+
         return CompanyData(
             ticker=ticker.upper(),
             name=info.get("longName") or info.get("shortName") or ticker,
@@ -601,6 +620,7 @@ class YFinanceProvider:
             beta=_f(info.get("beta")) or None,
             dividend_per_share=_f(info.get("dividendRate")),
             years=yfin, estimates=est, provider="yfinance", raw_statements=raw,
+            price_history=price_hist,
         )
 
     def peer(self, ticker: str) -> Optional[PeerData]:

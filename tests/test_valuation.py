@@ -128,5 +128,5 @@ def test_report_renders_without_nan(results):
     for t in ("MU", "UEC"):
         data, prov = load_snapshot(os.path.join(FIX, f"{t}.json"))
         html = value_data(data, prov, ValuationConfig())["html"]
-        assert "<svg class=\"dial\"" in html and "Investment Clock" in html
+        assert "<svg class=\"dial\"" in html and "Reloj de inversión" in html
         assert "$nan" not in html and "+nan" not in html and "nan%" not in html

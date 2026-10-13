@@ -2,7 +2,7 @@
 """Build docs/index.html -- the valuation library, in the Reloj de inversión design.
 
 Scans docs/reports/*.json (one sidecar per generated report) and renders the landing page:
-a hero with the four-phase wheel, a "generate a PDF from here" panel (assets/generate.js),
+a hero with the Reloj's live reading (growth × inflation plane + phase probabilities), a "generate a PDF from here" panel (assets/generate.js),
 one card per report with a mini valuation dial, and a short methodology. Also writes
 docs/assets/superanalyst.css (the shared design sheet, from equityval/design.py).
 
@@ -13,13 +13,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import date
 from html import escape
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from equityval import charts, design, theme  # noqa: E402
+from equityval import charts, clockdata, design, theme  # noqa: E402
 
 LIBRARY_CSS = """
 /* ---------- library page ---------- */
@@ -43,11 +44,9 @@ LIBRARY_CSS = """
 .rpill.down{background:rgba(156,74,60,.1);color:var(--stag);border-color:rgba(156,74,60,.4)}
 .rrow{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-top:1px solid var(--line-soft);font-size:13px}
 .rrow:first-of-type{margin-top:10px}
-.rrow .k{color:var(--ink-soft)} .rrow .mono{color:var(--ink)}
+.rrow .k{color:var(--ink-soft)} .rrow .mono{color:var(--ink)} .rrow .mono.up{color:var(--rec)} .rrow .mono.down{color:var(--stag)}
 .conf-High{color:var(--rec)} .conf-Medium{color:var(--accent-ink)} .conf-Low{color:var(--stag)}
 .rfoot{margin-top:10px;font-size:11.5px;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center;gap:8px}
-.dots i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
-.dot-recovery{background:var(--rec)} .dot-overheat{background:var(--over)} .dot-stagflation{background:var(--stag)} .dot-reflation{background:var(--refl)}
 .rlinks{position:relative;z-index:2;display:flex;gap:10px}
 .rlinks a{font-family:var(--mono);font-size:11px;font-weight:600;text-decoration:none;color:var(--accent-ink);border:1px solid var(--line-strong);border-radius:99px;padding:2px 10px;background:var(--paper)}
 .rlinks a:hover{background:var(--accent);color:var(--paper-raised);border-color:var(--accent)}
@@ -124,10 +123,8 @@ PAGE = """<!DOCTYPE html>
     </dl>
   </div>
   <figure class="plane-card">
-    <div class="plane-top"><h3>Dónde viven en el ciclo</h3><span class="small-cap mono">informes por fase</span></div>
-    <p class="cap" style="margin-bottom:12px">Fase en la que cada sector suele liderar (mapa clásico del <i>investment clock</i>).
-      Los números cuentan los informes cuya fase principal es esa.</p>
-    <div style="max-width:340px;margin:auto">{wheel}</div>
+    <div class="plane-top"><h3>El Reloj de inversión ahora</h3><span class="small-cap mono">{clock_asof}</span></div>
+    {clock_block}
   </figure>
 </div></section>
 
@@ -205,12 +202,12 @@ PAGE = """<!DOCTYPE html>
     document.querySelectorAll('.seg button').forEach(function(o){{o.setAttribute('aria-pressed','false')}});
     c.setAttribute('aria-pressed',on?'true':'false');
     document.querySelectorAll('.rcard').forEach(function(card){{
-      card.style.display=(!on||f==='all'||card.dataset.phase.indexOf(f)>-1||card.dataset.dir===f)?'':'none';}});
+      card.style.display=(!on||f==='all'||card.dataset.tilt===f||card.dataset.dir===f)?'':'none';}});
   }})}});
 </script>
 </body></html>"""
 
-CARD = """<article class="rcard" data-phase="{phases}" data-dir="{dir}">
+CARD = """<article class="rcard" data-tilt="{tiltdir}" data-dir="{dir}">
     <div class="head">
       <div><div class="tk"><a href="reports/{html}">{ticker}</a></div><div class="nm" title="{name}">{name}</div>
         <span class="rpill {dir}">{rating}</span></div>
@@ -220,7 +217,8 @@ CARD = """<article class="rcard" data-phase="{phases}" data-dir="{dir}">
     <div class="rrow"><span class="k">Precio</span><span class="mono">{cur}{price}</span></div>
     <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono {dir}">{ret}</span></div>
     <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">{street} · <span class="conf-{conf}">{conf}</span></span></div>
-    <div class="rfoot"><span class="dots" title="fases del ciclo">{dots}</span><span class="mono">{date}</span><span class="rlinks">{links}</span></div>
+    <div class="rrow"><span class="k" title="Exceso de retorno histórico del sector vs. el mercado EE.UU., ponderado por las probabilidades de fase del Reloj">Sesgo del ciclo</span>{cyc}</div>
+    <div class="rfoot"><span class="mono">{date}</span><span class="rlinks">{links}</span></div>
   </article>"""
 
 
@@ -228,12 +226,31 @@ def rating_dir(rating: str) -> str:
     return {"OVERWEIGHT": "up", "ADD": "up", "REDUCE": "down", "UNDERWEIGHT": "down"}.get(rating, "flat")
 
 
-def wheel_with_counts(counts: dict) -> str:
-    svg = charts.phase_wheel("", None, lang="es").replace(" dim", " lit2")
-    pos = {"recovery": (46, 66), "overheat": (314, 66), "stagflation": (314, 316), "reflation": (46, 316)}
-    extra = "".join(f'<text class="count" x="{x}" y="{y}" text-anchor="middle">{counts.get(ph, 0)}</text>'
-                    for ph, (x, y) in pos.items())
-    return svg.replace("</svg>", extra + "</svg>")
+def clock_block(clock: dict | None) -> tuple[str, str]:
+    """Hero figure body + as-of label, straight from the Reloj de inversión data."""
+    if not clock:
+        return ('<p class="cap">Sin datos del Reloj (modo offline y sin snapshot).</p>', "")
+    cur = clock["current"]
+    phase, probs = cur["phase"], cur["probs"]
+    trail = [(h["g"], h["i"], h["p"], h["d"]) for h in clock.get("history", [])[-36:]]
+    plane = charts.phase_plane(trail, {"phase": phase, "growth": cur["growth"], "inflation": cur["inflation"],
+                                       "sigma_g": cur.get("sigma_g"), "sigma_i": cur.get("sigma_i")}, probs, "es", 520, 380)
+    color = clockdata.PHASE_COLOR[phase]
+    head = (f'<p class="cap" style="margin:0 0 8px"><b style="color:{color}">{escape(phase)}</b> · señal '
+            f'{escape(str(cur.get("call_strength") or "n/d").lower())} · recesión a 12 m {((cur.get("recession") or {}).get("prob_12m") or 0):.0%}. '
+            f'Cada informe lee este mismo ciclo y lo cruza con lo que su sector ha pagado en cada fase.</p>')
+    link = (f'<p class="cap" style="margin:8px 0 0"><a href="{clockdata.SITE_URL}" target="_blank" rel="noopener">Abrir el Reloj de inversión ↗</a></p>')
+    return head + f'<div style="max-width:460px;margin:auto">{plane}</div>' + charts.prob_bars(probs, phase, "es") + link, f'datos {cur["date"]}'
+
+
+def cycle_cell(c: dict | None) -> tuple[str, str]:
+    """(html for the card row value, filter bucket)."""
+    if not c or c.get("tilt") is None:
+        return '<span class="mono">n/d</span>', "none"
+    t = c["tilt"]
+    cls = "up" if t > 0.5 else ("down" if t < -0.5 else "flat")
+    bucket = "tail" if t > 0.5 else ("head" if t < -0.5 else "neutral")
+    return f'<span class="mono {cls}">{t:+.1f} pp/año</span>', bucket
 
 
 def main():
@@ -255,7 +272,6 @@ def main():
             pass
     metas.sort(key=lambda m: (m.get("generated_at") or m.get("date", "")), reverse=True)
 
-    counts: dict = {}
     cards, positive, high, nr = [], 0, 0, 0
     for m in metas:
         up = m.get("upside", 0) or 0
@@ -266,9 +282,7 @@ def main():
         positive += rdir == "up"
         high += m.get("confidence") == "High"
         nr += not rated
-        phases = m.get("phases") or []
-        if phases:
-            counts[phases[0]] = counts.get(phases[0], 0) + 1
+        cyc, bucket = cycle_cell(m.get("cycle"))
         links = [f'<a href="reports/{m["pdf"]}" download>PDF</a>' if m.get("pdf")
                  else f'<a href="reports/{m["html"]}?print=1">PDF</a>']
         if m.get("xlsx"):
@@ -282,8 +296,7 @@ def main():
             target=f'{value:,.2f}' + ("" if rated else "*"), price=f'{m.get("price", 0):,.2f}',
             ret=(f"{ret*100:+.0f}%" if rated else "n/d"),
             street=(f"{cur}{street:,.2f}" if street else "n/d"), conf=m.get("confidence", "Medium"),
-            phases=" ".join(phases),
-            dots="".join(f'<i class="dot-{p}" title="{theme.PHASE_NAMES_ES[p][0]}"></i>' for p in phases),
+            cyc=cyc, tiltdir=bucket,
             gauge=charts.mini_gauge(ret, rdir, rated, size=84), date=m.get("date", ""),
             links="".join(links)))
 
@@ -297,15 +310,16 @@ def main():
         chips = ('<div class="seg"><button type="button" data-f="all" aria-pressed="false">Todos</button>'
                  '<button type="button" data-f="up" aria-pressed="false">Positivos</button>'
                  '<button type="button" data-f="down" aria-pressed="false">Negativos</button>'
-                 + "".join(f'<button type="button" data-f="{p}" aria-pressed="false">{theme.PHASE_NAMES_ES[p][0]}</button>'
-                           for p in theme.PHASE_ORDER) + "</div>")
+                 '<button type="button" data-f="tail" aria-pressed="false">Ciclo a favor</button>'
+                 '<button type="button" data-f="head" aria-pressed="false">Ciclo en contra</button></div>')
 
+    cb, casof = clock_block(clockdata.load(live=not os.environ.get('EQUITYVAL_OFFLINE')))
     css = design.css("fonts/") + LIBRARY_CSS
     (docs / "assets" / "superanalyst.css").write_text(css, encoding="utf-8")
     ver = date.today().strftime("%Y%m%d") + str(len(css) % 997)
     html = PAGE.format(
         ver=ver, brand=theme.brand_mark(30), count=len(metas), updated=date.today().isoformat(),
-        positive=positive, high=high, nr=nr, wheel=wheel_with_counts(counts), chips=chips, body=body)
+        positive=positive, high=high, nr=nr, clock_block=cb, clock_asof=casof, chips=chips, body=body)
     out = docs / "index.html"
     out.write_text(html, encoding="utf-8")
     print(f"Wrote {out} with {len(metas)} report(s)")

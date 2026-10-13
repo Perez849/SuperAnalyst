@@ -16,12 +16,19 @@
   "confidence": "High",
   "street": 357.81,
   "street_upside": 0.4633,
-  "phases": [
-    "stagflation",
-    "reflation"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Utilities",
+    "tilt": 0.0,
+    "edge_now": 0.0,
+    "playbook_weight": 31.8,
+    "source": "snapshot"
+  },
   "date": "2026-07-08",
-  "generated_at": "2026-10-13T10:02:53Z",
+  "generated_at": "2026-10-13T10:55:43Z",
   "html": "CEG.html",
   "pdf": "CEG.pdf",
   "xlsx": "CEG.xlsx"

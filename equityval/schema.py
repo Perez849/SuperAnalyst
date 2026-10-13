@@ -94,6 +94,8 @@ class CompanyData:
     provider: str = "unknown"
     # full reported statements: {'income'|'balance'|'cashflow': [(label, {year: value}), ...]}
     raw_statements: dict = field(default_factory=dict)
+    # weekly closes, oldest -> newest: [(iso_date, close)]. Optional: powers the price/technicals chart.
+    price_history: list = field(default_factory=list)
 
     @property
     def latest(self) -> YearFinancials:

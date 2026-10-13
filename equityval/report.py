@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from jinja2 import Template
-
-from . import charts, design, theme
+from . import charts, design, notectx, theme
+from .note_template import TEMPLATE
 
 
 def fmt_money(v, cur="$"):
@@ -396,280 +395,6 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
 
 
 
-TEMPLATE = Template(r"""<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ d.ticker }} — Equity Research · SuperAnalyst</title>
-<style>{{ design_css|safe }}
-.hero-tiles{display:none}
-.family-w{font-family:var(--mono);font-size:11px;color:rgba(251,249,243,.5)}
-.st{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(217,185,120,.35);border-radius:99px;padding:0 7px;margin-left:6px}
-.st.bad{color:#E3A596;border-color:rgba(227,165,150,.4)}
-.buy-item.off .nm{text-decoration:line-through;color:rgba(251,249,243,.45)}
-</style></head><body>
-{%- macro head(eyebrow, title, lede=None) -%}
-<div class="section-head"><div class="eyebrow">{{ eyebrow }}</div><h2>{{ title }}</h2>{% if lede %}<p class="cap">{{ lede }}</p>{% endif %}</div>
-{%- endmacro -%}
-
-<header class="top"><div class="wrap top-inner">
-  <a class="brand" href="{{ library_href or '#top' }}">{{ brand|safe }}<span><span class="brand-word">SuperAnalyst</span><br><span class="brand-tag">VALUATION · LENSES · EVIDENCE</span></span></a>
-  <nav class="top-nav"><a href="#verdict">Verdict</a><a href="#lenses">Lenses</a><a href="#quality">Earnings quality</a>{% if dcf %}<a href="#dcf">DCF</a>{% endif %}<a href="#risks">Risks</a></nav>
-  <div class="top-actions">{% if library_href %}<a class="ghost" href="{{ library_href }}">← Library</a>{% endif %}<button class="pdf-btn" type="button" onclick="window.print()">⬇ Save as PDF</button></div>
-</div></header>
-
-<section class="hero" id="top"><div class="wrap hero-grid">
-  <div>
-    <div class="eyebrow hero-eyebrow">Independent valuation · {{ d.sector }}{% if d.industry %} · {{ d.industry }}{% endif %}</div>
-    <h1 class="phase-name">{{ d.name|e }} <span class="tk">{{ d.ticker }}</span></h1>
-    <p class="phase-tie {{ rating_dir }}">{{ rating }}{% if tr.rated %} · 12M target {{ fmt_ps(tr.target) }} ({{ spct(tr.upside,0) }}){% else %} · indicative value {{ fmt_ps(tr.fair_value) }}{% endif %}</p>
-    <p class="phase-window">{{ report_date }} · 12-month horizon · {{ spec.label }} · confidence {{ tr.confidence }}</p>
-    <p class="phase-why">{{ thesis[0]|safe }}</p>
-    <div class="conf-block">
-      {% for l in tr.lenses %}{% if l.eff_weight > 0 %}
-      <div class="conf-row{% if loop.first %} lead{% endif %}"><span class="nm">{{ l.label }}</span>
-        <span class="conf-bar"><i class="{{ 'int' if l.family=='intrinsic' else ('sec' if l.family=='sector' else 'rel') }}" style="width:{{ (l.eff_weight*100)|round|int }}%"></i></span>
-        <span class="conf-val">{{ pct(l.eff_weight,0) }}</span></div>
-      {% endif %}{% endfor %}
-    </div>
-    <p class="conf-note">Lens weights after guardrails. {{ tr.confidence_reasons|join('; ') }}.</p>
-  </div>
-  <figure class="plane-card">
-    <div class="plane-top"><h3>Expected return · 12 months</h3><span class="small-cap mono">needle = total return</span></div>
-    <p class="cap" style="margin-bottom:10px">The arc is the bear–bull range of the target; the marker <b>S</b> is the Street consensus.</p>
-    {{ clock_svg|safe }}
-  </figure>
-</div></section>
-
-<div class="wrap"><dl class="outlook">
-  <div class="item"><dt>Price</dt><dd>{{ fmt_ps(d.price) }}</dd><small>Ke {{ pct(tr.ke,2) }} · {{ d.provider }}</small></div>
-  <div class="item"><dt>Fair value today</dt><dd>{{ fmt_ps(tr.fair_value) }}</dd><small>{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</small></div>
-  {% if tr.rated %}<div class="item"><dt>12M price target</dt><dd>{{ fmt_ps(tr.target) }}</dd><small>bear {{ fmt_ps(tr.bear) }} · bull {{ fmt_ps(tr.bull) }}</small></div>
-  <div class="item"><dt>Expected total return</dt><dd class="{{ rating_dir }}">{{ spct(tr.total_return,0) }}</dd><small>price {{ spct(tr.upside,0) }}{% if tr.dps %} + yield {{ pct(tr.dps/d.price,1) }}{% endif %}</small></div>
-  {% else %}<div class="item"><dt>Rating</dt><dd>NOT RATED</dd><small>{{ tr.rating_note }}</small></div>{% endif %}
-  <div class="item"><dt>Street consensus</dt>{% if tr.street %}<dd>{{ fmt_ps(tr.street.mean) }}</dd><small>{{ spct(tr.street.upside,0) }}{% if tr.street.n %} · {{ tr.street.n }} analysts{% endif %}</small>{% else %}<dd class="muted">n/a</dd><small>no consensus available</small>{% endif %}</div>
-</dl></div>
-
-<div class="rule-wrap" style="margin-top:34px"><hr class="rule"></div>
-
-<section class="section tight" id="thesis"><div class="wrap cols">
-  <div>
-    {{ head('Investment thesis', 'Why this number') }}
-    <div class="lede" style="max-width:none">{% for p in thesis[1:] %}<p style="margin-bottom:14px;font-size:{{ '17px' if loop.first else '15px' }}">{{ p|safe }}</p>{% endfor %}</div>
-    <p class="note">{{ spec.rationale }}</p>
-  </div>
-  <aside class="sidebar" style="margin-top:62px">
-    <div class="sidetitle">Key data</div>
-    {% for k,v in key_data %}<div class="kv"><span class="k">{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
-  </aside>
-</div></section>
-
-<section class="section" id="verdict"><div class="wrap"><div class="buy"><div class="buy-inner">
-  <div class="eyebrow">The verdict</div>
-  <h2>How the 12-month target is built</h2>
-  <p class="lede">Each lens answers <i>what is a share worth?</i> independently. They are weighted by what fits the
-     business, filtered by plausibility guardrails, rolled forward at the cost of equity and — where it exists —
-     lightly anchored to the Street.</p>
-  <div class="buy-cols">
-  {% for fam in families %}
-    <div class="buy-col"><h4><span>{{ fam.title }}</span><span class="family-w">{{ pct(fam.weight,0) }} of target</span></h4>
-    {% for l in fam.lenses %}
-      <div class="buy-item{% if l.status=='excluded' %} off{% endif %}"><div><span class="nm">{{ l.label }}</span>
-        {% if l.status=='excluded' %}<span class="st bad">excluded</span>{% elif l.status=='winsorized' %}<span class="st bad">winsorised</span>{% elif l.status_note %}<span class="st">down-weighted</span>{% endif %}
-        <span class="tickers"><span class="tick">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}</span></span></div>
-        <div class="wt">{{ fmt_ps(l.value) }}<br><span class="family-w">{{ pct(l.eff_weight,0) }}</span></div></div>
-    {% endfor %}</div>
-  {% endfor %}
-  </div>
-  <div class="total">
-    <div><span class="k">Fair value today</span><div class="v">{{ fmt_ps(tr.fair_value) }}</div></div>
-    <div style="text-align:right"><span class="k">{{ 'Published 12-month target' if tr.rated else 'Not rated — indicative only' }}</span>
-      <div class="v">{{ fmt_ps(tr.target if tr.rated else tr.fair_value) }}{% if tr.rated %}<small class="{{ rating_dir }}">{{ spct(tr.upside,0) }}</small>{% endif %}</div></div>
-  </div>
-  <p class="buy-foot"><b>The arithmetic.</b> {{ fmt_ps(tr.fair_value) }} × (1 + {{ pct(tr.ke,2) }}){% if tr.dps %} − {{ fmt_ps(tr.dps) }} dividends{% endif %}
-    = model target <b>{{ fmt_ps(tr.model_target) }}</b>{% if tr.street %}; Street mean {{ fmt_ps(tr.street.mean) }}
-    {% if tr.street_weight>0 %}at {{ pct(tr.street_weight,0) }} weight{% else %}shown for reference (weight 0){% endif %}{% endif %}
-    → published <b>{{ fmt_ps(tr.target) }}</b>.</p>
-</div></div></div></section>
-
-<section class="section tight"><div class="wrap">
-  {{ head('Exhibit 1', 'Value per share by lens, against price, the Street and our target') }}
-  <div class="card" style="padding:18px 20px">{{ ff_svg|safe }}</div>
-  <div class="two" style="margin-top:22px">
-    <div><h3 style="font-size:19px;margin-bottom:8px">Confidence: {{ tr.confidence }}</h3>
-      <ul>{% for r in tr.confidence_reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
-    <div><h3 style="font-size:19px;margin-bottom:8px">Guardrails &amp; disclosures</h3>
-      {% for g in tr.guardrails %}<div class="guard">{{ g }}</div>{% else %}<p class="note">No guardrail intervened: every lens landed in the plausible band and no Street anchor was applied.</p>{% endfor %}
-      {% for f in fwd.flags %}<div class="guard">{{ f }}</div>{% endfor %}</div>
-  </div>
-</div></section>
-
-<section class="section tight" id="lenses"><div class="wrap">
-  {{ head('Por dentro · Inside', 'The lenses in detail', 'Relative lenses apply a target multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits the business. Every input is shown so any number can be challenged.') }}
-  <div class="lenses">
-  {% for l in tr.lenses %}
-    <article class="lens"><header><h4>{{ l.label }}<span class="fam">{{ l.family }}</span></h4>
-      <span class="tag {{ 'warn' if l.status=='excluded' else ('med' if (l.status!='ok' or l.status_note) else 'ok') }}">{{ 'excluded' if l.status=='excluded' else ('adjusted' if (l.status!='ok' or l.status_note) else pct(l.eff_weight,0) + ' weight') }}</span></header>
-      <div class="body"><div class="big mono" style="font-family:var(--serif)">{{ fmt_ps(l.value) }}</div>
-        <div class="rng">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}{% if l.status_note %} · {{ l.status_note }}{% endif %}</div>
-        <table><tbody>{% for k,v in l.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}</tbody></table>
-        <p class="nt">{{ l.note }}</p></div></article>
-  {% endfor %}
-  </div>
-</div></section>
-
-<section class="section tight" id="quality"><div class="wrap">
-  {{ head('Calidad de beneficios · Earnings quality', 'Are the earnings the market is paying for durable?') }}
-  <div class="two">
-    <div class="tblwrap"><table><tbody>
-        <tr><td>Trailing EPS</td><td class="mono">{{ fmt_ps(fwd.eps_ltm) }}</td></tr>
-        <tr><td>Consensus EPS FY{{ fwd.fy1_year }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy1) }}</td></tr>
-        <tr><td>Consensus EPS FY{{ fwd.fy1_year+1 }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy2) }}</td></tr>
-        <tr><td>NTM EPS used</td><td class="mono"><b>{{ fmt_ps(fwd.eps_ntm) }}</b></td></tr>
-        <tr><td>Through-cycle (historical average) EPS</td><td class="mono">{{ fmt_ps(fwd.cycle.norm_eps) }}</td></tr>
-        <tr><td>Forward ÷ through-cycle</td><td class="mono">{{ ('%.1fx'|format(fwd.cycle.peak_ratio)) if fwd.cycle.peak_ratio else '—' }}</td></tr>
-        <tr><td>Durable EPS growth used</td><td class="mono">{{ pct(fwd.growth,1) }}</td></tr>
-        <tr><td>Earnings-durability factor on multiples</td><td class="mono">×{{ '%.2f'|format(fwd.cycle.durability) }}</td></tr>
-        <tr><td>Basis</td><td>{{ fwd.basis }}</td></tr>
-    </tbody></table></div>
-    <div>
-      <p class="lede" style="font-size:16px"><b>{{ 'Cyclical or in an earnings inflection.' if fwd.cycle.is_cyclical else 'No cyclicality flags.' }}</b>
-         {% if fwd.cycle.reasons %}{{ fwd.cycle.reasons|join('; ') }}.{% else %}Revenue and margins show no peak-to-trough pattern in the reported history, so forward earnings are capitalised at the full target multiple.{% endif %}</p>
-      <p class="note">Growth source: {{ fwd.growth_src }}. Multiples price <i>durable</i> growth, so a one-year recovery step is never extrapolated, and when forward EPS is far above what the business has historically earned the target multiple is scaled down — the market pays less for peak earnings.</p>
-    </div>
-  </div>
-</div></section>
-
-<section class="section tight" id="clock"><div class="wrap">
-  {{ head('Reloj de inversión · Investment Clock', 'Where it sits on the cycle') }}
-  <div class="two" style="align-items:center">
-    <div style="max-width:320px">{{ wheel_svg|safe }}</div>
-    <div>
-      <p class="lede" style="font-size:16px"><b>{{ phase_primary_name }}</b>{% if phase_secondary_name %} and <b>{{ phase_secondary_name }}</b>{% endif %}
-         are the phases in which {{ d.sector or 'this sector' }} has historically led, on the classic Merrill Lynch Investment Clock sector map
-         (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
-      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company fundamentals and consensus,
-         not macro data. Use it to ask whether the thesis above needs the cycle to cooperate. The live phase reading lives in the Reloj de inversión project.</p>
-    </div>
-  </div>
-</div></section>
-
-{% if finsum %}
-<section class="section tight"><div class="wrap">
-  {{ head('Financial summary', 'Multiples at the current price') }}
-  <div class="tblwrap"><table><thead><tr><th>{{ d.currency_symbol }}, per share where noted</th>
-    {% for c in finsum.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
-  {% for label, vals in finsum.rows.items() %}
-    <tr><td{% if label in ['growth'] %} style="padding-left:24px" class="muted"{% endif %}>{{ label }}</td>
-      {% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
-  {% endfor %}</tbody></table></div>
-  <p class="note">{{ finsum.note }}</p>
-</div></section>
-{% endif %}
-
-{% if model_rows %}
-<section class="section tight"><div class="wrap">
-  {{ head('Modelo', 'Historicals and projected P&L') }}
-  <div class="tblwrap"><table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
-    <th>Net income</th><th>EPS</th></tr></thead><tbody>
-  {% for r in model_rows %}{% if r.hist %}
-    <tr class="hist"><td class="mono">{{ r.year }}A</td>
-    <td class="mono">{{ fmt_money(r.revenue) }}</td><td class="mono">{{ spct(r.growth,1) }}</td>
-    <td class="mono">{{ fmt_money(r.ebit) }}</td><td class="mono">{{ pct(r.margin,1) }}</td>
-    <td class="mono">{{ fmt_money(r.nopat) }}</td><td class="mono">{{ fmt_ps(r.eps) if r.eps else '—' }}</td></tr>
-  {% endif %}{% endfor %}
-  {% if fwd_model %}
-    <tr class="divider"><td colspan="7"></td></tr>
-    {% for f in fwd_model.years %}
-    <tr><td class="mono">{{ f.year }}E</td>
-    <td class="mono">{{ fmt_money(f.revenue) }}{% if f.revenue_src=='Analyst' %} <span class="src">A</span>{% endif %}</td>
-    <td class="mono">{{ spct(f.revenue_growth,1) }}</td>
-    <td class="mono">{{ fmt_money(f.ebit) }}</td><td class="mono">{{ pct(f.ebit_margin,1) }}</td>
-    <td class="mono">{{ fmt_money(f.net_income) }}</td>
-    <td class="mono">{{ fmt_ps(f.eps) }}{% if f.eps_src=='Analyst' %} <span class="src">A</span>{% endif %}</td></tr>
-    {% endfor %}
-  {% endif %}
-  </tbody></table></div>
-  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with flat interest and the normalised tax rate.</p>
-</div></section>
-{% endif %}
-
-{% if dcf %}
-<section class="section tight" id="dcf"><div class="wrap">
-  {{ head('DCF', 'Cross-check — drivers and sensitivity') }}
-  <div class="tblwrap"><table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
-  {% for drv, path, why in assumptions %}
-    <tr><td><b>{{ drv }}</b></td><td class="mono" style="white-space:nowrap">{{ path }}</td><td style="text-align:left;font-size:12.5px;line-height:1.5">{{ why }}</td></tr>
-  {% endfor %}</tbody></table></div>
-  <div class="three" style="margin-top:18px">
-    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">Revenue &amp; FCFF</div>{{ proj_svg|safe }}</div>
-    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EBIT margin path</div>{{ margin_svg|safe }}</div>
-    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EV → equity bridge</div>{{ bridge_svg|safe }}</div>
-  </div>
-  {% if sens_html %}
-  <div class="two" style="margin-top:22px">
-    <div class="sens-wrap"><div class="exh" style="margin-top:0">DCF value per share · WACC × terminal growth (vs. price)</div>{{ sens_html|safe }}
-      <p class="note">Shaded against the current price: green = above, terracotta = below. Outlined cell = base case.</p></div>
-    <div>
-      {% if returns_comment %}<p class="lede" style="font-size:15px">{{ returns_comment|safe }}</p>{% endif %}
-      {% if diagnostics and diagnostics.flags %}<h3 style="font-size:17px;margin:16px 0 6px">Model diagnostics</h3>
-      <div class="tblwrap"><table><tbody>{% for k, v, st in diagnostics.flags %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td>
-        <td><span class="tag {{ 'ok' if st=='ok' else 'warn' }}">{{ st }}</span></td></tr>{% endfor %}</tbody></table></div>{% endif %}
-    </div>
-  </div>
-  {% endif %}
-</div></section>
-{% endif %}
-
-{% if ratios %}
-<section class="section tight"><div class="wrap">
-  {{ head('Ratios', 'Leverage, coverage and returns') }}
-  <div class="tblwrap"><table><thead><tr><th>Metric</th>{% for c in ratios.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
-  {% for label, vals in ratios.rows %}
-    <tr><td>{{ label }}</td>{% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
-  {% endfor %}</tbody></table></div>
-</div></section>
-{% endif %}
-
-{% if factors %}
-<section class="section tight"><div class="wrap">
-  {{ head('Factores', 'What moves this stock') }}
-  <div class="tblwrap"><table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
-    <th style="width:9%">Exposure</th><th style="width:24%;text-align:left">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
-  {% for f in factors %}
-    <tr><td>{{ f.cat }}</td><td><b>{{ f.factor }}</b></td>
-    <td><span class="tag {{ 'high' if f.level=='High' else ('med' if f.level=='Medium' else 'low') }}">{{ f.level }}</span></td>
-    <td class="mono" style="text-align:left;font-size:11.5px">{{ f.evidence }}</td>
-    <td style="text-align:left;font-size:12.5px;line-height:1.5">{{ f.why }}</td></tr>
-  {% endfor %}</tbody></table></div>
-</div></section>
-{% endif %}
-
-{% if catalysts %}
-<section class="section tight"><div class="wrap">
-  {{ head('Catalizadores', 'What each lever is worth') }}
-  <ul>{% for c in catalysts %}<li>{{ c|safe }}</li>{% endfor %}</ul>
-</div></section>
-{% endif %}
-
-<section class="section tight" id="risks"><div class="wrap">
-  {{ head('Riesgos', 'Key risks') }}
-  <ul>{% for r in risks %}<li>{{ r }}</li>{% endfor %}</ul>
-</div></section>
-
-<div class="foot-bar"><div class="wrap">
-  <p class="disclaimer"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
-    public data ({{ d.provider }}). {{ d.ticker }} was classified as <b>{{ spec.label }}</b>. The 12-month price target
-    triangulates several lenses — target multiples on consensus forward earnings (peer/sector-anchored and adjusted for
-    durable growth, leverage and earnings durability), a 10-year DCF with decaying growth and mean-reverting margins, and
-    sector-specific models — weights them by profile, applies plausibility guardrails, rolls the result forward at the cost
-    of equity net of dividends, and lightly anchors it to Street consensus when available. Reference multiples are
-    long-run developed-market medians; live peer medians replace them when fetched. Forward numbers come from analyst
-    consensus where available and from reported figures otherwise; they are not a substitute for fundamental judgement.
-    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</p>
-</div></div>
-<script>if(location.search.indexOf('print=1')>-1){window.addEventListener('load',function(){setTimeout(function(){window.print()},400)})}</script>
-</body></html>""")
-
-
 def _families(tr):
     """Group lenses for the dark verdict block: relative / intrinsic / sector."""
     titles = {"relative": "Relative \u00b7 multiples", "intrinsic": "Intrinsic \u00b7 cash flows",
@@ -702,7 +427,7 @@ def _football_rows(tr, data):
 def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenarios,
                  sens, comps, base_drivers, diagnostics, reverse, target, upside, blend, risks,
                  tr, fwd, ref, fwd_model=None, peers=None, library_href=None,
-                 font_base="../assets/fonts/"):
+                 font_base="../assets/fonts/", cycle_raw=None):
     cur = data.currency_symbol
     price = data.price
     rating, rdir = derive_rating(tr.total_return, tr.rated)
@@ -710,34 +435,12 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
     bear_ret = tr.bear / price - 1 + yld
     bull_ret = tr.bull / price - 1 + yld
     street_ret = (tr.street.mean / price - 1 + yld) if tr.street else None
-
     clock = charts.valuation_clock(
         tr.total_return, bear_ret, bull_ret, street_ret, rating, rdir,
         fmt_ps(tr.target, cur) if tr.rated else "n/a", fmt_ps(price, cur), tr.rated, tr.confidence)
-    ph1, ph2 = theme.phases_for(data.sector, profile.value)
-    wheel = charts.phase_wheel(ph1, ph2)
-    ff = charts.football_field(_football_rows(tr, data), price, tr.target if tr.rated else None, cur)
 
-    thesis = build_thesis(data, spec, tr, fwd, dcf, reverse, rating)
-    assumptions = base_drivers.rationale if base_drivers else None
-
-    # historical + forecast model rows (DCF base case)
-    model_rows = []
-    if dcf and base_drivers:
-        tax = base_drivers.tax_rate
-        hist = data.years[-4:] if len(data.years) >= 4 else data.years
-        prev = None
-        for idx, y in enumerate(hist):
-            eff = y.effective_tax_rate
-            eff = eff if (eff is not None and 0 <= eff <= 0.6) else tax
-            nopat = y.ebit * (1 - eff)
-            fcff = nopat + y.depreciation_amort - y.capex - y.change_in_nwc
-            growth = (y.revenue / prev.revenue - 1) if prev and prev.revenue else None
-            model_rows.append({"year": y.year, "hist": True, "revenue": y.revenue,
-                               "growth": growth, "ebit": y.ebit, "margin": y.ebit_margin,
-                               "nopat": y.net_income, "eps": y.eps_diluted, "fcff": fcff,
-                               "conv": (fcff / nopat if nopat else None), "last_hist": idx == len(hist) - 1})
-            prev = y
+    extras = notectx.build(data, profile, spec, wacc, dcf, scenarios, sens, base_drivers, diagnostics, reverse,
+                           tr, fwd, ref, fwd_model, peers, cycle_raw, _football_rows(tr, data))
 
     returns_comment = ""
     if diagnostics:
@@ -745,45 +448,34 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
         if rt is not None:
             spread = (rt - wc) * 10000
             if rt > wc:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital versus a <b>{pct(wc,1)}</b> "
-                    f"cost of capital — a positive spread of <b>{spread:.0f}bps</b>, so growth creates value. "
-                    f"Self-funding growth of {pct(diagnostics.get('fundamental_g'),1)} (reinvestment "
-                    f"{pct(diagnostics.get('reinvest_rate'),0)} × ROIC) frames how much of the terminal growth is "
-                    f"organically financed rather than assumed.")
+                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital versus a <b>{pct(wc,1)}</b> cost of capital "
+                    f"\u2014 a positive spread of <b>{spread:.0f}bps</b>, so growth creates value. Self-funding growth of "
+                    f"{pct(diagnostics.get('fundamental_g'),1)} (reinvestment {pct(diagnostics.get('reinvest_rate'),0)} \u00d7 ROIC) "
+                    f"frames how much of the terminal growth is organically financed rather than assumed.")
             else:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital against a <b>{pct(wc,1)}</b> cost of "
-                    f"capital — a negative spread of <b>{abs(spread):.0f}bps</b>. Growth here <b>destroys</b> value, "
-                    f"so terminal assumptions deserve scrutiny.")
-
-    key_data = build_key_data(data, dcf, base_drivers)
-    finsum = build_finsum(data, dcf, base_drivers)
-    ratios = build_ratios(data, base_drivers)
-    catalysts = build_catalysts(data, dcf, base_drivers, sens, wacc)
-    factors = build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate)
+                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital against a <b>{pct(wc,1)}</b> cost of capital "
+                    f"\u2014 a negative spread of <b>{abs(spread):.0f}bps</b>. Growth here <b>destroys</b> value, so terminal "
+                    f"assumptions deserve scrutiny.")
 
     kw = dict(
         design_css=design.css(font_base), brand=theme.brand_mark(30), library_href=library_href,
-        families=_families(tr),
-        key_data=key_data, finsum=finsum, ratios=ratios, catalysts=catalysts, factors=factors,
-        fwd_model=fwd_model, d=data, spec=spec, report_date=date.today().strftime("%d %b %Y"),
-        rating=rating, rating_dir=rdir, tr=tr, fwd=fwd, thesis=thesis, discount_rate=discount_rate,
-        model_rows=model_rows, risks=risks, dcf=dcf, assumptions=assumptions,
-        diagnostics=diagnostics, returns_comment=returns_comment,
-        clock_svg=clock, wheel_svg=wheel, ff_svg=ff,
-        phase_primary_name=theme.PHASE_NAMES[ph1][0],
-        phase_secondary_name=theme.PHASE_NAMES[ph2][0] if ph2 else "",
-        fmt_money=lambda v: fmt_money(v, cur), fmt_ps=lambda v: fmt_ps(v, cur),
-        pct=pct, spct=spct, sens_html="", proj_svg="", margin_svg="", bridge_svg="",
+        d=data, spec=spec, ref=ref, report_date=date.today().strftime("%d %b %Y"),
+        rating=rating, rating_dir=rdir, tr=tr, fwd=fwd, families=_families(tr), clock_svg=clock,
+        thesis=build_thesis(data, spec, tr, fwd, dcf, reverse, rating), risks=risks, dcf=dcf,
+        key_data=build_key_data(data, dcf, base_drivers), finsum=build_finsum(data, dcf, base_drivers),
+        catalysts=build_catalysts(data, dcf, base_drivers, sens, wacc),
+        factors=build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate),
+        assumptions=base_drivers.rationale if base_drivers else None, diagnostics=diagnostics,
+        returns_comment=returns_comment, sens_html="", proj_svg="", margin_svg="", evbridge_svg="",
+        fmt_ps=lambda v: fmt_ps(v, cur), pct=pct, spct=spct,
     )
+    kw.update(extras)
     if dcf:
         hist = data.years[-4:] if len(data.years) >= 4 else data.years
-        kw["margin_svg"] = charts.margin_lines(
-            [y.year for y in hist], [y.ebit_margin or 0 for y in hist],
-            [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast])
-        kw["proj_svg"] = charts.projection(
-            [f.year for f in dcf.forecast], [f.revenue for f in dcf.forecast],
-            [f.fcff for f in dcf.forecast], cur)
-        kw["bridge_svg"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt, dcf.minority,
-                                            dcf.equity_value, cur)
+        kw["margin_svg"] = charts.margin_lines([y.year for y in hist], [y.ebit_margin or 0 for y in hist],
+                                               [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast], 340, 220)
+        kw["proj_svg"] = charts.projection([f.year for f in dcf.forecast], [f.revenue for f in dcf.forecast],
+                                           [f.fcff for f in dcf.forecast], cur, 340, 220)
+        kw["evbridge_svg"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt, dcf.minority, dcf.equity_value, cur, 340, 220)
         kw["sens_html"] = charts.sensitivity_table(sens, price, cur) if sens else ""
     return TEMPLATE.render(**kw)

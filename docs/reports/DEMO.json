@@ -16,12 +16,19 @@
   "confidence": "High",
   "street": 285.0,
   "street_upside": 0.0878,
-  "phases": [
-    "overheat",
-    "recovery"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Industria",
+    "tilt": -1.38,
+    "edge_now": -4.07,
+    "playbook_weight": 26.0,
+    "source": "snapshot"
+  },
   "date": "2026-10-13",
-  "generated_at": "2026-10-13T10:02:57Z",
+  "generated_at": "2026-10-13T10:55:51Z",
   "html": "DEMO.html",
   "pdf": "DEMO.pdf",
   "xlsx": "DEMO.xlsx"

@@ -16,12 +16,19 @@
   "confidence": "Medium",
   "street": 1975.95,
   "street_upside": 0.144,
-  "phases": [
-    "recovery",
-    "reflation"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Tecnolog\u00eda",
+    "tilt": -1.3,
+    "edge_now": -4.93,
+    "playbook_weight": null,
+    "source": "snapshot"
+  },
   "date": "2026-07-09",
-  "generated_at": "2026-10-13T10:02:50Z",
+  "generated_at": "2026-10-13T10:55:37Z",
   "html": "SNDK.html",
   "pdf": "SNDK.pdf",
   "xlsx": "SNDK.xlsx"

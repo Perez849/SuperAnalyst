@@ -186,7 +186,7 @@ def ev_ebitda_forward(data: CompanyData, ref: SectorRef, fwd: Forward,
         ("Earnings-durability factor", f"×{dur:.2f}"),
         ("Target EV/EBITDA", f"{mult:.1f}x"),
         ("Enterprise value", f"{cur}{ev/1e9:,.2f}bn"),
-        ("− Net debt", f"{cur}{data.net_debt/1e9:,.2f}bn"),
+        _net_debt_row(data),
         ("Value per share", f"{cur}{value:,.2f}"),
     ]
     lo_eq = (ev * 0.82 - data.net_debt - (y.minority_interest or 0)) / data.shares_diluted
@@ -271,7 +271,8 @@ def dcf_lens(scenarios: dict, data: CompanyData) -> Optional[Lens]:
         ("PV of explicit FCFF", f"{cur}{base.pv_explicit/1e9:,.2f}bn"),
         ("PV of terminal value", f"{cur}{base.pv_tv/1e9:,.2f}bn  ({base.tv_pct_of_ev:.0%} of EV)"),
         ("Enterprise value", f"{cur}{base.enterprise_value/1e9:,.2f}bn"),
-        ("− Net debt & minorities", f"{cur}{(base.net_debt + base.minority)/1e9:,.2f}bn"),
+        (("\u2212 Net debt & minorities" if base.net_debt + base.minority >= 0 else "+ Net cash (less minorities)"),
+         _bn(abs(base.net_debt + base.minority), cur)),
         ("Equity value", f"{cur}{base.equity_value/1e9:,.2f}bn"),
         ("Value per share", f"{cur}{base.value_per_share:,.2f}"),
     ]

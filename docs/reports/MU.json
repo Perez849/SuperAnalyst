@@ -16,12 +16,19 @@
   "confidence": "Medium",
   "street": 1486.0,
   "street_upside": 0.5662,
-  "phases": [
-    "recovery",
-    "reflation"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Semiconductores",
+    "tilt": -0.88,
+    "edge_now": -3.4,
+    "playbook_weight": 22.2,
+    "source": "snapshot"
+  },
   "date": "2026-07-09",
-  "generated_at": "2026-10-13T10:02:49Z",
+  "generated_at": "2026-10-13T10:55:34Z",
   "html": "MU.html",
   "pdf": "MU.pdf",
   "xlsx": "MU.xlsx"

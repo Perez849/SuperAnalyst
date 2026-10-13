@@ -16,12 +16,19 @@
   "confidence": "High",
   "street": 54.28,
   "street_upside": 0.6509,
-  "phases": [
-    "overheat",
-    "recovery"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Metales preciosos (mineras)",
+    "tilt": -1.64,
+    "edge_now": -1.99,
+    "playbook_weight": 6.0,
+    "source": "snapshot"
+  },
   "date": "2026-07-08",
-  "generated_at": "2026-10-13T10:02:55Z",
+  "generated_at": "2026-10-13T10:55:46Z",
   "html": "GFI.html",
   "pdf": "GFI.pdf",
   "xlsx": "GFI.xlsx"

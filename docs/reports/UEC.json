@@ -16,12 +16,19 @@
   "confidence": "Low",
   "street": null,
   "street_upside": null,
-  "phases": [
-    "overheat",
-    "stagflation"
-  ],
+  "cycle": {
+    "phase": "Estanflaci\u00f3n",
+    "asof": "2026-10",
+    "confidence": 0.0112,
+    "strength": "D\u00e9bil",
+    "asset": "Energ\u00eda",
+    "tilt": 1.21,
+    "edge_now": -5.44,
+    "playbook_weight": null,
+    "source": "snapshot"
+  },
   "date": "2026-07-08",
-  "generated_at": "2026-10-13T10:02:56Z",
+  "generated_at": "2026-10-13T10:55:49Z",
   "html": "UEC.html",
   "pdf": "UEC.pdf",
   "xlsx": "UEC.xlsx"

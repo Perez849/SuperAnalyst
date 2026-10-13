@@ -64,33 +64,6 @@ def phase_names(lang: str = "en") -> dict:
     return PHASE_NAMES_ES if lang == "es" else PHASE_NAMES
 
 
-# Classic Investment Clock sector map (illustrative): primary phase first.
-SECTOR_PHASES = {
-    "technology": ("recovery", "reflation"),
-    "communication services": ("recovery", "reflation"),
-    "consumer cyclical": ("recovery", "reflation"),
-    "industrials": ("overheat", "recovery"),
-    "energy": ("overheat", "stagflation"),
-    "basic materials": ("overheat", "recovery"),
-    "financial services": ("reflation", "recovery"),
-    "real estate": ("reflation", "recovery"),
-    "utilities": ("stagflation", "reflation"),
-    "consumer defensive": ("stagflation", "reflation"),
-    "healthcare": ("stagflation", "recovery"),
-}
-
-
-def phases_for(sector: str | None, profile: str | None = None) -> tuple[str, str]:
-    s = (sector or "").strip().lower()
-    if s in SECTOR_PHASES:
-        return SECTOR_PHASES[s]
-    by_profile = {"bank": ("reflation", "recovery"), "insurance": ("reflation", "recovery"),
-                  "reit": ("reflation", "recovery"), "utility": ("stagflation", "reflation"),
-                  "cyclical": ("overheat", "stagflation"), "high_growth": ("recovery", "reflation"),
-                  "standard": ("recovery", "overheat")}
-    return by_profile.get(profile or "", ("recovery", "overheat"))
-
-
 def brand_mark(size: int = 30) -> str:
     """The clock-face brand mark: ink hour hand, ochre minute hand."""
     t = TOKENS

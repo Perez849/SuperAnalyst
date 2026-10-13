@@ -163,7 +163,7 @@ def main(argv=None):
 
     if args.json_path:
         import json
-        from equityval.theme import phases_for
+        from equityval import clockdata
         meta = {
             "ticker": ticker, "name": d.name, "sector": d.sector,
             "profile": res["profile"].value, "currency": d.currency_symbol,
@@ -174,7 +174,7 @@ def main(argv=None):
             "confidence": tr.confidence,
             "street": round(tr.street.mean, 2) if tr.street else None,
             "street_upside": round(tr.street.upside, 4) if tr.street else None,
-            "phases": list(phases_for(d.sector, res["profile"].value)),
+            "cycle": clockdata.summary(d.sector, d.industry, ticker, live=cfg.reloj_live),
             "date": getattr(d, "asof", None) or __import__("datetime").date.today().isoformat(),
             "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "html": out.name, "pdf": out.with_suffix(".pdf").name if args.pdf else None,

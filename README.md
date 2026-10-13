@@ -1,7 +1,7 @@
 # equityval — motor de valoración sector-aware
 
-Genera una **nota de equity research completa** (HTML + PDF, estilo sell-side) a partir
-del ticker. **No aplica el mismo método a todo**: clasifica la compañía por sector y corre
+Genera una **nota de equity research completa** (HTML + PDF de ~10 páginas, estilo sell-side) a
+partir del ticker, con un resumen de una página (*tear sheet*) lleno de gráficos y tablas. **No aplica el mismo método a todo**: clasifica la compañía por sector y corre
 los modelos correctos para ese modelo de negocio, luego mezcla en un precio objetivo.
 
 No es asesoramiento de inversión. Los inputs se derivan de forma mecánica; el juicio
@@ -210,10 +210,15 @@ equityval/
   models.py         residual income, DDM, P/B–ROE, FFO, AFFO, normalizado
   lenses.py         cada lente con rango y traza de auditoría
   triangulate.py    mezcla, guardrails, objetivo a 12m, calle, confianza, NOT RATED
-  theme.py          tokens del diseño Reloj de inversión + fases del ciclo
-  design.py         hoja de estilos compartida (informes + biblioteca) y fuentes
-  charts.py         esfera de valoración, rueda de fases, football field (SVG)
-  report.py         informe HTML + Save-as-PDF
+  theme.py          tokens del diseño Reloj de inversión
+  design.py         hoja de estilos compartida (informes + biblioteca), fuentes y reglas de impresión
+  clockdata.py      enlace con el Reloj de inversión: fase, probabilidades, tilt sectorial, playbook, ETF
+  data/reloj_snapshot.json  copia versionada de los datos del Reloj (offline / sin red)
+  analysis.py       estados financieros, ROE/ROIC/DuPont, Piotroski, Altman Z, Sloan, capital circulante, scorecard
+  charts.py         esfera, waterfall, football field, plano crecimiento×inflación, radar, precio (SVG)
+  notectx.py        prepara todos los números ya formateados para la plantilla
+  note_template.py  plantilla Jinja del informe (tear sheet + secciones)
+  report.py         ensambla el informe HTML + Save-as-PDF
   excel_export.py   modelo Excel con fórmulas vivas (+ hoja Target Price)
   engine.py         orquestador
 tests/              regresión con instantáneas reales (MU, SNDK, NVDA, CEG, GFI, UEC) y test de la web
@@ -224,6 +229,37 @@ streamlit_app.py                 app interactiva
 .github/workflows/               valuation.yml, pages.yml, tests.yml
 ```
 
+## El informe
+
+Una **hoja resumen** (se imprime en una página A4) y siete secciones técnicas:
+
+| Bloque | Qué contiene |
+|---|---|
+| Tear sheet | esfera del precio objetivo, puente precio → objetivo, KPIs con sparklines, valor por lente (football field), escenarios bear/base/bull con probabilidades, ingresos/margen, BPA, caja y ROIC vs WACC |
+| Resumen II | múltiplos vs sector (bullets + tabla), lectura del **Reloj de inversión**, visión de inversión, riesgos y scorecard de seis ejes |
+| Veredicto | tesis, cómo se construye el objetivo lente a lente, guardrails y confianza |
+| Lentes | cada input de cada lente, para poder discutirlo |
+| Financieros | cuenta de resultados, balance y flujos (histórico + estimado), ROE/ROA/ROIC, DuPont, Piotroski, Altman, Sloan, DSO/DIO/DPO, múltiplos por año, calidad de beneficios |
+| DCF | drivers, FCFF año a año, gráficos, sensibilidad WACC × g, comprobaciones de la salida |
+| Ciclo | plano crecimiento × inflación, probabilidades de fase, retorno excedente del sector por fase, playbook y ETF |
+| Factores y riesgos | qué mueve la acción, palancas valoradas en $ por acción, riesgos y método |
+
+## Vínculo con el Reloj de inversión
+
+Los informes leen el **[Reloj de inversión](https://perez849.github.io/reloj-inversion/)**
+(`Perez849/reloj-inversion`), no un mapa sectorial genérico: la fase actual y su convicción, las
+probabilidades de las cuatro fases, y lo que **el sector de la compañía ha pagado históricamente en
+cada fase** (retorno anual, exceso vs el mercado EE.UU. encogido, t de Newey-West, tasa de acierto,
+fiabilidad). De ahí salen el *tilt* (Σ probabilidad × exceso del sector), el peso del sector en el
+playbook de la fase y el peso de la compañía dentro del ETF sectorial. Es contexto: **no mueve el
+precio objetivo**.
+
+- Con red se descarga `data.json` del Reloj; sin red (o con `EQUITYVAL_OFFLINE=1`) se usa
+  `equityval/data/reloj_snapshot.json`. Refresca la copia con `python scripts/refresh_reloj.py`.
+- Si una compañía no tiene activo equivalente en el Reloj, el campo queda vacío (no se inventa nada);
+  si no hay datos del Reloj, la sección del ciclo simplemente no aparece.
+- La biblioteca muestra el mismo plano del Reloj y, en cada tarjeta, el sesgo del ciclo del sector.
+
 ## Diseño: Reloj de inversión
 
 Informes y web comparten el sistema visual del proyecto
@@ -232,12 +268,10 @@ acento ocre, Fraunces / Inter / IBM Plex Mono (alojadas en `docs/assets/fonts`, 
 los cuatro colores de fase (verde bosque, ocre, terracota, índigo) y un único bloque oscuro para
 "la respuesta". La firma de cada informe es una **esfera de valoración**: la aguja marca la
 rentabilidad esperada a 12 m, el arco ocre el rango bear–bull y la "S" el consenso de la calle.
-La rueda de cuatro fases (Recuperación → Sobrecalentamiento → Estanflación → Reflación) muestra en
-qué fases suele liderar el sector (mapa clásico del *investment clock*; afinidad ilustrativa, no una
-lectura macro actual — esa vive en el proyecto del reloj).
 
 Todo sale de dos archivos: `equityval/theme.py` (tokens) y `equityval/design.py` (hoja de estilos
-compartida). Cambiar ahí reestiliza informes y biblioteca.
+compartida, incluidas las reglas `@media print` que encajan el resumen en una página). Cambiar ahí
+reestiliza informes y biblioteca.
 
 ## Offline y tests
 
