@@ -42,6 +42,8 @@ class ValuationConfig:
     max_peers: int = 8
     profile_override: Optional[str] = None
     street_weight: float = 0.30          # max weight of the Street consensus in the target (0 = off)
+    library_href: Optional[str] = None   # link back to the library page from the note's header
+    font_base: str = "../assets/fonts/"  # where the note finds the self-hosted fonts (relative to the HTML)
 
 
 def _build_risks(data, profile, dcf, tr, fwd) -> list[str]:
@@ -216,6 +218,7 @@ def value_data(data: CompanyData, prov, cfg: ValuationConfig, peer_snaps: Option
         base_drivers=base_drivers, diagnostics=diagnostics, reverse=reverse,
         target=target, upside=upside, blend=blend, risks=risks,
         tr=tr, fwd=fwd, ref=ref, fwd_model=fwd_model, peers=peer_snaps,
+        library_href=cfg.library_href, font_base=cfg.font_base,
     )
     return {
         "data": data, "profile": profile, "spec": spec, "wacc": wacc,

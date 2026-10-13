@@ -39,8 +39,8 @@ def _chrome_binary() -> str | None:
 
 
 def export_pdf(html_path: Path, pdf_path: Path) -> bool:
-    """HTML -> PDF. Headless Chrome/Chromium first (the report uses modern CSS and inline SVG),
-    then wkhtmltopdf, then weasyprint. Returns success."""
+    """HTML -> PDF. Headless Chrome/Chromium first (the report uses CSS variables and inline SVG;
+    wkhtmltopdf cannot render them), then weasyprint. Returns success."""
     chrome = _chrome_binary()
     if chrome:
         try:
@@ -52,19 +52,6 @@ def export_pdf(html_path: Path, pdf_path: Path) -> bool:
                 return True
         except Exception as e:
             print(f"[warn] chrome PDF failed: {e}")
-    wk = shutil.which("wkhtmltopdf")
-    if wk:
-        try:
-            subprocess.run(
-                [wk, "--enable-local-file-access", "--quiet", "--print-media-type",
-                 "--page-size", "A4",
-                 "--margin-top", "12mm", "--margin-bottom", "12mm",
-                 "--margin-left", "10mm", "--margin-right", "10mm",
-                 str(html_path), str(pdf_path)],
-                check=True, capture_output=True)
-            return True
-        except Exception as e:
-            print(f"[warn] wkhtmltopdf failed: {e}")
     try:
         from weasyprint import HTML
         HTML(str(html_path)).write_pdf(str(pdf_path))
@@ -73,6 +60,20 @@ def export_pdf(html_path: Path, pdf_path: Path) -> bool:
         print(f"[warn] weasyprint unavailable: {e}")
     print("[info] No PDF engine found. Open the HTML and use the 'Save as PDF' button.")
     return False
+
+
+def _apply_output_context(cfg, args) -> None:
+    """Point the note at its fonts and its library page, based on where the HTML will live."""
+    out = Path(args.output or "x.html").resolve()
+    repo_docs = Path(__file__).resolve().parent / "docs"
+    fonts = repo_docs / "assets" / "fonts"
+    if args.embed_fonts:
+        cfg.font_base = "embed"
+    elif fonts.exists():
+        cfg.font_base = os.path.relpath(fonts, out.parent).replace(os.sep, "/") + "/"
+    if out.parent.name == "reports" and (out.parent.parent / "index.html").exists() or \
+            out.parent == (repo_docs / "reports"):
+        cfg.library_href = "../index.html"
 
 
 def main(argv=None):
@@ -92,6 +93,8 @@ def main(argv=None):
                     help="Value from a saved Yahoo snapshot JSON instead of the network (offline/reproducible)")
     ap.add_argument("--street-weight", type=float, default=0.30,
                     help="Max weight of Street consensus in the 12m target (0 = pure model; default 0.30)")
+    ap.add_argument("--embed-fonts", action="store_true",
+                    help="Inline the fonts in the HTML (self-contained file; used for CI artifacts)")
     ap.add_argument("--rf", type=float, default=0.043, help="Risk-free rate")
     ap.add_argument("--erp", type=float, default=0.046, help="Equity risk premium")
     ap.add_argument("--country-premium", type=float, default=0.0)
@@ -112,6 +115,7 @@ def main(argv=None):
         exit_multiple=args.exit_multiple, beta_override=args.beta,
         profile_override=args.profile, street_weight=args.street_weight,
     )
+    _apply_output_context(cfg, args)
 
     if args.demo:
         from equityval.demo_data import demo_company, demo_peers
@@ -172,6 +176,7 @@ def main(argv=None):
             "street_upside": round(tr.street.upside, 4) if tr.street else None,
             "phases": list(phases_for(d.sector, res["profile"].value)),
             "date": getattr(d, "asof", None) or __import__("datetime").date.today().isoformat(),
+            "generated_at": __import__("datetime").datetime.now(__import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "html": out.name, "pdf": out.with_suffix(".pdf").name if args.pdf else None,
             "xlsx": out.with_suffix(".xlsx").name if args.xlsx else None,
         }

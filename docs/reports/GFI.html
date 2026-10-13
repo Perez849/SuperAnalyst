@@ -1,356 +1,424 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GFI — Equity Research · Investment Clock</title>
-<style>
-  *{box-sizing:border-box}
-  @page{size:A4;margin:11mm 9mm}
-  body{margin:0;font-family:"Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .wrap{max-width:1000px;margin:0 auto;padding:40px 36px 80px}
-  .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif} .mono{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
-  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
-  h1{font-size:38px;line-height:1.05;margin:.12em 0 .1em;font-weight:600;letter-spacing:-.01em}
-  h1 .tk{font-size:20px;letter-spacing:.04em}
-  h3{font-size:13.5px;margin:22px 0 6px;font-weight:700}
-  h2.sec{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;margin:46px 0 14px;padding-bottom:9px}
-  h2.sec .num{margin-right:10px;font-weight:600}
-  .masthead{padding-top:14px}
-  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px}
-  .hero{display:grid;grid-template-columns:1fr 340px;gap:30px;align-items:center;margin-top:18px}
-  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
-  .tile{padding:13px 16px;border-radius:10px}
-  .tile .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
-  .tile .v{font-size:25px;font-weight:600;margin-top:3px;line-height:1.15}
-  .tile .s{font-size:11px;margin-top:2px;opacity:.8}
-  .pill{display:inline-block;padding:4px 14px;border-radius:3px;font-weight:800;font-size:12.5px;letter-spacing:.1em}
-  .profiletag{display:inline-block;padding:3px 10px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border-radius:3px;margin-top:10px}
-  .dial,.wheel{width:100%;height:auto;display:block}
-  p{margin:0 0 13px} .lead p:first-child{font-size:15.5px}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
-  th,td{padding:6px 8px;text-align:right} th:first-child,td:first-child{text-align:left}
-  thead th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
-  tr.total td{font-weight:700} tr.grptop td{border-top:1px solid currentColor}
-  .card,.callout{padding:16px 18px;border-radius:10px;margin:12px 0}
-  .cols{display:grid;grid-template-columns:1fr 270px;gap:30px}
-  .sidebar{padding:12px 16px;border-radius:10px;margin-top:6px;align-self:start}
-  .sidetitle{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
-  .kv{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px} .kv .mono{font-weight:600}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px} .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .lenses{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-  .lens{padding:14px 16px;border-radius:10px;break-inside:avoid}
-  .lens h4{margin:0;font-size:13.5px} .lens .big{font-size:24px;font-weight:600;margin:4px 0 2px}
-  .lens table{font-size:11.5px} .lens td:last-child{text-align:right}
-  .fam{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-left:6px;font-weight:700}
-  .tag{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:3px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-  .bar-w{display:inline-block;width:70px;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px} .bar-w i{display:block;height:6px;border-radius:3px}
-  .guard{padding:10px 14px;border-radius:6px;margin:6px 0;font-size:12.5px}
-  .note{font-size:11.5px;margin-top:6px}
-  .src{display:inline-block;font-size:8px;font-weight:800;border:1px solid currentColor;border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
-  .exh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin:16px 0 4px}
-  ul{margin:6px 0 13px;padding-left:20px} li{margin:4px 0}
-  .disc{font-size:11px;margin-top:44px;padding-top:14px;line-height:1.55}
-  table.sens{table-layout:fixed;text-align:center} table.sens td,table.sens th{text-align:center;padding:7px 4px;font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:11.5px}
-  .pdfbtn{position:fixed;right:20px;bottom:20px;border:none;padding:11px 18px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer;z-index:99}
-  .keep{break-inside:avoid;page-break-inside:avoid} h2.sec,h3{break-after:avoid;page-break-after:avoid}
-  .wheelbox{max-width:300px} svg text{font-family:"Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-  @media(max-width:820px){.hero,.cols,.two,.three,.lenses{grid-template-columns:1fr}.wrap{padding:24px 16px 60px}h1{font-size:30px}.dial{max-width:340px;margin:auto}}
-  @media screen{ body{background:#0A0F1C;color:#E8EDF6}
-a{color:#D9B36B}
-.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:#8C99B0}
-.topline{color:#8C99B0}
-.masthead{border-top:3px solid #D9B36B}
-h1 .tk{color:#8C99B0}
-h2.sec{color:#D9B36B;border-bottom:1px solid #25324D}
-h2.sec .num{color:#8C99B0}
-.card,.tile,.sidebar,.lens,.callout{background:#101828;border:1px solid #25324D;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.callout{border-left:3px solid #D9B36B}
-.profiletag{border:1px solid #D9B36B;color:#D9B36B}
-th{border-bottom:1px solid #25324D} td{border-bottom:1px solid #25324D}
-tr.total td{border-top:1px solid #E8EDF6}
-tr.hist td{background:#16213A;color:#8C99B0}
-tr.divider td{border-bottom:1px solid #D9B36B}
-tr.off td{color:#8C99B0;text-decoration:line-through;text-decoration-color:#25324D}
-.kv{border-bottom:1px solid #25324D}
-.pill.up{background:#38B887;color:#06130D} .pill.down{background:#EB6757;color:#1B0705} .pill.flat{background:#8C99B0;color:#0A0F1C}
-.up{color:#38B887} .down{color:#EB6757} .flat{color:#8C99B0}
-.tag.ok,.tag.low{background:#10261F;color:#38B887} .tag.warn,.tag.high{background:#2D1A1A;color:#EB6757}
-.tag.med{background:#2A2417;color:#D9B36B} .tag.neutral{background:#16213A}
-.fam{border:1px solid #25324D;color:#8C99B0}
-.bar-w{background:#16213A} .bar-w i{background:#D9B36B}
-.guard{background:#2A2417;border-left:3px solid #D9B36B}
-.disc{color:#8C99B0;border-top:1px solid #25324D}
-.pdfbtn{background:#D9B36B;color:#0A0F1C}
-/* dial */
-.dial .tick{stroke:#25324D;stroke-width:1} .dial .tick-major{stroke:#8C99B0;stroke-width:1.6}
-.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
-.dial .b-down2{stroke:#EB6757} .dial .b-down{stroke:#EB6757;opacity:.55} .dial .b-flat{stroke:#8C99B0;opacity:.7}
-.dial .b-up{stroke:#38B887;opacity:.6} .dial .b-up2{stroke:#38B887}
-.dial .range{fill:none;stroke:#D9B36B;stroke-width:5;stroke-linecap:round;opacity:.95}
-.dial .scale{fill:#8C99B0;font:600 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.dial .street{fill:#D9B36B} .dial .street-t{fill:#D9B36B}
-.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:#38B887} .dial .hand-down{stroke:#EB6757} .dial .hand-flat{stroke:#E8EDF6}
-.dial .hub-ring{fill:none;stroke:#D9B36B;stroke-width:1.2} .dial .hub{fill:#101828}
-.dial .hub-k{fill:#8C99B0;font:700 7.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
-.dial .hub-v{fill:#E8EDF6;font:600 25px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
-.dial .hub-r{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
-.dial .hub-up{fill:#38B887} .dial .hub-down{fill:#EB6757} .dial .hub-flat{fill:#8C99B0}
-.dial .hub-s{fill:#8C99B0;font:500 9px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-/* phase wheel */
-.wheel .seg{stroke:#0A0F1C;stroke-width:2}
-.wheel .seg-recovery{fill:#38B887} .wheel .seg-overheat{fill:#F2A03D}
-.wheel .seg-stagflation{fill:#A585E8} .wheel .seg-reflation{fill:#4F94F7}
-.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
-.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
-.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C}
-.wheel .dim{fill:#8C99B0}
-.wheel .wheel-hub{fill:#101828;stroke:#25324D} .wheel .wheel-arrow{fill:none;stroke:#D9B36B;stroke-width:2.2}
-.wheel .wheel-head{fill:#D9B36B} .wheel .wheel-c{fill:#8C99B0;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
-/* football field + minis */
-.ff .grid,.mini .grid{stroke:#25324D;stroke-width:1} .mini .sep{stroke-dasharray:3 3}
-.ff .axis,.mini .axis{fill:#8C99B0;font:500 9.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-.ff .lbl{fill:#E8EDF6;font:600 11.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif} .ff .lbl-street,.ff .lbl-target{fill:#D9B36B}
-.ff .sub{fill:#8C99B0;font:500 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.ff .bar-lens{fill:#4F94F7;opacity:.28;stroke:#4F94F7} .ff .bar-street{fill:#D9B36B;opacity:.22;stroke:#D9B36B}
-.ff .bar-target{fill:#38B887;opacity:.22;stroke:#38B887} .ff .pt-lens{fill:#4F94F7} .ff .pt-street{fill:#D9B36B} .ff .pt-target{fill:#38B887}
-.ff .val,.mini .val{fill:#E8EDF6;font:600 10.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-.ff .v-price{stroke:#EB6757;stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:#EB6757;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.ff .v-target{stroke:#38B887;stroke-width:1.8} .ff .v-target-t{fill:#38B887;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.mini .b-pos{fill:#4F94F7} .mini .b-neg{fill:#EB6757} .mini .b-tot{fill:#D9B36B}
-.mini .b-rev{fill:#4F94F7} .mini .b-fcf{fill:#D9B36B} .mini .k-rev{fill:#4F94F7} .mini .k-fcf{fill:#D9B36B}
-.mini .l-act{fill:none;stroke:#E8EDF6;stroke-width:2.2} .mini .l-est{fill:none;stroke:#D9B36B;stroke-width:2.2;stroke-dasharray:5 3}
-.mini .k-act{fill:#E8EDF6} .mini .k-est{fill:#D9B36B}
-table.sens th{background:#16213A} table.sens td{border:1px solid #0A0F1C}
-table.sens td.up2{background:#38B887;color:#06130D} table.sens td.up{background:#10261F;color:#38B887}
-table.sens td.flat{background:#16213A} table.sens td.down{background:#2D1A1A;color:#EB6757} table.sens td.down2{background:#EB6757;color:#1B0705}
-table.sens td.base{outline:2px solid #D9B36B;outline-offset:-2px;font-weight:800} }
-  @media print{ body{background:#FFFFFF;color:#10151F}
-a{color:#8A6A2C}
-.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:#566074}
-.topline{color:#566074}
-.masthead{border-top:3px solid #8A6A2C}
-h1 .tk{color:#566074}
-h2.sec{color:#8A6A2C;border-bottom:1px solid #CFCBBE}
-h2.sec .num{color:#566074}
-.card,.tile,.sidebar,.lens,.callout{background:#F6F4EE;border:1px solid #CFCBBE;box-shadow:none}
-.callout{border-left:3px solid #8A6A2C}
-.profiletag{border:1px solid #8A6A2C;color:#8A6A2C}
-th{border-bottom:1px solid #CFCBBE} td{border-bottom:1px solid #CFCBBE}
-tr.total td{border-top:1px solid #10151F}
-tr.hist td{background:#EEEBE2;color:#566074}
-tr.divider td{border-bottom:1px solid #8A6A2C}
-tr.off td{color:#566074;text-decoration:line-through;text-decoration-color:#CFCBBE}
-.kv{border-bottom:1px solid #CFCBBE}
-.pill.up{background:#1B7A5A;color:#06130D} .pill.down{background:#B23A48;color:#1B0705} .pill.flat{background:#566074;color:#0A0F1C}
-.up{color:#1B7A5A} .down{color:#B23A48} .flat{color:#566074}
-.tag.ok,.tag.low{background:#E3F0E9;color:#1B7A5A} .tag.warn,.tag.high{background:#F6E7E3;color:#B23A48}
-.tag.med{background:#F7EEDA;color:#8A6A2C} .tag.neutral{background:#EEEBE2}
-.fam{border:1px solid #CFCBBE;color:#566074}
-.bar-w{background:#EEEBE2} .bar-w i{background:#8A6A2C}
-.guard{background:#F7EEDA;border-left:3px solid #8A6A2C}
-.disc{color:#566074;border-top:1px solid #CFCBBE}
-.pdfbtn{background:#8A6A2C;color:#FFFFFF}
-/* dial */
-.dial .tick{stroke:#CFCBBE;stroke-width:1} .dial .tick-major{stroke:#566074;stroke-width:1.6}
-.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
-.dial .b-down2{stroke:#B23A48} .dial .b-down{stroke:#B23A48;opacity:.55} .dial .b-flat{stroke:#566074;opacity:.7}
-.dial .b-up{stroke:#1B7A5A;opacity:.6} .dial .b-up2{stroke:#1B7A5A}
-.dial .range{fill:none;stroke:#8A6A2C;stroke-width:5;stroke-linecap:round;opacity:.95}
-.dial .scale{fill:#566074;font:600 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.dial .street{fill:#8A6A2C} .dial .street-t{fill:#8A6A2C}
-.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:#1B7A5A} .dial .hand-down{stroke:#B23A48} .dial .hand-flat{stroke:#10151F}
-.dial .hub-ring{fill:none;stroke:#8A6A2C;stroke-width:1.2} .dial .hub{fill:#F6F4EE}
-.dial .hub-k{fill:#566074;font:700 7.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
-.dial .hub-v{fill:#10151F;font:600 25px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
-.dial .hub-r{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
-.dial .hub-up{fill:#1B7A5A} .dial .hub-down{fill:#B23A48} .dial .hub-flat{fill:#566074}
-.dial .hub-s{fill:#566074;font:500 9px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-/* phase wheel */
-.wheel .seg{stroke:#FFFFFF;stroke-width:2}
-.wheel .seg-recovery{fill:#1E8E5C} .wheel .seg-overheat{fill:#C9741A}
-.wheel .seg-stagflation{fill:#7655C4} .wheel .seg-reflation{fill:#2C6FD6}
-.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
-.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
-.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C}
-.wheel .dim{fill:#566074}
-.wheel .wheel-hub{fill:#F6F4EE;stroke:#CFCBBE} .wheel .wheel-arrow{fill:none;stroke:#8A6A2C;stroke-width:2.2}
-.wheel .wheel-head{fill:#8A6A2C} .wheel .wheel-c{fill:#566074;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
-/* football field + minis */
-.ff .grid,.mini .grid{stroke:#CFCBBE;stroke-width:1} .mini .sep{stroke-dasharray:3 3}
-.ff .axis,.mini .axis{fill:#566074;font:500 9.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-.ff .lbl{fill:#10151F;font:600 11.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif} .ff .lbl-street,.ff .lbl-target{fill:#8A6A2C}
-.ff .sub{fill:#566074;font:500 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.ff .bar-lens{fill:#2C6FD6;opacity:.28;stroke:#2C6FD6} .ff .bar-street{fill:#8A6A2C;opacity:.22;stroke:#8A6A2C}
-.ff .bar-target{fill:#1B7A5A;opacity:.22;stroke:#1B7A5A} .ff .pt-lens{fill:#2C6FD6} .ff .pt-street{fill:#8A6A2C} .ff .pt-target{fill:#1B7A5A}
-.ff .val,.mini .val{fill:#10151F;font:600 10.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
-.ff .v-price{stroke:#B23A48;stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:#B23A48;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.ff .v-target{stroke:#1B7A5A;stroke-width:1.8} .ff .v-target-t{fill:#1B7A5A;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
-.mini .b-pos{fill:#2C6FD6} .mini .b-neg{fill:#B23A48} .mini .b-tot{fill:#8A6A2C}
-.mini .b-rev{fill:#2C6FD6} .mini .b-fcf{fill:#8A6A2C} .mini .k-rev{fill:#2C6FD6} .mini .k-fcf{fill:#8A6A2C}
-.mini .l-act{fill:none;stroke:#10151F;stroke-width:2.2} .mini .l-est{fill:none;stroke:#8A6A2C;stroke-width:2.2;stroke-dasharray:5 3}
-.mini .k-act{fill:#10151F} .mini .k-est{fill:#8A6A2C}
-table.sens th{background:#EEEBE2} table.sens td{border:1px solid #FFFFFF}
-table.sens td.up2{background:#1B7A5A;color:#06130D} table.sens td.up{background:#E3F0E9;color:#1B7A5A}
-table.sens td.flat{background:#EEEBE2} table.sens td.down{background:#F6E7E3;color:#B23A48} table.sens td.down2{background:#B23A48;color:#1B0705}
-table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800} .pdfbtn{display:none} .wrap{max-width:100%;padding:0} body{font-size:11px}
-    .hero{grid-template-columns:1fr 280px} h1{font-size:30px} .lens,.card,.callout,tr,svg{break-inside:avoid;page-break-inside:avoid}
-    thead{display:table-header-group} .pill.up,.pill.down,.pill.flat{color:#fff}
-    table.sens td.up2,table.sens td.down2{color:#fff} .wheel .ph-n,.wheel .ph-s,.wheel .ph-a{fill:#fff} }
-</style></head><body>
-<button class="pdfbtn" onclick="window.print()">Save as PDF</button>
-<div class="wrap">
-<div class="masthead">
-    <div class="topline"><span class="eyebrow">Equity Research · Investment Clock</span>
-      <span class="mono">13 Oct 2026</span></div>
-    <div class="eyebrow" style="margin-top:20px">Basic Materials · Gold</div>
-    <h1 class="serif">Gold Fields Limited <span class="mono tk">GFI</span></h1>
-    <span class="profiletag">Cyclical / Commodities (mid-cycle multiples + DCF)</span>
-    <div class="hero">
-      <div>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-          <span class="pill up">OVERWEIGHT</span>
-          <span class="muted mono" style="font-size:12px">12-month horizon · confidence <b>High</b></span>
-        </div>
-        <div class="tiles">
-          
-          <div class="tile"><div class="k">12M price target</div>
-            <div class="v mono">$58.38</div>
-            <div class="s mono">bear $49.55 · bull $67.47</div></div>
-          <div class="tile"><div class="k">Expected total return</div>
-            <div class="v mono up">+78%</div>
-            <div class="s mono">price +78%</div></div>
-          
-          <div class="tile"><div class="k">Fair value today</div>
-            <div class="v mono">$54.62</div>
-            <div class="s mono">$46.79 – $62.73</div></div>
-          <div class="tile"><div class="k">Street consensus</div>
-            <div class="v mono">$54.28</div>
-            <div class="s mono">+65%</div>
-            </div>
-        </div>
-        <div class="note mono" style="margin-top:12px">Price $32.88 · Ke 8.20% · discount rate 7.71% · data: Yahoo snapshot as of 2026-07-08</div>
-      </div>
-      <div><svg class="dial" viewBox="0 0 360 360" role="img" aria-label="12-month expected return +78%, rating OVERWEIGHT"><line class="tick-major" x1="180.0" y1="18.0" x2="180.0" y2="10.0"/><line class="tick" x1="197.4" y1="14.9" x2="197.8" y2="10.9"/><line class="tick" x1="214.5" y1="17.6" x2="215.3" y2="13.7"/><line class="tick" x1="231.3" y1="22.1" x2="232.5" y2="18.3"/><line class="tick" x1="247.5" y1="28.4" x2="249.1" y2="24.7"/><line class="tick-major" x1="261.0" y1="39.7" x2="265.0" y2="32.8"/><line class="tick" x1="277.6" y1="45.7" x2="279.9" y2="42.5"/><line class="tick" x1="291.1" y1="56.6" x2="293.8" y2="53.7"/><line class="tick" x1="303.4" y1="68.9" x2="306.3" y2="66.2"/><line class="tick" x1="314.3" y1="82.4" x2="317.5" y2="80.1"/><line class="tick-major" x1="320.3" y1="99.0" x2="327.2" y2="95.0"/><line class="tick" x1="331.6" y1="112.5" x2="335.3" y2="110.9"/><line class="tick" x1="337.9" y1="128.7" x2="341.7" y2="127.5"/><line class="tick" x1="342.4" y1="145.5" x2="346.3" y2="144.7"/><line class="tick" x1="345.1" y1="162.6" x2="349.1" y2="162.2"/><line class="tick-major" x1="342.0" y1="180.0" x2="350.0" y2="180.0"/><line class="tick" x1="345.1" y1="197.4" x2="349.1" y2="197.8"/><line class="tick" x1="342.4" y1="214.5" x2="346.3" y2="215.3"/><line class="tick" x1="337.9" y1="231.3" x2="341.7" y2="232.5"/><line class="tick" x1="331.6" y1="247.5" x2="335.3" y2="249.1"/><line class="tick-major" x1="320.3" y1="261.0" x2="327.2" y2="265.0"/><line class="tick" x1="314.3" y1="277.6" x2="317.5" y2="279.9"/><line class="tick" x1="303.4" y1="291.1" x2="306.3" y2="293.8"/><line class="tick" x1="291.1" y1="303.4" x2="293.8" y2="306.3"/><line class="tick" x1="277.6" y1="314.3" x2="279.9" y2="317.5"/><line class="tick-major" x1="261.0" y1="320.3" x2="265.0" y2="327.2"/><line class="tick" x1="247.5" y1="331.6" x2="249.1" y2="335.3"/><line class="tick" x1="231.3" y1="337.9" x2="232.5" y2="341.7"/><line class="tick" x1="214.5" y1="342.4" x2="215.3" y2="346.3"/><line class="tick" x1="197.4" y1="345.1" x2="197.8" y2="349.1"/><line class="tick-major" x1="180.0" y1="342.0" x2="180.0" y2="350.0"/><line class="tick" x1="162.6" y1="345.1" x2="162.2" y2="349.1"/><line class="tick" x1="145.5" y1="342.4" x2="144.7" y2="346.3"/><line class="tick" x1="128.7" y1="337.9" x2="127.5" y2="341.7"/><line class="tick" x1="112.5" y1="331.6" x2="110.9" y2="335.3"/><line class="tick-major" x1="99.0" y1="320.3" x2="95.0" y2="327.2"/><line class="tick" x1="82.4" y1="314.3" x2="80.1" y2="317.5"/><line class="tick" x1="68.9" y1="303.4" x2="66.2" y2="306.3"/><line class="tick" x1="56.6" y1="291.1" x2="53.7" y2="293.8"/><line class="tick" x1="45.7" y1="277.6" x2="42.5" y2="279.9"/><line class="tick-major" x1="39.7" y1="261.0" x2="32.8" y2="265.0"/><line class="tick" x1="28.4" y1="247.5" x2="24.7" y2="249.1"/><line class="tick" x1="22.1" y1="231.3" x2="18.3" y2="232.5"/><line class="tick" x1="17.6" y1="214.5" x2="13.7" y2="215.3"/><line class="tick" x1="14.9" y1="197.4" x2="10.9" y2="197.8"/><line class="tick-major" x1="18.0" y1="180.0" x2="10.0" y2="180.0"/><line class="tick" x1="14.9" y1="162.6" x2="10.9" y2="162.2"/><line class="tick" x1="17.6" y1="145.5" x2="13.7" y2="144.7"/><line class="tick" x1="22.1" y1="128.7" x2="18.3" y2="127.5"/><line class="tick" x1="28.4" y1="112.5" x2="24.7" y2="110.9"/><line class="tick-major" x1="39.7" y1="99.0" x2="32.8" y2="95.0"/><line class="tick" x1="45.7" y1="82.4" x2="42.5" y2="80.1"/><line class="tick" x1="56.6" y1="68.9" x2="53.7" y2="66.2"/><line class="tick" x1="68.9" y1="56.6" x2="66.2" y2="53.7"/><line class="tick" x1="82.4" y1="45.7" x2="80.1" y2="42.5"/><line class="tick-major" x1="99.0" y1="39.7" x2="95.0" y2="32.8"/><line class="tick" x1="112.5" y1="28.4" x2="110.9" y2="24.7"/><line class="tick" x1="128.7" y1="22.1" x2="127.5" y2="18.3"/><line class="tick" x1="145.5" y1="17.6" x2="144.7" y2="13.7"/><line class="tick" x1="162.6" y1="14.9" x2="162.2" y2="10.9"/><path class="band b-down2" d="M81.40,276.55 A138.00,138.00 0 0 1 48.31,138.73"/><path class="band b-down" d="M49.21,135.98 A138.00,138.00 0 0 1 67.51,100.06"/><path class="band b-flat" d="M69.21,97.72 A138.00,138.00 0 0 1 97.72,69.21"/><path class="band b-up" d="M100.06,67.51 A138.00,138.00 0 0 1 135.98,49.21"/><path class="band b-up2" d="M138.73,48.31 A138.00,138.00 0 0 1 278.60,276.55"/><path class="range" d="M265.22,98.38 A118.00,118.00 0 0 1 263.44,263.44"/><text class="scale" x="109.3" y="250.7" text-anchor="middle" dominant-baseline="middle">−50%</text><text class="scale" x="109.3" y="109.3" text-anchor="middle" dominant-baseline="middle">0</text><text class="scale" x="250.7" y="109.3" text-anchor="middle" dominant-baseline="middle">+50%</text><text class="scale" x="250.7" y="250.7" text-anchor="middle" dominant-baseline="middle">+100%</text><path class="street" d="M324.7,133.4 L339.2,132.9 L336.8,125.3 Z"/><text class="scale street-t" x="349.4" y="125.4" text-anchor="middle" dominant-baseline="middle">S</text><line class="hand hand-up" x1="154.1" y1="177.9" x2="309.6" y2="190.4"/><circle class="hub-ring" cx="180" cy="180" r="62"/><circle class="hub" cx="180" cy="180" r="58"/><text class="hub-k" x="180" y="152" text-anchor="middle">12M PRICE TARGET</text><text class="hub-v" x="180" y="186" text-anchor="middle">$58.38</text><text class="hub-r hub-up" x="180" y="206" text-anchor="middle">OVERWEIGHT</text><text class="hub-s" x="180" y="222" text-anchor="middle">price $32.88</text></svg></div>
-    </div>
-  </div>
+<title>GFI — Equity Research · SuperAnalyst</title>
+<style>@font-face{font-family:"Fraunces";font-style:normal;font-weight:400;font-display:swap;src:local("Fraunces"),url("../assets/fonts/fraunces-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Fraunces";font-style:normal;font-weight:500;font-display:swap;src:local("Fraunces"),url("../assets/fonts/fraunces-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Fraunces";font-style:normal;font-weight:600;font-display:swap;src:local("Fraunces"),url("../assets/fonts/fraunces-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Fraunces";font-style:normal;font-weight:700;font-display:swap;src:local("Fraunces"),url("../assets/fonts/fraunces-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Fraunces";font-style:italic;font-weight:500;font-display:swap;src:local("Fraunces"),url("../assets/fonts/fraunces-latin-500-italic.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:400;font-display:swap;src:local("Inter"),url("../assets/fonts/inter-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:500;font-display:swap;src:local("Inter"),url("../assets/fonts/inter-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:600;font-display:swap;src:local("Inter"),url("../assets/fonts/inter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Inter";font-style:normal;font-weight:700;font-display:swap;src:local("Inter"),url("../assets/fonts/inter-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:400;font-display:swap;src:local("IBM Plex Mono"),url("../assets/fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:500;font-display:swap;src:local("IBM Plex Mono"),url("../assets/fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:600;font-display:swap;src:local("IBM Plex Mono"),url("../assets/fonts/ibm-plex-mono-latin-600-normal.woff2") format("woff2")}
+:root{--paper:#F6F2E8;--paper-raised:#FBF9F3;--paper-deep:#EEE6D2;--ink:#1B1810;--ink-2:#322C1F;--ink-soft:#5B5340;--ink-faint:#8C8268;--line:rgba(27,24,16,.14);--line-soft:rgba(27,24,16,.08);--line-strong:rgba(27,24,16,.28);--accent:#A9752C;--accent-ink:#7C5620;--accent-soft:rgba(169,117,44,.12);--rec:#3F6B52;--over:#B8863B;--stag:#9C4A3C;--refl:#3E4E7A;--pos:#3F6B52;--neg:#9C4A3C;--gold:#D9B978;--serif:"Fraunces","Iowan Old Style",Georgia,serif;--sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;--r-sm:3px;--r-md:6px;--maxw:1180px;--shadow-card:0 1px 2px rgba(27,24,16,.04),0 12px 28px -18px rgba(27,24,16,.22)}
 
-  <div class="cols">
-    <div>
-      <h2 class="sec"><span class="num">01</span>Investment thesis</h2>
-      <div class="lead"><p>We rate <b>Gold Fields Limited (GFI)</b> <b>OVERWEIGHT</b> with a 12-month price target of <b>$58.38</b> — a +78% move from $32.88. The shares look undervalued on 4 lenses: Discounted cash flow (FCFF), Forward P/E, Forward EV/EBITDA, Mid-cycle normalized EV/EBITDA. Their weighted fair value today is <b>$54.62</b>, rolled forward at the 8.2% cost of equity.</p><p>Gold Fields Limited generated $8.75bn of revenue at a 50% EBIT margin in the latest fiscal year, having compounded the top line at 26.9% over the historical window. Market capitalisation stands at $29.41bn with $1.44bn of net debt.</p><p>Consensus EPS of $5.61 gives an NTM figure of $5.61, i.e. 5.9x at today's price. Because forward earnings are 3.2x what the business has earned through the cycle, we scale target multiples by 0.79 — the market pays less for peak earnings, and so do we.</p><p>For context, the Street's mean 12-month target is $54.28 (+65%). Our model-only target of $59.10 sits 9% above it; the published target gives the consensus a 15% weight, a deliberate hedge against model error that we disclose rather than hide.</p><p>A reverse DCF shows the market is discounting year-one revenue growth of 15.0% against our 25.0% base — the price demands less than we model.</p></div>
-      <p class="note">Spot margins mislead at both ends of the cycle: value on mid-cycle EBITDA and through-cycle multiples, with forward multiples (scaled for earnings durability) and a mean-reverting DCF as cross-checks.</p>
-    </div>
-    <aside class="sidebar">
-      <div class="sidetitle">Key data</div>
-      <div class="kv"><span class="k">Market cap</span><span class="mono">$29.41bn</span></div><div class="kv"><span class="k">Enterprise value</span><span class="mono">$30.85bn</span></div><div class="kv"><span class="k">Net debt</span><span class="mono">$1.44bn</span></div><div class="kv"><span class="k">Net debt / EBITDA</span><span class="mono">0.2x</span></div><div class="kv"><span class="k">EV / EBITDA (LTM)</span><span class="mono">4.9x</span></div><div class="kv"><span class="k">P/E (LTM)</span><span class="mono">8.3x</span></div><div class="kv"><span class="k">FCF yield (LTM)</span><span class="mono">8.9%</span></div><div class="kv"><span class="k">Dividend yield</span><span class="mono">—</span></div><div class="kv"><span class="k">Beta</span><span class="mono">0.52</span></div><div class="kv"><span class="k">Diluted shares</span><span class="mono">894mn</span></div>
-    </aside>
-  </div>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+body{margin:0;overflow-x:clip;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;
+  line-height:1.6;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact}
+::selection{background:var(--accent);color:var(--paper-raised)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px}
+p{margin:0} b,strong{font-weight:600} a{color:var(--accent-ink)}
+h1,h2,h3,h4{font-family:var(--serif);font-weight:600;letter-spacing:-.01em;margin:0;color:var(--ink)}
+code,.mono{font-family:var(--mono)} .mono{font-variant-numeric:tabular-nums}
+svg text{font-family:var(--sans)}
 
-  <h2 class="sec"><span class="num">02</span>Valuation summary — what each lens says</h2>
-  <div class="keep">
-    <div class="exh">Exhibit 1 · Value per share by lens vs. price, Street and our 12-month target</div>
-    <svg class="ff" viewBox="0 0 760 288" role="img" aria-label="Valuation football field"><line class="grid" x1="188.0" y1="18" x2="188.0" y2="262"/><text class="axis" x="188.0" y="278" text-anchor="middle">$14.73</text><line class="grid" x1="298.0" y1="18" x2="298.0" y2="262"/><text class="axis" x="298.0" y="278" text-anchor="middle">$32.10</text><line class="grid" x1="408.0" y1="18" x2="408.0" y2="262"/><text class="axis" x="408.0" y="278" text-anchor="middle">$49.48</text><line class="grid" x1="518.0" y1="18" x2="518.0" y2="262"/><text class="axis" x="518.0" y="278" text-anchor="middle">$66.86</text><line class="grid" x1="628.0" y1="18" x2="628.0" y2="262"/><text class="axis" x="628.0" y="278" text-anchor="middle">$84.24</text><line class="grid" x1="738.0" y1="18" x2="738.0" y2="262"/><text class="axis" x="738.0" y="278" text-anchor="middle">$102</text><text class="lbl lbl-lens" x="176" y="41" text-anchor="end">Discounted cash flow (FCFF)</text><text class="sub" x="176" y="54" text-anchor="end">30% weight</text><rect class="bar bar-lens" x="597.2" y="32" width="102.8" height="16" rx="3"/><path class="pt pt-lens" d="M645.7,29 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="708.1" y="44" >$87.04</text><text class="lbl lbl-lens" x="176" y="79" text-anchor="end">Forward P/E</text><text class="sub" x="176" y="92" text-anchor="end">15% weight</text><rect class="bar bar-lens" x="372.6" y="70" width="121.9" height="16" rx="3"/><path class="pt pt-lens" d="M433.5,67 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="502.5" y="82" >$53.52</text><text class="lbl lbl-lens" x="176" y="117" text-anchor="end">Forward EV/EBITDA</text><text class="sub" x="176" y="130" text-anchor="end">25% weight</text><rect class="bar bar-lens" x="352.5" y="108" width="118.4" height="16" rx="3"/><path class="pt pt-lens" d="M411.7,105 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="478.8" y="120" >$50.06</text><text class="lbl lbl-lens" x="176" y="155" text-anchor="end">Mid-cycle normalized EV/EBITDA</text><text class="sub" x="176" y="168" text-anchor="end">30% weight</text><rect class="bar bar-lens" x="225.9" y="146" width="74.0" height="16" rx="3"/><path class="pt pt-lens" d="M262.9,143 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="307.9" y="158" >$26.56</text><text class="lbl lbl-street" x="176" y="193" text-anchor="end">Street targets (12m)</text><text class="sub" x="176" y="206" text-anchor="end">consensus</text><rect class="bar bar-street" x="386.8" y="184" width="103.1" height="16" rx="3"/><path class="pt pt-street" d="M438.4,181 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="497.9" y="196" >$54.28</text><text class="lbl lbl-target" x="176" y="231" text-anchor="end">Our 12-month target</text><text class="sub" x="176" y="244" text-anchor="end">bear – bull</text><rect class="bar bar-target" x="408.4" y="222" width="113.4" height="16" rx="3"/><path class="pt pt-target" d="M464.3,219 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="529.8" y="234" >$58.38</text><line class="v-price" x1="302.9" y1="16" x2="302.9" y2="262"/><text class="v-price-t" x="302.9" y="12" text-anchor="middle">price $32.88</text><line class="v-target" x1="464.3" y1="16" x2="464.3" y2="262"/><text class="v-target-t" x="464.3" y="258" text-anchor="middle">target $58.38</text></svg>
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent-ink);
+  display:flex;align-items:center;gap:9px}
+.eyebrow::before{content:"";width:20px;height:1px;background:var(--accent);flex:none}
+.lede{color:var(--ink-soft);font-size:17px;line-height:1.65;max-width:68ch}
+.cap{color:var(--ink-soft);font-size:14.5px;line-height:1.6;max-width:62ch}
+.small-cap{color:var(--ink-faint);font-size:12.5px}
+.muted{color:var(--ink-faint)} .up{color:var(--pos)} .down{color:var(--neg)} .flat{color:var(--ink-soft)}
+
+/* ---------- header ---------- */
+.top{position:sticky;top:0;z-index:40;background:rgba(246,242,232,.88);backdrop-filter:blur(10px) saturate(1.1);
+  border-bottom:1px solid var(--line-soft)}
+.top-inner{display:flex;align-items:center;justify-content:space-between;gap:24px;padding-block:15px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit}
+.brand-mark{width:30px;height:30px;flex:none}
+.brand-word{font-family:var(--serif);font-size:18px;font-weight:600;letter-spacing:-.01em;line-height:1.1}
+.brand-tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--ink-faint)}
+.top-nav{display:flex;gap:26px;align-items:center}
+.top-nav a{font-family:var(--mono);font-size:11.5px;letter-spacing:.05em;color:var(--ink-soft);text-decoration:none;text-transform:uppercase}
+.top-nav a:hover{color:var(--ink)}
+.pdf-btn{font:600 12px/1 var(--sans);color:var(--paper-raised);background:var(--ink);border-radius:999px;padding:9px 14px;
+  text-decoration:none;white-space:nowrap;border:1px solid var(--accent);cursor:pointer}
+.pdf-btn:hover{background:var(--accent)}
+.top-actions{display:flex;gap:10px;align-items:center}
+.ghost{font-family:var(--mono);font-size:11px;letter-spacing:.03em;background:transparent;color:var(--ink-soft);
+  border:1px solid var(--line-strong);border-radius:99px;padding:6px 14px;cursor:pointer;transition:.15s;text-decoration:none;display:inline-block}
+.ghost:hover{color:var(--ink);border-color:var(--ink-faint);background:var(--paper-deep)}
+@media (max-width:860px){.top-nav{display:none}}
+
+/* ---------- structure ---------- */
+.section{padding:64px 0} .section.tight{padding:40px 0}
+.section-head{max-width:700px;margin-bottom:30px}
+.section-head h2{font-size:32px;margin:10px 0 10px;line-height:1.15}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+.rule-wrap{max-width:var(--maxw);margin:0 auto;padding:0 32px}
+
+/* ---------- hero ---------- */
+.hero{background:linear-gradient(180deg,var(--paper-raised),var(--paper) 70%);border-bottom:1px solid var(--line);padding:52px 0 46px}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1.24fr) minmax(0,1fr);gap:52px;align-items:start}
+.hero-grid>*{min-width:0}
+.hero-eyebrow{margin-bottom:18px}
+.phase-name{font-size:clamp(32px,5vw,58px);line-height:1.04;margin:0 0 8px;letter-spacing:-.02em;overflow-wrap:break-word}
+.phase-name .tk{font-family:var(--mono);font-size:.34em;letter-spacing:.04em;color:var(--ink-faint);font-weight:500;margin-left:6px}
+.phase-tie{font-size:15px;font-weight:600;letter-spacing:.01em;margin:0 0 14px;padding:7px 13px;border-radius:99px;display:inline-block;
+  background:rgba(184,134,59,.12);color:#8a5f23;border:1px solid rgba(184,134,59,.35)}
+.phase-tie.up{background:rgba(63,107,82,.12);color:var(--rec);border-color:rgba(63,107,82,.4)}
+.phase-tie.down{background:rgba(156,74,60,.1);color:var(--stag);border-color:rgba(156,74,60,.4)}
+.phase-tie.flat{background:var(--paper-deep);color:var(--ink-soft);border-color:var(--line-strong)}
+.phase-window{font-family:var(--mono);font-size:12.5px;color:var(--ink-faint);letter-spacing:.03em;margin-bottom:22px}
+.phase-why{font-size:18px;line-height:1.62;color:var(--ink-2);max-width:56ch;margin-bottom:26px}
+.phase-why b{color:var(--ink)}
+.conf-block{display:flex;flex-direction:column;gap:10px;max-width:470px;margin-bottom:8px}
+.conf-row{display:grid;grid-template-columns:minmax(0,170px) minmax(0,1fr) 46px;align-items:center;gap:10px;font-size:12.5px}
+.conf-row .nm{color:var(--ink-soft);overflow-wrap:anywhere;min-width:0}
+.conf-row.lead .nm{color:var(--ink);font-weight:600}
+.conf-bar{height:7px;border-radius:99px;background:var(--paper-deep);overflow:hidden;border:1px solid var(--line-soft)}
+.conf-bar i{display:block;height:100%;border-radius:99px;background:var(--accent)}
+.conf-bar i.rel{background:var(--refl)} .conf-bar i.int{background:var(--rec)} .conf-bar i.sec{background:var(--over)}
+.conf-val{font-family:var(--mono);text-align:right;color:var(--ink-soft);font-size:12.5px}
+.conf-note{font-size:13px;color:var(--ink-soft);border-left:2px solid var(--line-strong);padding-left:13px;margin-top:14px;max-width:52ch}
+.plane-card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:20px 20px 16px;box-shadow:var(--shadow-card);margin:0}
+.plane-top{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+.plane-top h3{font-size:15px}
+
+.outlook{margin:-14px 0 0;padding:22px 26px;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:24px;
+  border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper-raised);box-shadow:var(--shadow-card)}
+.outlook .item dt{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
+.outlook .item dd{margin:5px 0 4px;font-family:var(--mono);font-size:19px;color:var(--ink)}
+.outlook .item small{display:block;color:var(--ink-soft);font-family:var(--sans);font-size:12px;line-height:1.45}
+
+/* ---------- the dark answer block ---------- */
+.buy{background:var(--ink);color:var(--paper);border-radius:var(--r-md)}
+.buy-inner{padding:46px 40px}
+.buy .eyebrow{color:var(--gold)} .buy .eyebrow::before{background:var(--gold)}
+.buy h2{color:var(--paper-raised);font-size:30px;margin:10px 0 12px}
+.buy .lede{color:rgba(251,249,243,.72)}
+.buy-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1px;margin-top:28px;border-radius:var(--r-md);overflow:hidden}
+.buy-col{background:rgba(251,249,243,.03);padding:22px 24px;border:1px solid rgba(251,249,243,.14)}
+.buy-col h4{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(251,249,243,.5);margin-bottom:14px;display:flex;justify-content:space-between;font-weight:500}
+.buy-item{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid rgba(251,249,243,.10)}
+.buy-item:last-child{border-bottom:0}
+.buy-item>div{min-width:0;overflow-wrap:break-word}
+.buy-item .nm{color:var(--paper-raised);font-size:14.5px}
+.buy-item .wt{font-family:var(--mono);color:rgba(251,249,243,.85);font-size:13.5px;white-space:nowrap;flex:none}
+.buy-item .tickers{display:block;margin-top:3px}
+.tick{display:inline-block;font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;color:var(--gold);background:rgba(217,185,120,.12);
+  border:1px solid rgba(217,185,120,.28);border-radius:4px;padding:1.5px 6px;margin:2px 4px 0 0}
+.buy-empty{color:rgba(251,249,243,.55);font-size:13.5px;padding:6px 0}
+.buy-foot{margin-top:22px;font-size:12.5px;color:rgba(251,249,243,.55);border-top:1px solid rgba(251,249,243,.12);padding-top:16px;max-width:80ch}
+.buy-foot b{color:rgba(251,249,243,.85)}
+.buy .total{display:flex;justify-content:space-between;align-items:baseline;gap:16px;margin-top:22px;padding-top:18px;border-top:1px solid rgba(251,249,243,.2)}
+.buy .total .k{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:rgba(251,249,243,.55)}
+.buy .total .v{font-family:var(--serif);font-size:34px;color:var(--paper-raised);font-weight:600}
+.buy .total .v small{font-family:var(--mono);font-size:13px;margin-left:10px}
+.buy .total .up{color:#8FC7A6} .buy .total .down{color:#E3A596}
+
+/* ---------- cards, tables ---------- */
+.card{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--r-md);box-shadow:var(--shadow-card)}
+.lenses{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px}
+.lens{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--r-md);overflow:hidden}
+.lens header{padding:14px 18px;border-bottom:1px solid var(--line-soft);display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.lens h4{font-family:var(--sans);font-size:14.5px;font-weight:600;letter-spacing:0}
+.lens .body{padding:12px 18px 14px}
+.lens .big{font-family:var(--serif);font-size:30px;font-weight:600;line-height:1.1}
+.lens .rng{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin:3px 0 8px}
+.lens table{font-size:12.4px}
+.lens .nt{font-size:12px;color:var(--ink-soft);margin-top:8px;line-height:1.5}
+table{width:100%;border-collapse:collapse;font-size:12.8px;margin:6px 0 4px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line-soft)}
+th:first-child,td:first-child{text-align:left}
+thead th{background:var(--paper-deep);font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-soft);
+  border-bottom:1px solid var(--line);font-weight:500}
+tbody tr:hover{background:rgba(169,117,44,.05)}
+tr.total td{border-top:1px solid var(--ink);font-weight:700}
+tr.grp td{background:var(--paper-deep);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint)}
+tr.hist td{background:var(--paper-deep);color:var(--ink-faint)}
+tr.divider td{border-bottom:1px solid var(--accent);padding:0;height:0}
+tr.off td{color:var(--ink-faint);text-decoration:line-through;text-decoration-color:var(--line-strong)}
+.tblwrap{border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper-raised);box-shadow:var(--shadow-card);overflow-x:auto}
+.tblwrap table{margin:0}
+.kv{display:flex;justify-content:space-between;padding:6px 0;font-size:12.8px;border-bottom:1px solid var(--line-soft)}
+.kv .k{color:var(--ink-soft)} .kv .mono{font-weight:600}
+.sidebar{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 18px;align-self:start;box-shadow:var(--shadow-card)}
+.sidetitle{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent-ink);margin-bottom:6px}
+.cols{display:grid;grid-template-columns:1fr 280px;gap:34px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px} .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tag{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 8px;border-radius:99px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;border:1px solid transparent}
+.tag.ok,.tag.low{background:rgba(63,107,82,.12);color:var(--rec);border-color:rgba(63,107,82,.3)}
+.tag.warn,.tag.high{background:rgba(156,74,60,.1);color:var(--stag);border-color:rgba(156,74,60,.3)}
+.tag.med{background:rgba(184,134,59,.14);color:#8a5f23;border-color:rgba(184,134,59,.35)}
+.tag.neutral{background:var(--paper-deep);color:var(--ink-soft);border-color:var(--line)}
+.fam{display:inline-block;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:1px 7px;border-radius:99px;
+  border:1px solid var(--line-strong);color:var(--ink-faint);margin-left:6px}
+.bar-w{display:inline-block;width:64px;height:6px;border-radius:99px;background:var(--paper-deep);border:1px solid var(--line-soft);vertical-align:middle;margin-right:8px;overflow:hidden}
+.bar-w i{display:block;height:100%;background:var(--accent)}
+.guard{border-left:3px solid var(--accent);background:var(--paper-deep);border-radius:3px;padding:10px 14px;margin:8px 0;font-size:13px;line-height:1.5}
+.note{font-size:12.3px;color:var(--ink-faint);margin-top:8px;line-height:1.5}
+.src{display:inline-block;font-family:var(--mono);font-size:8px;font-weight:600;border:1px solid currentColor;border-radius:2px;padding:0 3px;vertical-align:middle;color:var(--accent-ink)}
+.exh{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 6px}
+ul{margin:6px 0 13px;padding-left:20px} li{margin:5px 0}
+.details{margin-top:22px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--paper-raised)}
+.details summary{padding:15px 19px;cursor:pointer;font-family:var(--mono);font-size:12px;letter-spacing:.03em;color:var(--ink-soft);list-style:none;display:flex;align-items:center;gap:8px}
+.details summary::-webkit-details-marker{display:none}
+.details summary::before{content:"+";font-size:15px;color:var(--accent-ink);width:14px}
+.details[open] summary::before{content:"\2013"}
+.details .body{padding:0 19px 19px;font-size:13px;color:var(--ink-soft)}
+.rules{margin:0;padding:0;counter-reset:r;list-style:none;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.rules li{counter-increment:r;background:var(--paper-raised);padding:18px 20px;font-size:13.3px;color:var(--ink-soft);border:1px solid var(--line);border-radius:var(--r-md);margin:0}
+.rules li::before{content:counter(r,decimal-leading-zero);font-family:var(--mono);font-size:11px;color:var(--accent-ink);display:block;margin-bottom:8px;letter-spacing:.08em}
+.rules b{color:var(--ink);display:block;font-family:var(--sans);font-size:14px;margin-bottom:4px}
+.foot-bar{margin-top:20px;border-top:1px solid var(--line);padding:26px 0 46px;color:var(--ink-faint);font-size:12.3px}
+.disclaimer{color:var(--ink-faint);max-width:760px;line-height:1.6}
+.sens-wrap table.sens{table-layout:fixed;text-align:center}
+table.sens td,table.sens th{text-align:center;padding:8px 4px;font-family:var(--mono);font-size:11.5px}
+table.sens th{background:var(--paper-deep)}
+table.sens td{border:1px solid var(--paper-raised)}
+table.sens td.up2{background:var(--rec);color:#FBF9F3} table.sens td.up{background:rgba(63,107,82,.16);color:var(--rec)}
+table.sens td.flat{background:var(--paper-deep);color:var(--ink-soft)} table.sens td.down{background:rgba(156,74,60,.14);color:var(--stag)}
+table.sens td.down2{background:var(--stag);color:#FBF9F3}
+table.sens td.base{outline:2px solid var(--ink);outline-offset:-2px;font-weight:700}
+
+/* ---------- charts (inline SVG) ---------- */
+.dial,.wheel{width:100%;height:auto;display:block}
+.dial .tick{stroke:var(--line-strong);stroke-width:1} .dial .tick-major{stroke:var(--ink-faint);stroke-width:1.5}
+.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
+.dial .b-down2{stroke:var(--stag)} .dial .b-down{stroke:var(--stag);opacity:.42} .dial .b-flat{stroke:var(--ink-faint);opacity:.4}
+.dial .b-up{stroke:var(--rec);opacity:.42} .dial .b-up2{stroke:var(--rec)}
+.dial .range{fill:none;stroke:var(--accent);stroke-width:5;stroke-linecap:round}
+.dial .scale{fill:var(--ink-faint);font:500 9.5px var(--mono)}
+.dial .street{fill:var(--accent-ink)} .dial .street-t{fill:var(--accent-ink);font-weight:700}
+.dial .hand{stroke:var(--ink);stroke-width:3.4;stroke-linecap:round}
+.dial .tip{fill:var(--accent);stroke:var(--paper-raised);stroke-width:1.5}
+.dial .hub-ring{fill:none;stroke:var(--ink);stroke-width:1.2} .dial .hub{fill:var(--paper-raised)}
+.dial .hub-k{fill:var(--ink-faint);font:500 7.5px var(--mono);letter-spacing:.14em}
+.dial .hub-v{fill:var(--ink);font:600 25px var(--serif)}
+.dial .hub-r{font:600 10px var(--mono);letter-spacing:.14em}
+.dial .hub-up{fill:var(--rec)} .dial .hub-down{fill:var(--stag)} .dial .hub-flat{fill:var(--ink-soft)}
+.dial .hub-s{fill:var(--ink-faint);font:500 9px var(--mono)}
+.wheel .seg{stroke:var(--paper-raised);stroke-width:2.5}
+.wheel .seg-recovery{fill:var(--rec)} .wheel .seg-overheat{fill:var(--over)} .wheel .seg-stagflation{fill:var(--stag)} .wheel .seg-reflation{fill:var(--refl)}
+.wheel .seg.lit{fill-opacity:1} .wheel .seg.lit2{fill-opacity:.55} .wheel .seg.dim{fill-opacity:.13}
+.wheel .ph-n{font:600 10.5px var(--mono);letter-spacing:.08em} .wheel .ph-n.long{font-size:8.2px;letter-spacing:.02em} .wheel .ph-s,.wheel .ph-a{font:500 8.5px var(--sans)}
+.wheel text.lit{fill:#FBF9F3} .wheel text.lit2{fill:var(--ink)} .wheel text.dim{fill:var(--ink-soft)}
+.wheel .wheel-hub{fill:var(--paper-raised);stroke:var(--line-strong)} .wheel .wheel-arrow{fill:none;stroke:var(--accent);stroke-width:2}
+.wheel .wheel-head{fill:var(--accent)} .wheel .wheel-c{fill:var(--ink-faint);font:500 8.5px var(--mono);letter-spacing:.2em}
+.wheel .count{fill:var(--ink);font:600 24px var(--serif)}
+.ff .grid,.mini .grid{stroke:var(--line);stroke-width:1} .mini .sep{stroke-dasharray:3 3}
+.ff .axis,.mini .axis{fill:var(--ink-faint);font:500 9.5px var(--mono)}
+.ff .lbl{fill:var(--ink);font:600 11.5px var(--sans)} .ff .lbl-street,.ff .lbl-target{fill:var(--accent-ink)}
+.ff .sub{fill:var(--ink-faint);font:500 9.5px var(--mono)}
+.ff .bar-lens{fill:var(--refl);fill-opacity:.2;stroke:var(--refl)} .ff .bar-street{fill:var(--accent);fill-opacity:.2;stroke:var(--accent)}
+.ff .bar-target{fill:var(--rec);fill-opacity:.2;stroke:var(--rec)}
+.ff .pt-lens{fill:var(--refl)} .ff .pt-street{fill:var(--accent)} .ff .pt-target{fill:var(--rec)}
+.ff .val,.mini .val{fill:var(--ink);font:500 10.5px var(--mono)}
+.ff .v-price{stroke:var(--stag);stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:var(--stag);font:600 10px var(--mono)}
+.ff .v-target{stroke:var(--rec);stroke-width:1.8} .ff .v-target-t{fill:var(--rec);font:600 10px var(--mono)}
+.mini .b-pos{fill:var(--refl)} .mini .b-neg{fill:var(--stag)} .mini .b-tot{fill:var(--accent)}
+.mini .b-rev{fill:var(--refl)} .mini .b-fcf{fill:var(--accent)} .mini .k-rev{fill:var(--refl)} .mini .k-fcf{fill:var(--accent)}
+.mini .l-act{fill:none;stroke:var(--ink);stroke-width:2.2} .mini .l-est{fill:none;stroke:var(--accent);stroke-width:2.2;stroke-dasharray:5 3}
+.mini .k-act{fill:var(--ink)} .mini .k-est{fill:var(--accent)}
+.mini{width:100%;height:auto;display:block} .ff{width:100%;height:auto;display:block}
+.mg{display:block}
+.mgband{fill:none;stroke-width:15} .mgband.b-down2{stroke:var(--stag)} .mgband.b-down{stroke:var(--stag);opacity:.42}
+.mgband.b-flat{stroke:var(--ink-faint);opacity:.4} .mgband.b-up{stroke:var(--rec);opacity:.42} .mgband.b-up2{stroke:var(--rec)}
+.mghand{stroke:var(--ink);stroke-width:7;stroke-linecap:round} .mghub{fill:var(--paper-raised);stroke:var(--ink);stroke-width:2}
+
+/* ---------- responsive / print ---------- */
+@media (max-width:980px){.hero-grid,.cols,.two,.three{grid-template-columns:minmax(0,1fr)}.dial{max-width:360px;margin:auto}}
+@media (max-width:640px){.wrap{padding:0 18px}.rule-wrap{padding:0 18px}.buy-inner{padding:32px 22px}.section{padding:46px 0}
+  .section-head h2{font-size:25px}.conf-row{grid-template-columns:100px 1fr 42px}.pdf-btn{padding:8px 10px;font-size:11px}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important;transition-duration:.001ms !important}}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+@page{size:A4;margin:11mm 9mm}
+@media print{
+  *{box-shadow:none !important;backdrop-filter:none !important}
+  body{font-size:11px}.top{position:static;background:none;backdrop-filter:none}.top-nav,.top-actions,.pdf-btn,.no-print{display:none !important}
+  .wrap,.rule-wrap{max-width:100%;padding:0}.section{padding:26px 0}.section.tight{padding:20px 0}.hero{padding:26px 0 24px}
+  .hero-grid{grid-template-columns:1fr 260px;gap:26px}.phase-name{font-size:30px}.phase-why{font-size:13px}.lede{font-size:13px}
+  .buy-inner{padding:26px 24px}.buy .total .v{font-size:26px}.section-head h2{font-size:22px}
+  .lens,.card,.guard,tr,svg,.sidebar,.outlook,.buy,.buy-col,.plane-card{break-inside:avoid;page-break-inside:avoid}
+  thead{display:table-header-group}h2,h3,.section-head,.eyebrow,.exh{break-after:avoid;page-break-after:avoid}
+  .cols{grid-template-columns:1fr 230px;gap:22px}.three{grid-template-columns:repeat(3,1fr)}
+}
+
+.hero-tiles{display:none}
+.family-w{font-family:var(--mono);font-size:11px;color:rgba(251,249,243,.5)}
+.st{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(217,185,120,.35);border-radius:99px;padding:0 7px;margin-left:6px}
+.st.bad{color:#E3A596;border-color:rgba(227,165,150,.4)}
+.buy-item.off .nm{text-decoration:line-through;color:rgba(251,249,243,.45)}
+</style></head><body><header class="top"><div class="wrap top-inner">
+  <a class="brand" href="../index.html"><svg class="brand-mark" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#1B1810" stroke-width="1.3"/><path d="M16 16 L16 6.5" stroke="#A9752C" stroke-width="1.6" stroke-linecap="round"/><path d="M16 16 L23 20" stroke="#1B1810" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="16" r="1.6" fill="#1B1810"/></svg><span><span class="brand-word">SuperAnalyst</span><br><span class="brand-tag">VALUATION · LENSES · EVIDENCE</span></span></a>
+  <nav class="top-nav"><a href="#verdict">Verdict</a><a href="#lenses">Lenses</a><a href="#quality">Earnings quality</a><a href="#dcf">DCF</a><a href="#risks">Risks</a></nav>
+  <div class="top-actions"><a class="ghost" href="../index.html">← Library</a><button class="pdf-btn" type="button" onclick="window.print()">⬇ Save as PDF</button></div>
+</div></header>
+
+<section class="hero" id="top"><div class="wrap hero-grid">
+  <div>
+    <div class="eyebrow hero-eyebrow">Independent valuation · Basic Materials · Gold</div>
+    <h1 class="phase-name">Gold Fields Limited <span class="tk">GFI</span></h1>
+    <p class="phase-tie up">OVERWEIGHT · 12M target $58.38 (+78%)</p>
+    <p class="phase-window">13 Oct 2026 · 12-month horizon · Cyclical / Commodities (mid-cycle multiples + DCF) · confidence High</p>
+    <p class="phase-why">We rate <b>Gold Fields Limited (GFI)</b> <b>OVERWEIGHT</b> with a 12-month price target of <b>$58.38</b> — a +78% move from $32.88. The shares look undervalued on 4 lenses: Discounted cash flow (FCFF), Forward P/E, Forward EV/EBITDA, Mid-cycle normalized EV/EBITDA. Their weighted fair value today is <b>$54.62</b>, rolled forward at the 8.2% cost of equity.</p>
+    <div class="conf-block">
+      
+      <div class="conf-row lead"><span class="nm">Discounted cash flow (FCFF)</span>
+        <span class="conf-bar"><i class="int" style="width:30%"></i></span>
+        <span class="conf-val">30%</span></div>
+      
+      <div class="conf-row"><span class="nm">Forward P/E</span>
+        <span class="conf-bar"><i class="rel" style="width:15%"></i></span>
+        <span class="conf-val">15%</span></div>
+      
+      <div class="conf-row"><span class="nm">Forward EV/EBITDA</span>
+        <span class="conf-bar"><i class="rel" style="width:25%"></i></span>
+        <span class="conf-val">25%</span></div>
+      
+      <div class="conf-row"><span class="nm">Mid-cycle normalized EV/EBITDA</span>
+        <span class="conf-bar"><i class="sec" style="width:30%"></i></span>
+        <span class="conf-val">30%</span></div>
+      
+    </div>
+    <p class="conf-note">Lens weights after guardrails. 4 independent lenses agree on a valuation; lens dispersion is moderate (CV 40%); model target is within 25% of the Street; 1 data-quality / earnings-quality flag(s).</p>
   </div>
-  <table><thead><tr><th>Lens</th><th>Type</th><th>Fair value today</th><th>Range</th><th>Weight</th><th>Status</th></tr></thead><tbody>
+  <figure class="plane-card">
+    <div class="plane-top"><h3>Expected return · 12 months</h3><span class="small-cap mono">needle = total return</span></div>
+    <p class="cap" style="margin-bottom:10px">The arc is the bear–bull range of the target; the marker <b>S</b> is the Street consensus.</p>
+    <svg class="dial" viewBox="0 0 360 360" role="img" aria-label="12-month expected return +78%, rating OVERWEIGHT"><line class="tick-major" x1="180.0" y1="18.0" x2="180.0" y2="10.0"/><line class="tick" x1="197.4" y1="14.9" x2="197.8" y2="10.9"/><line class="tick" x1="214.5" y1="17.6" x2="215.3" y2="13.7"/><line class="tick" x1="231.3" y1="22.1" x2="232.5" y2="18.3"/><line class="tick" x1="247.5" y1="28.4" x2="249.1" y2="24.7"/><line class="tick-major" x1="261.0" y1="39.7" x2="265.0" y2="32.8"/><line class="tick" x1="277.6" y1="45.7" x2="279.9" y2="42.5"/><line class="tick" x1="291.1" y1="56.6" x2="293.8" y2="53.7"/><line class="tick" x1="303.4" y1="68.9" x2="306.3" y2="66.2"/><line class="tick" x1="314.3" y1="82.4" x2="317.5" y2="80.1"/><line class="tick-major" x1="320.3" y1="99.0" x2="327.2" y2="95.0"/><line class="tick" x1="331.6" y1="112.5" x2="335.3" y2="110.9"/><line class="tick" x1="337.9" y1="128.7" x2="341.7" y2="127.5"/><line class="tick" x1="342.4" y1="145.5" x2="346.3" y2="144.7"/><line class="tick" x1="345.1" y1="162.6" x2="349.1" y2="162.2"/><line class="tick-major" x1="342.0" y1="180.0" x2="350.0" y2="180.0"/><line class="tick" x1="345.1" y1="197.4" x2="349.1" y2="197.8"/><line class="tick" x1="342.4" y1="214.5" x2="346.3" y2="215.3"/><line class="tick" x1="337.9" y1="231.3" x2="341.7" y2="232.5"/><line class="tick" x1="331.6" y1="247.5" x2="335.3" y2="249.1"/><line class="tick-major" x1="320.3" y1="261.0" x2="327.2" y2="265.0"/><line class="tick" x1="314.3" y1="277.6" x2="317.5" y2="279.9"/><line class="tick" x1="303.4" y1="291.1" x2="306.3" y2="293.8"/><line class="tick" x1="291.1" y1="303.4" x2="293.8" y2="306.3"/><line class="tick" x1="277.6" y1="314.3" x2="279.9" y2="317.5"/><line class="tick-major" x1="261.0" y1="320.3" x2="265.0" y2="327.2"/><line class="tick" x1="247.5" y1="331.6" x2="249.1" y2="335.3"/><line class="tick" x1="231.3" y1="337.9" x2="232.5" y2="341.7"/><line class="tick" x1="214.5" y1="342.4" x2="215.3" y2="346.3"/><line class="tick" x1="197.4" y1="345.1" x2="197.8" y2="349.1"/><line class="tick-major" x1="180.0" y1="342.0" x2="180.0" y2="350.0"/><line class="tick" x1="162.6" y1="345.1" x2="162.2" y2="349.1"/><line class="tick" x1="145.5" y1="342.4" x2="144.7" y2="346.3"/><line class="tick" x1="128.7" y1="337.9" x2="127.5" y2="341.7"/><line class="tick" x1="112.5" y1="331.6" x2="110.9" y2="335.3"/><line class="tick-major" x1="99.0" y1="320.3" x2="95.0" y2="327.2"/><line class="tick" x1="82.4" y1="314.3" x2="80.1" y2="317.5"/><line class="tick" x1="68.9" y1="303.4" x2="66.2" y2="306.3"/><line class="tick" x1="56.6" y1="291.1" x2="53.7" y2="293.8"/><line class="tick" x1="45.7" y1="277.6" x2="42.5" y2="279.9"/><line class="tick-major" x1="39.7" y1="261.0" x2="32.8" y2="265.0"/><line class="tick" x1="28.4" y1="247.5" x2="24.7" y2="249.1"/><line class="tick" x1="22.1" y1="231.3" x2="18.3" y2="232.5"/><line class="tick" x1="17.6" y1="214.5" x2="13.7" y2="215.3"/><line class="tick" x1="14.9" y1="197.4" x2="10.9" y2="197.8"/><line class="tick-major" x1="18.0" y1="180.0" x2="10.0" y2="180.0"/><line class="tick" x1="14.9" y1="162.6" x2="10.9" y2="162.2"/><line class="tick" x1="17.6" y1="145.5" x2="13.7" y2="144.7"/><line class="tick" x1="22.1" y1="128.7" x2="18.3" y2="127.5"/><line class="tick" x1="28.4" y1="112.5" x2="24.7" y2="110.9"/><line class="tick-major" x1="39.7" y1="99.0" x2="32.8" y2="95.0"/><line class="tick" x1="45.7" y1="82.4" x2="42.5" y2="80.1"/><line class="tick" x1="56.6" y1="68.9" x2="53.7" y2="66.2"/><line class="tick" x1="68.9" y1="56.6" x2="66.2" y2="53.7"/><line class="tick" x1="82.4" y1="45.7" x2="80.1" y2="42.5"/><line class="tick-major" x1="99.0" y1="39.7" x2="95.0" y2="32.8"/><line class="tick" x1="112.5" y1="28.4" x2="110.9" y2="24.7"/><line class="tick" x1="128.7" y1="22.1" x2="127.5" y2="18.3"/><line class="tick" x1="145.5" y1="17.6" x2="144.7" y2="13.7"/><line class="tick" x1="162.6" y1="14.9" x2="162.2" y2="10.9"/><path class="band b-down2" d="M81.40,276.55 A138.00,138.00 0 0 1 48.31,138.73"/><path class="band b-down" d="M49.21,135.98 A138.00,138.00 0 0 1 67.51,100.06"/><path class="band b-flat" d="M69.21,97.72 A138.00,138.00 0 0 1 97.72,69.21"/><path class="band b-up" d="M100.06,67.51 A138.00,138.00 0 0 1 135.98,49.21"/><path class="band b-up2" d="M138.73,48.31 A138.00,138.00 0 0 1 278.60,276.55"/><path class="range" d="M265.22,98.38 A118.00,118.00 0 0 1 263.44,263.44"/><text class="scale" x="109.3" y="250.7" text-anchor="middle" dominant-baseline="middle">−50%</text><text class="scale" x="109.3" y="109.3" text-anchor="middle" dominant-baseline="middle">0</text><text class="scale" x="250.7" y="109.3" text-anchor="middle" dominant-baseline="middle">+50%</text><text class="scale" x="250.7" y="250.7" text-anchor="middle" dominant-baseline="middle">+100%</text><path class="street" d="M324.7,133.4 L339.2,132.9 L336.8,125.3 Z"/><text class="scale street-t" x="349.4" y="125.4" text-anchor="middle" dominant-baseline="middle">S</text><line class="hand" x1="154.1" y1="177.9" x2="309.6" y2="190.4"/><circle class="tip" cx="309.6" cy="190.4" r="5"/><circle class="hub-ring" cx="180" cy="180" r="62"/><circle class="hub" cx="180" cy="180" r="58"/><text class="hub-k" x="180" y="152" text-anchor="middle">12M PRICE TARGET</text><text class="hub-v" x="180" y="186" text-anchor="middle">$58.38</text><text class="hub-r hub-up" x="180" y="206" text-anchor="middle">OVERWEIGHT</text><text class="hub-s" x="180" y="222" text-anchor="middle">price $32.88</text></svg>
+  </figure>
+</div></section>
+
+<div class="wrap"><dl class="outlook">
+  <div class="item"><dt>Price</dt><dd>$32.88</dd><small>Ke 8.20% · Yahoo snapshot as of 2026-07-08</small></div>
+  <div class="item"><dt>Fair value today</dt><dd>$54.62</dd><small>$46.79 – $62.73</small></div>
+  <div class="item"><dt>12M price target</dt><dd>$58.38</dd><small>bear $49.55 · bull $67.47</small></div>
+  <div class="item"><dt>Expected total return</dt><dd class="up">+78%</dd><small>price +78%</small></div>
   
-    <tr>
-      <td>Discounted cash flow (FCFF)</td><td><span class="fam">intrinsic</span></td>
-      <td class="mono">$87.04</td><td class="mono">$79.38 – $95.62</td>
-      <td class="mono"><span class="bar-w"><i style="width:30%"></i></span>30%</td>
-      <td><span class="tag ok">used</span>
-          
-          </td></tr>
+  <div class="item"><dt>Street consensus</dt><dd>$54.28</dd><small>+65%</small></div>
+</dl></div>
+
+<div class="rule-wrap" style="margin-top:34px"><hr class="rule"></div>
+
+<section class="section tight" id="thesis"><div class="wrap cols">
+  <div>
+    <div class="section-head"><div class="eyebrow">Investment thesis</div><h2>Why this number</h2></div>
+    <div class="lede" style="max-width:none"><p style="margin-bottom:14px;font-size:17px">Gold Fields Limited generated $8.75bn of revenue at a 50% EBIT margin in the latest fiscal year, having compounded the top line at 26.9% over the historical window. Market capitalisation stands at $29.41bn with $1.44bn of net debt.</p><p style="margin-bottom:14px;font-size:15px">Consensus EPS of $5.61 gives an NTM figure of $5.61, i.e. 5.9x at today's price. Because forward earnings are 3.2x what the business has earned through the cycle, we scale target multiples by 0.79 — the market pays less for peak earnings, and so do we.</p><p style="margin-bottom:14px;font-size:15px">For context, the Street's mean 12-month target is $54.28 (+65%). Our model-only target of $59.10 sits 9% above it; the published target gives the consensus a 15% weight, a deliberate hedge against model error that we disclose rather than hide.</p><p style="margin-bottom:14px;font-size:15px">A reverse DCF shows the market is discounting year-one revenue growth of 15.0% against our 25.0% base — the price demands less than we model.</p></div>
+    <p class="note">Spot margins mislead at both ends of the cycle: value on mid-cycle EBITDA and through-cycle multiples, with forward multiples (scaled for earnings durability) and a mean-reverting DCF as cross-checks.</p>
+  </div>
+  <aside class="sidebar" style="margin-top:62px">
+    <div class="sidetitle">Key data</div>
+    <div class="kv"><span class="k">Market cap</span><span class="mono">$29.41bn</span></div><div class="kv"><span class="k">Enterprise value</span><span class="mono">$30.85bn</span></div><div class="kv"><span class="k">Net debt</span><span class="mono">$1.44bn</span></div><div class="kv"><span class="k">Net debt / EBITDA</span><span class="mono">0.2x</span></div><div class="kv"><span class="k">EV / EBITDA (LTM)</span><span class="mono">4.9x</span></div><div class="kv"><span class="k">P/E (LTM)</span><span class="mono">8.3x</span></div><div class="kv"><span class="k">FCF yield (LTM)</span><span class="mono">8.9%</span></div><div class="kv"><span class="k">Dividend yield</span><span class="mono">—</span></div><div class="kv"><span class="k">Beta</span><span class="mono">0.52</span></div><div class="kv"><span class="k">Diluted shares</span><span class="mono">894mn</span></div>
+  </aside>
+</div></section>
+
+<section class="section" id="verdict"><div class="wrap"><div class="buy"><div class="buy-inner">
+  <div class="eyebrow">The verdict</div>
+  <h2>How the 12-month target is built</h2>
+  <p class="lede">Each lens answers <i>what is a share worth?</i> independently. They are weighted by what fits the
+     business, filtered by plausibility guardrails, rolled forward at the cost of equity and — where it exists —
+     lightly anchored to the Street.</p>
+  <div class="buy-cols">
   
-    <tr>
-      <td>Forward P/E</td><td><span class="fam">relative</span></td>
-      <td class="mono">$53.52</td><td class="mono">$43.88 – $63.15</td>
-      <td class="mono"><span class="bar-w"><i style="width:15%"></i></span>15%</td>
-      <td><span class="tag ok">used</span>
-          
-          </td></tr>
-  
-    <tr>
-      <td>Forward EV/EBITDA</td><td><span class="fam">relative</span></td>
-      <td class="mono">$50.06</td><td class="mono">$40.71 – $59.41</td>
-      <td class="mono"><span class="bar-w"><i style="width:25%"></i></span>25%</td>
-      <td><span class="tag ok">used</span>
-          
-          </td></tr>
-  
-    <tr>
-      <td>Mid-cycle normalized EV/EBITDA</td><td><span class="fam">sector</span></td>
-      <td class="mono">$26.56</td><td class="mono">$20.72 – $32.40</td>
-      <td class="mono"><span class="bar-w"><i style="width:30%"></i></span>30%</td>
-      <td><span class="tag ok">used</span>
-          
-          </td></tr>
-  
-    <tr class="total grptop"><td>Blended fair value (today)</td><td></td><td class="mono">$54.62</td>
-      <td class="mono">$46.79 – $62.73</td><td></td><td></td></tr>
-    <tr><td>× (1 + Ke) − dividends → model 12-month target</td><td></td><td class="mono">$59.10</td>
-      <td></td><td></td><td></td></tr>
-    <tr><td>Street mean target <span class="muted">(weight 15%)</span></td><td></td>
-      <td class="mono">$54.28</td>
-      <td class="mono"></td><td></td><td></td></tr>
-    <tr class="total grptop"><td>Published 12-month price target</td><td></td><td class="mono">$58.38</td>
-      <td class="mono">$49.55 – $67.47</td><td></td>
-      <td class="up"><b>+78%</b></td></tr>
+    <div class="buy-col"><h4><span>Relative · multiples</span><span class="family-w">40% of target</span></h4>
     
-  </tbody></table>
-  <div class="two" style="margin-top:14px">
-    <div>
-      <h3>Confidence: High</h3>
-      <ul><li>4 independent lenses agree on a valuation</li><li>lens dispersion is moderate (CV 40%)</li><li>model target is within 25% of the Street</li><li>1 data-quality / earnings-quality flag(s)</li></ul>
+      <div class="buy-item"><div><span class="nm">Forward P/E</span>
+        
+        <span class="tickers"><span class="tick">$43.88 – $63.15</span></span></div>
+        <div class="wt">$53.52<br><span class="family-w">15%</span></div></div>
+    
+      <div class="buy-item"><div><span class="nm">Forward EV/EBITDA</span>
+        
+        <span class="tickers"><span class="tick">$40.71 – $59.41</span></span></div>
+        <div class="wt">$50.06<br><span class="family-w">25%</span></div></div>
     </div>
-    <div>
-      <h3>Guardrails &amp; disclosures</h3>
-      <div class="guard">Target anchored 15% to the Street consensus ($54.28); model-only target $59.10.</div>
-      <div class="guard">Forward EPS is 3.2x the through-cycle average; target multiples are scaled by 0.79 for earnings durability.</div>
+  
+    <div class="buy-col"><h4><span>Intrinsic · cash flows</span><span class="family-w">30% of target</span></h4>
+    
+      <div class="buy-item"><div><span class="nm">Discounted cash flow (FCFF)</span>
+        
+        <span class="tickers"><span class="tick">$79.38 – $95.62</span></span></div>
+        <div class="wt">$87.04<br><span class="family-w">30%</span></div></div>
     </div>
+  
+    <div class="buy-col"><h4><span>Sector models</span><span class="family-w">30% of target</span></h4>
+    
+      <div class="buy-item"><div><span class="nm">Mid-cycle normalized EV/EBITDA</span>
+        
+        <span class="tickers"><span class="tick">$20.72 – $32.40</span></span></div>
+        <div class="wt">$26.56<br><span class="family-w">30%</span></div></div>
+    </div>
+  
   </div>
+  <div class="total">
+    <div><span class="k">Fair value today</span><div class="v">$54.62</div></div>
+    <div style="text-align:right"><span class="k">Published 12-month target</span>
+      <div class="v">$58.38<small class="up">+78%</small></div></div>
+  </div>
+  <p class="buy-foot"><b>The arithmetic.</b> $54.62 × (1 + 8.20%)
+    = model target <b>$59.10</b>; Street mean $54.28
+    at 15% weight
+    → published <b>$58.38</b>.</p>
+</div></div></div></section>
 
-  <h2 class="sec"><span class="num">03</span>The lenses in detail</h2>
-  <p>Each lens is an independent answer to <i>what is a share worth?</i> Relative lenses apply a target
-     multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits
-     the business. Every input is shown so any number can be challenged.</p>
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Exhibit 1</div><h2>Value per share by lens, against price, the Street and our target</h2></div>
+  <div class="card" style="padding:18px 20px"><svg class="ff" viewBox="0 0 760 288" role="img" aria-label="Valuation football field"><line class="grid" x1="188.0" y1="18" x2="188.0" y2="262"/><text class="axis" x="188.0" y="278" text-anchor="middle">$14.73</text><line class="grid" x1="298.0" y1="18" x2="298.0" y2="262"/><text class="axis" x="298.0" y="278" text-anchor="middle">$32.10</text><line class="grid" x1="408.0" y1="18" x2="408.0" y2="262"/><text class="axis" x="408.0" y="278" text-anchor="middle">$49.48</text><line class="grid" x1="518.0" y1="18" x2="518.0" y2="262"/><text class="axis" x="518.0" y="278" text-anchor="middle">$66.86</text><line class="grid" x1="628.0" y1="18" x2="628.0" y2="262"/><text class="axis" x="628.0" y="278" text-anchor="middle">$84.24</text><line class="grid" x1="738.0" y1="18" x2="738.0" y2="262"/><text class="axis" x="738.0" y="278" text-anchor="middle">$102</text><text class="lbl lbl-lens" x="176" y="41" text-anchor="end">Discounted cash flow (FCFF)</text><text class="sub" x="176" y="54" text-anchor="end">30% weight</text><rect class="bar bar-lens" x="597.2" y="32" width="102.8" height="16" rx="3"/><path class="pt pt-lens" d="M645.7,29 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="708.1" y="44" >$87.04</text><text class="lbl lbl-lens" x="176" y="79" text-anchor="end">Forward P/E</text><text class="sub" x="176" y="92" text-anchor="end">15% weight</text><rect class="bar bar-lens" x="372.6" y="70" width="121.9" height="16" rx="3"/><path class="pt pt-lens" d="M433.5,67 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="502.5" y="82" >$53.52</text><text class="lbl lbl-lens" x="176" y="117" text-anchor="end">Forward EV/EBITDA</text><text class="sub" x="176" y="130" text-anchor="end">25% weight</text><rect class="bar bar-lens" x="352.5" y="108" width="118.4" height="16" rx="3"/><path class="pt pt-lens" d="M411.7,105 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="478.8" y="120" >$50.06</text><text class="lbl lbl-lens" x="176" y="155" text-anchor="end">Mid-cycle normalized EV/EBITDA</text><text class="sub" x="176" y="168" text-anchor="end">30% weight</text><rect class="bar bar-lens" x="225.9" y="146" width="74.0" height="16" rx="3"/><path class="pt pt-lens" d="M262.9,143 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="307.9" y="158" >$26.56</text><text class="lbl lbl-street" x="176" y="193" text-anchor="end">Street targets (12m)</text><text class="sub" x="176" y="206" text-anchor="end">consensus</text><rect class="bar bar-street" x="386.8" y="184" width="103.1" height="16" rx="3"/><path class="pt pt-street" d="M438.4,181 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="497.9" y="196" >$54.28</text><text class="lbl lbl-target" x="176" y="231" text-anchor="end">Our 12-month target</text><text class="sub" x="176" y="244" text-anchor="end">bear – bull</text><rect class="bar bar-target" x="408.4" y="222" width="113.4" height="16" rx="3"/><path class="pt pt-target" d="M464.3,219 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="529.8" y="234" >$58.38</text><line class="v-price" x1="302.9" y1="16" x2="302.9" y2="262"/><text class="v-price-t" x="302.9" y="12" text-anchor="middle">price $32.88</text><line class="v-target" x1="464.3" y1="16" x2="464.3" y2="262"/><text class="v-target-t" x="464.3" y="258" text-anchor="middle">target $58.38</text></svg></div>
+  <div class="two" style="margin-top:22px">
+    <div><h3 style="font-size:19px;margin-bottom:8px">Confidence: High</h3>
+      <ul><li>4 independent lenses agree on a valuation</li><li>lens dispersion is moderate (CV 40%)</li><li>model target is within 25% of the Street</li><li>1 data-quality / earnings-quality flag(s)</li></ul></div>
+    <div><h3 style="font-size:19px;margin-bottom:8px">Guardrails &amp; disclosures</h3>
+      <div class="guard">Target anchored 15% to the Street consensus ($54.28); model-only target $59.10.</div>
+      <div class="guard">Forward EPS is 3.2x the through-cycle average; target multiples are scaled by 0.79 for earnings durability.</div></div>
+  </div>
+</div></section>
+
+<section class="section tight" id="lenses"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Por dentro · Inside</div><h2>The lenses in detail</h2><p class="cap">Relative lenses apply a target multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits the business. Every input is shown so any number can be challenged.</p></div>
   <div class="lenses">
   
-    <div class="lens">
-      <h4>Discounted cash flow (FCFF) <span class="fam">intrinsic</span></h4>
-      <div class="big mono">$87.04</div>
-      <div class="note mono" style="margin:0 0 6px">$79.38 – $95.62 · 30% weight</div>
-      <table><tbody><tr><td>WACC</td><td class="mono">7.71%</td></tr><tr><td>Terminal growth</td><td class="mono">2.50%</td></tr><tr><td>PV of explicit FCFF</td><td class="mono">$32.72bn</td></tr><tr><td>PV of terminal value</td><td class="mono">$46.81bn  (59% of EV)</td></tr><tr><td>Enterprise value</td><td class="mono">$79.53bn</td></tr><tr><td>− Net debt & minorities</td><td class="mono">$1.68bn</td></tr><tr><td>Equity value</td><td class="mono">$77.85bn</td></tr><tr><td>Value per share</td><td class="mono">$87.04</td></tr></tbody></table>
-      <p class="note">10-year FCFF DCF: consensus for the near years, geometric growth decay, mean-reverting margins, terminal reinvestment tied to growth/ROIC. Range = bear/bull scenarios.</p>
-    </div>
+    <article class="lens"><header><h4>Discounted cash flow (FCFF)<span class="fam">intrinsic</span></h4>
+      <span class="tag ok">30% weight</span></header>
+      <div class="body"><div class="big mono" style="font-family:var(--serif)">$87.04</div>
+        <div class="rng">$79.38 – $95.62</div>
+        <table><tbody><tr><td>WACC</td><td class="mono">7.71%</td></tr><tr><td>Terminal growth</td><td class="mono">2.50%</td></tr><tr><td>PV of explicit FCFF</td><td class="mono">$32.72bn</td></tr><tr><td>PV of terminal value</td><td class="mono">$46.81bn  (59% of EV)</td></tr><tr><td>Enterprise value</td><td class="mono">$79.53bn</td></tr><tr><td>− Net debt & minorities</td><td class="mono">$1.68bn</td></tr><tr><td>Equity value</td><td class="mono">$77.85bn</td></tr><tr><td>Value per share</td><td class="mono">$87.04</td></tr></tbody></table>
+        <p class="nt">10-year FCFF DCF: consensus for the near years, geometric growth decay, mean-reverting margins, terminal reinvestment tied to growth/ROIC. Range = bear/bull scenarios.</p></div></article>
   
-    <div class="lens">
-      <h4>Forward P/E <span class="fam">relative</span></h4>
-      <div class="big mono">$53.52</div>
-      <div class="note mono" style="margin:0 0 6px">$43.88 – $63.15 · 15% weight</div>
-      <table><tbody><tr><td>Consensus EPS</td><td class="mono">$5.61 (FY2026)</td></tr><tr><td>Forward EPS</td><td class="mono">$5.61</td></tr><tr><td>Anchor P/E</td><td class="mono">12.0x  — Precious metals reference 12.0x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×1.00  (6.0% durable growth vs 6.0% sector)</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.79  (forward EPS far above through-cycle)</td></tr><tr><td>Leverage adjustment</td><td class="mono">×1.00</td></tr><tr><td>Target P/E</td><td class="mono">9.5x</td></tr><tr><td>Value per share</td><td class="mono">$53.52</td></tr></tbody></table>
-      <p class="note">Target multiple x NTM EPS. The multiple is anchored on peers/sector, then scaled for durable growth, leverage and how far forward earnings sit above what the business has historically earned.</p>
-    </div>
+    <article class="lens"><header><h4>Forward P/E<span class="fam">relative</span></h4>
+      <span class="tag ok">15% weight</span></header>
+      <div class="body"><div class="big mono" style="font-family:var(--serif)">$53.52</div>
+        <div class="rng">$43.88 – $63.15</div>
+        <table><tbody><tr><td>Consensus EPS</td><td class="mono">$5.61 (FY2026)</td></tr><tr><td>Forward EPS</td><td class="mono">$5.61</td></tr><tr><td>Anchor P/E</td><td class="mono">12.0x  — Precious metals reference 12.0x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×1.00  (6.0% durable growth vs 6.0% sector)</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.79  (forward EPS far above through-cycle)</td></tr><tr><td>Leverage adjustment</td><td class="mono">×1.00</td></tr><tr><td>Target P/E</td><td class="mono">9.5x</td></tr><tr><td>Value per share</td><td class="mono">$53.52</td></tr></tbody></table>
+        <p class="nt">Target multiple x NTM EPS. The multiple is anchored on peers/sector, then scaled for durable growth, leverage and how far forward earnings sit above what the business has historically earned.</p></div></article>
   
-    <div class="lens">
-      <h4>Forward EV/EBITDA <span class="fam">relative</span></h4>
-      <div class="big mono">$50.06</div>
-      <div class="note mono" style="margin:0 0 6px">$40.71 – $59.41 · 25% weight</div>
-      <table><tbody><tr><td>NTM EBITDA (from consensus earnings)</td><td class="mono">$8.99bn</td></tr><tr><td>Anchor EV/EBITDA</td><td class="mono">6.5x  — Precious metals reference 6.5x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×1.00</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.79</td></tr><tr><td>Target EV/EBITDA</td><td class="mono">5.2x</td></tr><tr><td>Enterprise value</td><td class="mono">$46.46bn</td></tr><tr><td>− Net debt</td><td class="mono">$1.44bn</td></tr><tr><td>Value per share</td><td class="mono">$50.06</td></tr></tbody></table>
-      <p class="note">Capital-structure-neutral cross-check to forward P/E: it values the operating business and then bridges to equity through net debt.</p>
-    </div>
+    <article class="lens"><header><h4>Forward EV/EBITDA<span class="fam">relative</span></h4>
+      <span class="tag ok">25% weight</span></header>
+      <div class="body"><div class="big mono" style="font-family:var(--serif)">$50.06</div>
+        <div class="rng">$40.71 – $59.41</div>
+        <table><tbody><tr><td>NTM EBITDA (from consensus earnings)</td><td class="mono">$8.99bn</td></tr><tr><td>Anchor EV/EBITDA</td><td class="mono">6.5x  — Precious metals reference 6.5x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×1.00</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.79</td></tr><tr><td>Target EV/EBITDA</td><td class="mono">5.2x</td></tr><tr><td>Enterprise value</td><td class="mono">$46.46bn</td></tr><tr><td>− Net debt</td><td class="mono">$1.44bn</td></tr><tr><td>Value per share</td><td class="mono">$50.06</td></tr></tbody></table>
+        <p class="nt">Capital-structure-neutral cross-check to forward P/E: it values the operating business and then bridges to equity through net debt.</p></div></article>
   
-    <div class="lens">
-      <h4>Mid-cycle normalized EV/EBITDA <span class="fam">sector</span></h4>
-      <div class="big mono">$26.56</div>
-      <div class="note mono" style="margin:0 0 6px">$20.72 – $32.40 · 30% weight</div>
-      <table><tbody><tr><td>Through-cycle EBIT margin</td><td class="mono">39.2%</td></tr><tr><td>Spot EBIT margin</td><td class="mono">50.3%</td></tr><tr><td>Normalized EBITDA</td><td class="mono">$4.35bn</td></tr><tr><td>EV/EBITDA multiple</td><td class="mono">5.9x (through-cycle default)</td></tr><tr><td>Enterprise value</td><td class="mono">$25.44bn</td></tr><tr><td>− Net debt</td><td class="mono">$1.44bn</td></tr><tr><td>Value per share</td><td class="mono">$26.56</td></tr></tbody></table>
-      <p class="note">Commodity spot margins mislead at cycle peaks and troughs; this normalises to the through-cycle average margin and multiple.</p>
-    </div>
+    <article class="lens"><header><h4>Mid-cycle normalized EV/EBITDA<span class="fam">sector</span></h4>
+      <span class="tag ok">30% weight</span></header>
+      <div class="body"><div class="big mono" style="font-family:var(--serif)">$26.56</div>
+        <div class="rng">$20.72 – $32.40</div>
+        <table><tbody><tr><td>Through-cycle EBIT margin</td><td class="mono">39.2%</td></tr><tr><td>Spot EBIT margin</td><td class="mono">50.3%</td></tr><tr><td>Normalized EBITDA</td><td class="mono">$4.35bn</td></tr><tr><td>EV/EBITDA multiple</td><td class="mono">5.9x (through-cycle default)</td></tr><tr><td>Enterprise value</td><td class="mono">$25.44bn</td></tr><tr><td>− Net debt</td><td class="mono">$1.44bn</td></tr><tr><td>Value per share</td><td class="mono">$26.56</td></tr></tbody></table>
+        <p class="nt">Commodity spot margins mislead at cycle peaks and troughs; this normalises to the through-cycle average margin and multiple.</p></div></article>
   
   </div>
+</div></section>
 
-  <h2 class="sec"><span class="num">04</span>Earnings quality & cycle</h2>
+<section class="section tight" id="quality"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Calidad de beneficios · Earnings quality</div><h2>Are the earnings the market is paying for durable?</h2></div>
   <div class="two">
-    <div>
-      <table class="kvt"><tbody>
+    <div class="tblwrap"><table><tbody>
         <tr><td>Trailing EPS</td><td class="mono">$3.98</td></tr>
         <tr><td>Consensus EPS FY2026</td><td class="mono">$5.61</td></tr>
         <tr><td>Consensus EPS FY2027</td><td class="mono">—</td></tr>
@@ -360,74 +428,70 @@ table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800
         <tr><td>Durable EPS growth used</td><td class="mono">6.0%</td></tr>
         <tr><td>Earnings-durability factor on multiples</td><td class="mono">×0.79</td></tr>
         <tr><td>Basis</td><td>consensus (single year)</td></tr>
-      </tbody></table>
-    </div>
+    </tbody></table></div>
     <div>
-      <p><b>Cyclical or in an earnings inflection.</b>
+      <p class="lede" style="font-size:16px"><b>Cyclical or in an earnings inflection.</b>
          commodity / capital-cycle industry.</p>
       <p class="note">Growth source: historical revenue CAGR (capped at 15%); capped at sector growth (cyclical). Multiples price <i>durable</i> growth, so a one-year recovery step is never extrapolated, and when forward EPS is far above what the business has historically earned the target multiple is scaled down — the market pays less for peak earnings.</p>
     </div>
   </div>
+</div></section>
 
-  <h2 class="sec"><span class="num">05</span>Where it sits on the Investment Clock</h2>
+<section class="section tight" id="clock"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Reloj de inversión · Investment Clock</div><h2>Where it sits on the cycle</h2></div>
   <div class="two" style="align-items:center">
-    <div class="wheelbox"><svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases"><path class="seg seg-recovery lit2" d="M30.1,176.1 A150,150 0 0 1 176.1,30.1 L178.0,102.0 A78,78 0 0 0 102.0,178.0 Z"/><text class="ph-n lit2" x="109.5" y="87.0" text-anchor="middle">RECOVERY</text><text class="ph-s lit2" x="109.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↓</text><text class="ph-a lit2" x="109.5" y="115.0" text-anchor="middle">best: equities</text><path class="seg seg-overheat lit" d="M183.9,30.1 A150,150 0 0 1 329.9,176.1 L258.0,178.0 A78,78 0 0 0 182.0,102.0 Z"/><text class="ph-n lit" x="250.5" y="87.0" text-anchor="middle">OVERHEAT</text><text class="ph-s lit" x="250.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↑</text><text class="ph-a lit" x="250.5" y="115.0" text-anchor="middle">best: commodities</text><path class="seg seg-stagflation dim" d="M329.9,183.9 A150,150 0 0 1 183.9,329.9 L182.0,258.0 A78,78 0 0 0 258.0,182.0 Z"/><text class="ph-n dim" x="250.5" y="261.0" text-anchor="middle">STAGFLATION</text><text class="ph-s dim" x="250.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↑</text><text class="ph-a dim" x="250.5" y="289.0" text-anchor="middle">best: cash</text><path class="seg seg-reflation dim" d="M176.1,329.9 A150,150 0 0 1 30.1,183.9 L102.0,182.0 A78,78 0 0 0 178.0,258.0 Z"/><text class="ph-n dim" x="109.5" y="261.0" text-anchor="middle">REFLATION</text><text class="ph-s dim" x="109.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↓</text><text class="ph-a dim" x="109.5" y="289.0" text-anchor="middle">best: bonds</text><circle class="wheel-hub" cx="180" cy="180" r="62"/><path class="wheel-arrow" d="M145.36,160.00 A40.00,40.00 0 1 1 160.00,214.64"/><path class="wheel-head" d="M160.0,214.6 l-9,-3 l5,-8 z" transform="rotate(30 160.0 214.6)"/><text class="wheel-c" x="180" y="184" text-anchor="middle">CYCLE</text></svg></div>
+    <div style="max-width:320px"><svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases"><path class="seg seg-recovery lit2" d="M30.1,176.1 A150,150 0 0 1 176.1,30.1 L178.0,102.0 A78,78 0 0 0 102.0,178.0 Z"/><text class="ph-n lit2" x="109.5" y="87.0" text-anchor="middle">RECOVERY</text><text class="ph-s lit2" x="109.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↓</text><text class="ph-a lit2" x="109.5" y="115.0" text-anchor="middle">best: equities</text><path class="seg seg-overheat lit" d="M183.9,30.1 A150,150 0 0 1 329.9,176.1 L258.0,178.0 A78,78 0 0 0 182.0,102.0 Z"/><text class="ph-n lit" x="250.5" y="87.0" text-anchor="middle">OVERHEAT</text><text class="ph-s lit" x="250.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↑</text><text class="ph-a lit" x="250.5" y="115.0" text-anchor="middle">best: commodities</text><path class="seg seg-stagflation dim" d="M329.9,183.9 A150,150 0 0 1 183.9,329.9 L182.0,258.0 A78,78 0 0 0 258.0,182.0 Z"/><text class="ph-n dim" x="250.5" y="261.0" text-anchor="middle">STAGFLATION</text><text class="ph-s dim" x="250.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↑</text><text class="ph-a dim" x="250.5" y="289.0" text-anchor="middle">best: cash</text><path class="seg seg-reflation dim" d="M176.1,329.9 A150,150 0 0 1 30.1,183.9 L102.0,182.0 A78,78 0 0 0 178.0,258.0 Z"/><text class="ph-n dim" x="109.5" y="261.0" text-anchor="middle">REFLATION</text><text class="ph-s dim" x="109.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↓</text><text class="ph-a dim" x="109.5" y="289.0" text-anchor="middle">best: bonds</text><circle class="wheel-hub" cx="180" cy="180" r="62"/><path class="wheel-arrow" d="M145.36,160.00 A40.00,40.00 0 1 1 160.00,214.64"/><path class="wheel-head" d="M160.0,214.6 l-9,-3 l5,-8 z" transform="rotate(30 160.0 214.6)"/><text class="wheel-c" x="180" y="184" text-anchor="middle">CYCLE</text></svg></div>
     <div>
-      <p><b>Overheat</b> and <b>Recovery</b>
-         are the phases in which Basic Materials has historically led, on the classic Merrill Lynch Investment Clock
-         sector map (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
-      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company
-         fundamentals and consensus, not macro data. Use it to ask whether the thesis above needs the cycle to cooperate.</p>
+      <p class="lede" style="font-size:16px"><b>Overheat</b> and <b>Recovery</b>
+         are the phases in which Basic Materials has historically led, on the classic Merrill Lynch Investment Clock sector map
+         (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
+      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company fundamentals and consensus,
+         not macro data. Use it to ask whether the thesis above needs the cycle to cooperate. The live phase reading lives in the Reloj de inversión project.</p>
     </div>
   </div>
+</div></section>
 
-  
-  <h2 class="sec"><span class="num">06</span>Financial summary & valuation</h2>
-  <table><thead><tr><th>$, per share where noted</th>
+
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Financial summary</div><h2>Multiples at the current price</h2></div>
+  <div class="tblwrap"><table><thead><tr><th>$, per share where noted</th>
     <th>FY2024A</th><th>FY2025A</th><th>FY2026E</th><th>FY2027E</th><th>FY2028E</th><th>FY2029E</th></tr></thead><tbody>
   
-    <tr >
-      <td>Revenue</td>
+    <tr><td>Revenue</td>
       <td class="mono">$5.20bn</td><td class="mono">$8.75bn</td><td class="mono">$10.94bn</td><td class="mono">$11.64bn</td><td class="mono">$12.26bn</td><td class="mono">$12.82bn</td></tr>
   
-    <tr >
-      <td style="padding-left:18px" class="muted">growth</td>
+    <tr><td style="padding-left:24px" class="muted">growth</td>
       <td class="mono">+15.6%</td><td class="mono">+68.2%</td><td class="mono">+25.0%</td><td class="mono">+6.4%</td><td class="mono">+5.3%</td><td class="mono">+4.5%</td></tr>
   
-    <tr >
-      <td>EBITDA</td>
+    <tr><td>EBITDA</td>
       <td class="mono">$2.67bn</td><td class="mono">$6.34bn</td><td class="mono">$9.48bn</td><td class="mono">$9.77bn</td><td class="mono">$9.94bn</td><td class="mono">$10.04bn</td></tr>
   
-    <tr >
-      <td>EBIT margin</td>
+    <tr><td>EBIT margin</td>
       <td class="mono">40.2%</td><td class="mono">50.3%</td><td class="mono">71.7%</td><td class="mono">68.9%</td><td class="mono">66.1%</td><td class="mono">63.3%</td></tr>
   
-    <tr >
-      <td>EPS</td>
+    <tr><td>EPS</td>
       <td class="mono">$1.39</td><td class="mono">$3.98</td><td class="mono">$5.61</td><td class="mono">$5.74</td><td class="mono">$5.80</td><td class="mono">$5.81</td></tr>
   
-    <tr >
-      <td>FCFF/share</td>
+    <tr><td>FCFF/share</td>
       <td class="mono">$0.91</td><td class="mono">$3.07</td><td class="mono">$4.96</td><td class="mono">$5.05</td><td class="mono">$5.15</td><td class="mono">$5.20</td></tr>
   
-    <tr class="grptop">
-      <td>EV/EBITDA</td>
+    <tr><td>EV/EBITDA</td>
       <td class="mono">11.6x</td><td class="mono">4.9x</td><td class="mono">3.3x</td><td class="mono">3.2x</td><td class="mono">3.1x</td><td class="mono">3.1x</td></tr>
   
-    <tr >
-      <td>P/E</td>
+    <tr><td>P/E</td>
       <td class="mono">23.6x</td><td class="mono">8.3x</td><td class="mono">5.9x</td><td class="mono">5.7x</td><td class="mono">5.7x</td><td class="mono">5.7x</td></tr>
   
-    <tr >
-      <td>FCF yield</td>
+    <tr><td>FCF yield</td>
       <td class="mono">2.6%</td><td class="mono">8.9%</td><td class="mono">14.4%</td><td class="mono">14.6%</td><td class="mono">14.9%</td><td class="mono">15.1%</td></tr>
-  </tbody></table>
+  </tbody></table></div>
   <p class="note">Multiples struck at the current price/EV against each year's estimates. Forecast EPS approximates net income as (EBIT − LTM interest) × (1−t).</p>
-  
+</div></section>
 
-  
-  <h2 class="sec"><span class="num">07</span>Financial model — historicals & projected P&L</h2>
-  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
+
+
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Modelo</div><h2>Historicals and projected P&L</h2></div>
+  <div class="tblwrap"><table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
     <th>Net income</th><th>EPS</th></tr></thead><tbody>
   
     <tr class="hist"><td class="mono">2022A</td>
@@ -524,50 +588,53 @@ table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800
     <td class="mono">$5.78</td></tr>
     
   
-  </tbody></table>
-  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with
-     flat interest and the normalised tax rate.</p>
-  
+  </tbody></table></div>
+  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with flat interest and the normalised tax rate.</p>
+</div></section>
 
+
+
+<section class="section tight" id="dcf"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">DCF</div><h2>Cross-check — drivers and sensitivity</h2></div>
+  <div class="tblwrap"><table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
   
-  <h2 class="sec"><span class="num">08</span>DCF cross-check — drivers & sensitivity</h2>
-  <table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
+    <tr><td><b>Revenue growth</b></td><td class="mono" style="white-space:nowrap">25.0% → 2.5% over 10y</td><td style="text-align:left;font-size:12.5px;line-height:1.5">Year 1 follows consensus revenue for FY2026. Growth then decays geometrically from 8.0% to the 2.5% terminal rate as revenue compounds toward $15bn — competitive entry and the law of large numbers compress incremental growth; no single year's step is ever extrapolated.</td></tr>
   
-    <tr><td><b>Revenue growth</b></td><td class="mono" style="white-space:nowrap">25.0% → 2.5% over 10y</td><td style="text-align:left;font-size:12px;line-height:1.5">Year 1 follows consensus revenue for FY2026. Growth then decays geometrically from 8.0% to the 2.5% terminal rate as revenue compounds toward $15bn — competitive entry and the law of large numbers compress incremental growth; no single year's step is ever extrapolated.</td></tr>
+    <tr><td><b>EBIT margin</b></td><td class="mono" style="white-space:nowrap">50.3% → 71.7% → 52.2% (expands)</td><td style="text-align:left;font-size:12.5px;line-height:1.5">Reported margin is 50.3%; year-1 margin is 71.7%. This is a cyclical business, so we revert 60% of the way toward the through-cycle average of 39.2%, landing at 52.2% — crediting some but not all of current profitability as durable.</td></tr>
   
-    <tr><td><b>EBIT margin</b></td><td class="mono" style="white-space:nowrap">50.3% → 71.7% → 52.2% (expands)</td><td style="text-align:left;font-size:12px;line-height:1.5">Reported margin is 50.3%; year-1 margin is 71.7%. This is a cyclical business, so we revert 60% of the way toward the through-cycle average of 39.2%, landing at 52.2% — crediting some but not all of current profitability as durable.</td></tr>
+    <tr><td><b>Reinvestment (capex)</b></td><td class="mono" style="white-space:nowrap">21.8% → 16.5% of sales</td><td style="text-align:left;font-size:12.5px;line-height:1.5">Starts at the historical capex intensity (21.8%) against D&A of 15.0%, converging to 1.10x D&A by the terminal year — a steady state that funds growth without permanent over- or under-investment.</td></tr>
   
-    <tr><td><b>Reinvestment (capex)</b></td><td class="mono" style="white-space:nowrap">21.8% → 16.5% of sales</td><td style="text-align:left;font-size:12px;line-height:1.5">Starts at the historical capex intensity (21.8%) against D&A of 15.0%, converging to 1.10x D&A by the terminal year — a steady state that funds growth without permanent over- or under-investment.</td></tr>
+    <tr><td><b>Working capital</b></td><td class="mono" style="white-space:nowrap">-3.6% of Δrevenue</td><td style="text-align:left;font-size:12.5px;line-height:1.5">Incremental working capital absorbs -3.6% of each year's revenue increase (historical median) — a source of cash (negative working-capital model).</td></tr>
   
-    <tr><td><b>Working capital</b></td><td class="mono" style="white-space:nowrap">-3.6% of Δrevenue</td><td style="text-align:left;font-size:12px;line-height:1.5">Incremental working capital absorbs -3.6% of each year's revenue increase (historical median) — a source of cash (negative working-capital model).</td></tr>
+    <tr><td><b>Tax rate</b></td><td class="mono" style="white-space:nowrap">35.0%</td><td style="text-align:left;font-size:12.5px;line-height:1.5">Normalised to the trailing effective rate of 35.0%, applied to EBIT to derive NOPAT.</td></tr>
   
-    <tr><td><b>Tax rate</b></td><td class="mono" style="white-space:nowrap">35.0%</td><td style="text-align:left;font-size:12px;line-height:1.5">Normalised to the trailing effective rate of 35.0%, applied to EBIT to derive NOPAT.</td></tr>
-  
-    <tr><td><b>Terminal growth</b></td><td class="mono" style="white-space:nowrap">2.5%</td><td style="text-align:left;font-size:12px;line-height:1.5">At or below long-run nominal GDP (4.0%); a mature going concern cannot outgrow the economy in perpetuity. Terminal reinvestment is g/ROIC.</td></tr>
-  </tbody></table>
-  <div class="three" style="margin-top:14px">
-    <div class="keep"><div class="exh">Revenue &amp; FCFF</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Revenue and FCFF projection"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">0</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">4</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">9</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">13</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">17</text><rect class="b-rev" x="39.7" y="87.7" width="17.2" height="112.3" rx="1.5"/><rect class="b-fcf" x="58.9" y="154.5" width="17.2" height="45.5" rx="1.5"/><text class="axis" x="57.9" y="220" text-anchor="middle">26E</text><rect class="b-rev" x="87.5" y="80.4" width="17.2" height="119.6" rx="1.5"/><rect class="b-fcf" x="106.7" y="153.6" width="17.2" height="46.4" rx="1.5"/><text class="axis" x="105.7" y="220" text-anchor="middle">27E</text><rect class="b-rev" x="135.3" y="74.1" width="17.2" height="125.9" rx="1.5"/><rect class="b-fcf" x="154.5" y="152.7" width="17.2" height="47.3" rx="1.5"/><text class="axis" x="153.5" y="220" text-anchor="middle">28E</text><rect class="b-rev" x="183.1" y="68.4" width="17.2" height="131.6" rx="1.5"/><rect class="b-fcf" x="202.3" y="152.2" width="17.2" height="47.8" rx="1.5"/><text class="axis" x="201.3" y="220" text-anchor="middle">29E</text><rect class="b-rev" x="230.9" y="63.2" width="17.2" height="136.8" rx="1.5"/><rect class="b-fcf" x="250.1" y="152.1" width="17.2" height="47.9" rx="1.5"/><text class="axis" x="249.1" y="220" text-anchor="middle">30E</text><rect class="b-rev" x="278.7" y="58.3" width="17.2" height="141.7" rx="1.5"/><rect class="b-fcf" x="297.9" y="152.1" width="17.2" height="47.9" rx="1.5"/><text class="axis" x="296.9" y="220" text-anchor="middle">31E</text><rect class="b-rev" x="326.5" y="53.7" width="17.2" height="146.3" rx="1.5"/><rect class="b-fcf" x="345.7" y="152.4" width="17.2" height="47.6" rx="1.5"/><text class="axis" x="344.7" y="220" text-anchor="middle">32E</text><rect class="b-rev" x="374.3" y="49.3" width="17.2" height="150.7" rx="1.5"/><rect class="b-fcf" x="393.5" y="152.8" width="17.2" height="47.2" rx="1.5"/><text class="axis" x="392.5" y="220" text-anchor="middle">33E</text><rect class="b-rev" x="422.1" y="44.9" width="17.2" height="155.1" rx="1.5"/><rect class="b-fcf" x="441.3" y="150.5" width="17.2" height="49.5" rx="1.5"/><text class="axis" x="440.3" y="220" text-anchor="middle">34E</text><rect class="b-rev" x="469.9" y="41.1" width="17.2" height="158.9" rx="1.5"/><rect class="b-fcf" x="489.1" y="148.3" width="17.2" height="51.7" rx="1.5"/><text class="axis" x="488.1" y="220" text-anchor="middle">35E</text><text class="axis" x="34" y="12">$bn  —  <tspan class="k-rev">■ revenue</tspan>  <tspan class="k-fcf">■ FCFF</tspan></text></svg></div>
-    <div class="keep"><div class="exh">EBIT margin path</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="EBIT margin path"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">0%</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">20%</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">40%</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">60%</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">80%</text><polyline class="l-act" points="50.9,125.7 84.8,127.7 118.6,110.8 152.5,88.4"/><polyline class="l-est" points="152.5,88.4 186.4,41.1 220.2,47.2 254.1,53.4 287.9,59.6 321.8,65.8 355.6,72.0 389.5,78.1 423.4,84.3 457.2,84.3 491.1,84.3"/><line class="grid sep" x1="169.4" y1="22" x2="169.4" y2="200"/><text class="axis" x="50.9" y="220" text-anchor="middle">22A</text><text class="axis" x="84.8" y="220" text-anchor="middle">23A</text><text class="axis" x="118.6" y="220" text-anchor="middle">24A</text><text class="axis" x="152.5" y="220" text-anchor="middle">25A</text><text class="axis" x="186.4" y="220" text-anchor="middle">26E</text><text class="axis" x="254.1" y="220" text-anchor="middle">28E</text><text class="axis" x="321.8" y="220" text-anchor="middle">30E</text><text class="axis" x="389.5" y="220" text-anchor="middle">32E</text><text class="axis" x="457.2" y="220" text-anchor="middle">34E</text><text class="axis" x="34" y="12"><tspan class="k-act">● actual</tspan>  <tspan class="k-est">● estimate</tspan></text></svg></div>
-    <div class="keep"><div class="exh">EV → equity bridge</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Enterprise value to equity bridge"><rect class="b-pos" x="26.0" y="123.2" width="68.0" height="62.8" rx="2"/><text class="val" x="60.0" y="118.2" text-anchor="middle">$32.7bn</text><text class="axis" x="60.0" y="208" text-anchor="middle">PV explicit FCFF</text><rect class="b-pos" x="126.0" y="33.3" width="68.0" height="89.9" rx="2"/><text class="val" x="160.0" y="28.3" text-anchor="middle">$46.8bn</text><text class="axis" x="160.0" y="208" text-anchor="middle">PV terminal</text><rect class="b-neg" x="226.0" y="33.3" width="68.0" height="2.8" rx="2"/><text class="val" x="260.0" y="28.3" text-anchor="middle">$-1.4bn</text><text class="axis" x="260.0" y="208" text-anchor="middle">Net debt</text><rect class="b-neg" x="326.0" y="36.0" width="68.0" height="1.5" rx="2"/><text class="val" x="360.0" y="31.0" text-anchor="middle">$-0.2bn</text><text class="axis" x="360.0" y="208" text-anchor="middle">Minorities</text><rect class="b-tot" x="426.0" y="36.5" width="68.0" height="149.5" rx="2"/><text class="val" x="460.0" y="31.5" text-anchor="middle">$77.8bn</text><text class="axis" x="460.0" y="208" text-anchor="middle">Equity value</text><line class="grid" x1="10" y1="186.0" x2="510" y2="186.0"/></svg></div>
+    <tr><td><b>Terminal growth</b></td><td class="mono" style="white-space:nowrap">2.5%</td><td style="text-align:left;font-size:12.5px;line-height:1.5">At or below long-run nominal GDP (4.0%); a mature going concern cannot outgrow the economy in perpetuity. Terminal reinvestment is g/ROIC.</td></tr>
+  </tbody></table></div>
+  <div class="three" style="margin-top:18px">
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">Revenue &amp; FCFF</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Revenue and FCFF projection"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">0</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">4</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">9</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">13</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">17</text><rect class="b-rev" x="39.7" y="87.7" width="17.2" height="112.3" rx="1.5"/><rect class="b-fcf" x="58.9" y="154.5" width="17.2" height="45.5" rx="1.5"/><text class="axis" x="57.9" y="220" text-anchor="middle">26E</text><rect class="b-rev" x="87.5" y="80.4" width="17.2" height="119.6" rx="1.5"/><rect class="b-fcf" x="106.7" y="153.6" width="17.2" height="46.4" rx="1.5"/><text class="axis" x="105.7" y="220" text-anchor="middle">27E</text><rect class="b-rev" x="135.3" y="74.1" width="17.2" height="125.9" rx="1.5"/><rect class="b-fcf" x="154.5" y="152.7" width="17.2" height="47.3" rx="1.5"/><text class="axis" x="153.5" y="220" text-anchor="middle">28E</text><rect class="b-rev" x="183.1" y="68.4" width="17.2" height="131.6" rx="1.5"/><rect class="b-fcf" x="202.3" y="152.2" width="17.2" height="47.8" rx="1.5"/><text class="axis" x="201.3" y="220" text-anchor="middle">29E</text><rect class="b-rev" x="230.9" y="63.2" width="17.2" height="136.8" rx="1.5"/><rect class="b-fcf" x="250.1" y="152.1" width="17.2" height="47.9" rx="1.5"/><text class="axis" x="249.1" y="220" text-anchor="middle">30E</text><rect class="b-rev" x="278.7" y="58.3" width="17.2" height="141.7" rx="1.5"/><rect class="b-fcf" x="297.9" y="152.1" width="17.2" height="47.9" rx="1.5"/><text class="axis" x="296.9" y="220" text-anchor="middle">31E</text><rect class="b-rev" x="326.5" y="53.7" width="17.2" height="146.3" rx="1.5"/><rect class="b-fcf" x="345.7" y="152.4" width="17.2" height="47.6" rx="1.5"/><text class="axis" x="344.7" y="220" text-anchor="middle">32E</text><rect class="b-rev" x="374.3" y="49.3" width="17.2" height="150.7" rx="1.5"/><rect class="b-fcf" x="393.5" y="152.8" width="17.2" height="47.2" rx="1.5"/><text class="axis" x="392.5" y="220" text-anchor="middle">33E</text><rect class="b-rev" x="422.1" y="44.9" width="17.2" height="155.1" rx="1.5"/><rect class="b-fcf" x="441.3" y="150.5" width="17.2" height="49.5" rx="1.5"/><text class="axis" x="440.3" y="220" text-anchor="middle">34E</text><rect class="b-rev" x="469.9" y="41.1" width="17.2" height="158.9" rx="1.5"/><rect class="b-fcf" x="489.1" y="148.3" width="17.2" height="51.7" rx="1.5"/><text class="axis" x="488.1" y="220" text-anchor="middle">35E</text><text class="axis" x="34" y="12">$bn  —  <tspan class="k-rev">■ revenue</tspan>  <tspan class="k-fcf">■ FCFF</tspan></text></svg></div>
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EBIT margin path</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="EBIT margin path"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">0%</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">20%</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">40%</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">60%</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">80%</text><polyline class="l-act" points="50.9,125.7 84.8,127.7 118.6,110.8 152.5,88.4"/><polyline class="l-est" points="152.5,88.4 186.4,41.1 220.2,47.2 254.1,53.4 287.9,59.6 321.8,65.8 355.6,72.0 389.5,78.1 423.4,84.3 457.2,84.3 491.1,84.3"/><line class="grid sep" x1="169.4" y1="22" x2="169.4" y2="200"/><text class="axis" x="50.9" y="220" text-anchor="middle">22A</text><text class="axis" x="84.8" y="220" text-anchor="middle">23A</text><text class="axis" x="118.6" y="220" text-anchor="middle">24A</text><text class="axis" x="152.5" y="220" text-anchor="middle">25A</text><text class="axis" x="186.4" y="220" text-anchor="middle">26E</text><text class="axis" x="254.1" y="220" text-anchor="middle">28E</text><text class="axis" x="321.8" y="220" text-anchor="middle">30E</text><text class="axis" x="389.5" y="220" text-anchor="middle">32E</text><text class="axis" x="457.2" y="220" text-anchor="middle">34E</text><text class="axis" x="34" y="12"><tspan class="k-act">● actual</tspan>  <tspan class="k-est">● estimate</tspan></text></svg></div>
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EV → equity bridge</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Enterprise value to equity bridge"><rect class="b-pos" x="26.0" y="123.2" width="68.0" height="62.8" rx="2"/><text class="val" x="60.0" y="118.2" text-anchor="middle">$32.7bn</text><text class="axis" x="60.0" y="208" text-anchor="middle">PV explicit FCFF</text><rect class="b-pos" x="126.0" y="33.3" width="68.0" height="89.9" rx="2"/><text class="val" x="160.0" y="28.3" text-anchor="middle">$46.8bn</text><text class="axis" x="160.0" y="208" text-anchor="middle">PV terminal</text><rect class="b-neg" x="226.0" y="33.3" width="68.0" height="2.8" rx="2"/><text class="val" x="260.0" y="28.3" text-anchor="middle">$-1.4bn</text><text class="axis" x="260.0" y="208" text-anchor="middle">Net debt</text><rect class="b-neg" x="326.0" y="36.0" width="68.0" height="1.5" rx="2"/><text class="val" x="360.0" y="31.0" text-anchor="middle">$-0.2bn</text><text class="axis" x="360.0" y="208" text-anchor="middle">Minorities</text><rect class="b-tot" x="426.0" y="36.5" width="68.0" height="149.5" rx="2"/><text class="val" x="460.0" y="31.5" text-anchor="middle">$77.8bn</text><text class="axis" x="460.0" y="208" text-anchor="middle">Equity value</text><line class="grid" x1="10" y1="186.0" x2="510" y2="186.0"/></svg></div>
   </div>
   
-  <div class="two" style="margin-top:10px">
-    <div><div class="exh">Exhibit · DCF value per share, WACC × terminal growth (vs. price)</div><table class="sens"><thead><tr><th>WACC \ g</th><th>1.5%</th><th>2.0%</th><th>2.5%</th><th>3.0%</th><th>3.5%</th></tr></thead><tbody><tr><th>6.2%</th><td class="up2">$105</td><td class="up2">$112</td><td class="up2">$121</td><td class="up2">$133</td><td class="up2">$149</td></tr><tr><th>7.0%</th><td class="up2">$90.63</td><td class="up2">$95.39</td><td class="up2">$101</td><td class="up2">$108</td><td class="up2">$118</td></tr><tr><th>7.7%</th><td class="up2">$79.75</td><td class="up2">$83.08</td><td class="up2 base">$87.04</td><td class="up2">$91.83</td><td class="up2">$97.74</td></tr><tr><th>8.5%</th><td class="up2">$71.22</td><td class="up2">$73.62</td><td class="up2">$76.42</td><td class="up2">$79.72</td><td class="up2">$83.68</td></tr><tr><th>9.2%</th><td class="up2">$64.35</td><td class="up2">$66.13</td><td class="up2">$68.16</td><td class="up2">$70.52</td><td class="up2">$73.28</td></tr></tbody></table>
-      <p class="note">Shaded against the current price: green = above, red = below. Outlined cell = base case.</p></div>
+  <div class="two" style="margin-top:22px">
+    <div class="sens-wrap"><div class="exh" style="margin-top:0">DCF value per share · WACC × terminal growth (vs. price)</div><table class="sens"><thead><tr><th>WACC \ g</th><th>1.5%</th><th>2.0%</th><th>2.5%</th><th>3.0%</th><th>3.5%</th></tr></thead><tbody><tr><th>6.2%</th><td class="up2">$105</td><td class="up2">$112</td><td class="up2">$121</td><td class="up2">$133</td><td class="up2">$149</td></tr><tr><th>7.0%</th><td class="up2">$90.63</td><td class="up2">$95.39</td><td class="up2">$101</td><td class="up2">$108</td><td class="up2">$118</td></tr><tr><th>7.7%</th><td class="up2">$79.75</td><td class="up2">$83.08</td><td class="up2 base">$87.04</td><td class="up2">$91.83</td><td class="up2">$97.74</td></tr><tr><th>8.5%</th><td class="up2">$71.22</td><td class="up2">$73.62</td><td class="up2">$76.42</td><td class="up2">$79.72</td><td class="up2">$83.68</td></tr><tr><th>9.2%</th><td class="up2">$64.35</td><td class="up2">$66.13</td><td class="up2">$68.16</td><td class="up2">$70.52</td><td class="up2">$73.28</td></tr></tbody></table>
+      <p class="note">Shaded against the current price: green = above, terracotta = below. Outlined cell = base case.</p></div>
     <div>
-      <p>The business earns <b>30.1%</b> on capital versus a <b>7.7%</b> cost of capital — a positive spread of <b>2235bps</b>, so growth creates value. Self-funding growth of 2.5% (reinvestment 8% × ROIC) frames how much of the terminal growth is organically financed rather than assumed.</p>
-      <h3>Model diagnostics</h3>
-      <table><tbody><tr><td>Terminal EV/EBITDA vs today</td><td class="mono">9.1x implied vs 5.8x current</td>
+      <p class="lede" style="font-size:15px">The business earns <b>30.1%</b> on capital versus a <b>7.7%</b> cost of capital — a positive spread of <b>2235bps</b>, so growth creates value. Self-funding growth of 2.5% (reinvestment 8% × ROIC) frames how much of the terminal growth is organically financed rather than assumed.</p>
+      <h3 style="font-size:17px;margin:16px 0 6px">Model diagnostics</h3>
+      <div class="tblwrap"><table><tbody><tr><td>Terminal EV/EBITDA vs today</td><td class="mono">9.1x implied vs 5.8x current</td>
         <td><span class="tag warn">rich</span></td></tr><tr><td>Terminal ROIC vs WACC</td><td class="mono">30.1% vs 7.7%</td>
-        <td><span class="tag ok">ok</span></td></tr></tbody></table>
+        <td><span class="tag ok">ok</span></td></tr></tbody></table></div>
     </div>
   </div>
   
-  
+</div></section>
 
-  
-  <h2 class="sec"><span class="num">09</span>Ratio analysis — leverage, coverage & returns</h2>
-  <table><thead><tr><th>Metric</th><th>FY2022A</th><th>FY2023A</th><th>FY2024A</th><th>FY2025A</th></tr></thead><tbody>
+
+
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Ratios</div><h2>Leverage, coverage and returns</h2></div>
+  <div class="tblwrap"><table><thead><tr><th>Metric</th><th>FY2022A</th><th>FY2023A</th><th>FY2024A</th><th>FY2025A</th></tr></thead><tbody>
   
     <tr><td>Net debt / EBITDA</td><td class="mono">0.3x</td><td class="mono">0.5x</td><td class="mono">0.8x</td><td class="mono">0.2x</td></tr>
   
@@ -580,70 +647,78 @@ table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800
     <tr><td>FCF conversion (FCFF/NOPAT)</td><td class="mono">62%</td><td class="mono">52%</td><td class="mono">60%</td><td class="mono">90%</td></tr>
   
     <tr><td>Capex / D&A</td><td class="mono">1.27x</td><td class="mono">1.33x</td><td class="mono">1.89x</td><td class="mono">1.52x</td></tr>
-  </tbody></table>
-  
+  </tbody></table></div>
+</div></section>
 
-  
-  <h2 class="sec"><span class="num">10</span>Factor sensitivity map — what moves this stock</h2>
-  <table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
-    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
+
+
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Factores</div><h2>What moves this stock</h2></div>
+  <div class="tblwrap"><table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
+    <th style="width:9%">Exposure</th><th style="width:24%;text-align:left">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
   
     <tr><td>Macro</td><td><b>Interest rates / discount rate</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">75bps of WACC ≈ $12.40/sh (14%); TV = 59% of EV</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Long-duration cash flows: the further out the value sits (terminal-heavy), the more a shift in rates or the equity risk premium re-prices the stock, independent of operations.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Long-duration cash flows: the further out the value sits (terminal-heavy), the more a shift in rates or the equity risk premium re-prices the stock, independent of operations.</td></tr>
   
     <tr><td>Macro</td><td><b>Economic cycle / demand</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">Revenue growth volatility σ = 27.7% over 3y</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Historical top-line dispersion is the cleanest read on cyclicality: a stable compounding base decouples from GDP; a volatile one imports the macro cycle into earnings.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Historical top-line dispersion is the cleanest read on cyclicality: a stable compounding base decouples from GDP; a volatile one imports the macro cycle into earnings.</td></tr>
   
     <tr><td>Macro</td><td><b>Inflation / input costs</b></td>
     <td><span class="tag low">Low</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">−100bps EBIT margin ≈ −$1.77/sh; margin σ = 7.1%</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Cost pass-through is the test: firms with pricing power hold margin through inflation; historical margin volatility shows how much of past cost shocks reached the P&L.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Cost pass-through is the test: firms with pricing power hold margin through inflation; historical margin volatility shows how much of past cost shocks reached the P&L.</td></tr>
   
     <tr><td>Macro</td><td><b>Credit & refinancing</b></td>
     <td><span class="tag low">Low</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">Net debt/EBITDA = 0.2x; EBIT/interest = 36.5x</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Leverage converts operating shortfalls into equity stress: the higher the stack, the more a slowdown or a repricing of debt costs flows straight to the equity holder.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Leverage converts operating shortfalls into equity stress: the higher the stack, the more a slowdown or a repricing of debt costs flows straight to the equity holder.</td></tr>
   
     <tr><td>Macro</td><td><b>Commodity prices</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">Spot margin 50% vs through-cycle 39%</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Realised prices set margins more than management does; the gap between spot and mid-cycle margin is the mean-reversion risk embedded in today's earnings.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Realised prices set margins more than management does; the gap between spot and mid-cycle margin is the mean-reversion risk embedded in today's earnings.</td></tr>
   
     <tr><td>Micro</td><td><b>Competitive erosion</b></td>
     <td><span class="tag low">Low</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">ROIC−WACC spread = 2,235bps</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Excess returns invite entry: the wider the spread, the bigger the prize for competitors — but also the bigger the buffer before growth stops creating value. A thin spread means small competitive slippage flips growth to value destruction.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Excess returns invite entry: the wider the spread, the bigger the prize for competitors — but also the bigger the buffer before growth stops creating value. A thin spread means small competitive slippage flips growth to value destruction.</td></tr>
   
     <tr><td>Micro</td><td><b>Execution vs expectations</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">Implied y1 growth 15.0% vs base 25.0%</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Market expects LESS than our base — upside on delivery. The equity reprices on the gap between delivery and what the tape already discounts, not on absolute results.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Market expects LESS than our base — upside on delivery. The equity reprices on the gap between delivery and what the tape already discounts, not on absolute results.</td></tr>
   
     <tr><td>Micro</td><td><b>Capital intensity</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">Capex/D&A = 1.45x; capex = 21.8% of sales</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Above 1x, the business must keep buying its own growth — FCF conversion stays hostage to the reinvestment cycle; below 1x, depreciation overstates true capital needs and cash conversion runs ahead of earnings.</td></tr>
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Above 1x, the business must keep buying its own growth — FCF conversion stays hostage to the reinvestment cycle; below 1x, depreciation overstates true capital needs and cash conversion runs ahead of earnings.</td></tr>
   
     <tr><td>Micro</td><td><b>Pricing power / margin stability</b></td>
     <td><span class="tag high">High</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">EBIT margin σ = 7.1% (range 33%–50%)</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">Stable margins across cycles are the fingerprint of pricing power; wide swings say the company is a price-taker whose profitability belongs to the environment, not the franchise.</td></tr>
-  </tbody></table>
-  
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">Stable margins across cycles are the fingerprint of pricing power; wide swings say the company is a price-taker whose profitability belongs to the environment, not the franchise.</td></tr>
+  </tbody></table></div>
+</div></section>
 
-  
-  <h2 class="sec"><span class="num">11</span>Catalysts & what each lever is worth</h2>
+
+
+<section class="section tight"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Catalizadores</div><h2>What each lever is worth</h2></div>
   <ul><li><b>Cost of capital:</b> every 75bps of WACC moves fair value by ≈$12.40/share (14%). Rate path and the equity risk premium are the single biggest swing factor.</li><li><b>Terminal growth:</b> 50bps of perpetuity growth is worth ≈$4.37/share — the market's read on the company's long-run competitive position.</li><li><b>Operating margin:</b> each 100bps of EBIT margin across the forecast is worth ≈$1.77/share — watch pricing power, mix and cost discipline in quarterly prints.</li><li><b>Top-line delivery:</b> our base assumes 25.0% year-one growth fading to 2.5%; sustained beats/misses versus that glide path are the cleanest re-rating trigger either way.</li></ul>
-  
+</div></section>
 
-  <h2 class="sec"><span class="num">12</span>Key risks</h2>
+
+<section class="section tight" id="risks"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Riesgos</div><h2>Key risks</h2></div>
   <ul><li>Earnings are cyclically elevated: forward EPS is 3.2x the through-cycle average. A normalisation of pricing, volumes or margins would reset the earnings base the multiples are applied to.</li><li>Through-cycle margin and multiple are estimates; a structurally lower commodity price or cost inflation would reset the normalised earnings base.</li><li>Estimate risk: consensus forecasts can be revised sharply, and the forward-multiple lenses move one-for-one with the earnings they are applied to.</li><li>Multiple risk: target multiples are anchored on sector medians; a de-rating of the peer group lowers the target regardless of company performance.</li><li>Single third-party data source: restatements, non-recurring items or classification differences can shift the output.</li></ul>
+</div></section>
 
-  <div class="disc"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
+<div class="foot-bar"><div class="wrap">
+  <p class="disclaimer"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
     public data (Yahoo snapshot as of 2026-07-08). GFI was classified as <b>Cyclical / Commodities (mid-cycle multiples + DCF)</b>. The 12-month price target
     triangulates several lenses — target multiples on consensus forward earnings (peer/sector-anchored and adjusted for
     durable growth, leverage and earnings durability), a 10-year DCF with decaying growth and mean-reverting margins, and
@@ -651,5 +726,7 @@ table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800
     of equity net of dividends, and lightly anchors it to Street consensus when available. Reference multiples are
     long-run developed-market medians; live peer medians replace them when fetched. Forward numbers come from analyst
     consensus where available and from reported figures otherwise; they are not a substitute for fundamental judgement.
-    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
-</div></body></html>
+    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</p>
+</div></div>
+<script>if(location.search.indexOf('print=1')>-1){window.addEventListener('load',function(){setTimeout(function(){window.print()},400)})}</script>
+</body></html>

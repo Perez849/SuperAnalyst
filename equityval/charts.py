@@ -17,7 +17,7 @@ from __future__ import annotations
 import math
 from html import escape
 
-from .theme import PHASE_NAMES, PHASE_ORDER
+from .theme import PHASE_ORDER, phase_names
 
 CX = CY = 180.0
 
@@ -103,7 +103,8 @@ def valuation_clock(total_return: float, bear_ret: float, bull_ret: float,
         a = _ang(total_return)
         nx, ny = _pt(130, a)
         tx, ty = _pt(-26, a)
-        out.append(f'<line class="hand hand-{rdir}" x1="{tx:.1f}" y1="{ty:.1f}" x2="{nx:.1f}" y2="{ny:.1f}"/>')
+        out.append(f'<line class="hand" x1="{tx:.1f}" y1="{ty:.1f}" x2="{nx:.1f}" y2="{ny:.1f}"/>')
+        out.append(f'<circle class="tip" cx="{nx:.1f}" cy="{ny:.1f}" r="5"/>')
     out.append('<circle class="hub-ring" cx="180" cy="180" r="62"/>')
     out.append('<circle class="hub" cx="180" cy="180" r="58"/>')
     out.append('<text class="hub-k" x="180" y="152" text-anchor="middle">12M PRICE TARGET</text>')
@@ -121,7 +122,8 @@ def valuation_clock(total_return: float, bear_ret: float, bull_ret: float,
 _QUAD = {"recovery": (180, 270), "overheat": (270, 360), "stagflation": (0, 90), "reflation": (90, 180)}
 
 
-def phase_wheel(primary: str, secondary: str | None = None) -> str:
+def phase_wheel(primary: str, secondary: str | None = None, lang: str = "en") -> str:
+    names = phase_names(lang)
     out = ['<svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases">']
     for ph in PHASE_ORDER:
         a0, a1 = _QUAD[ph]
@@ -132,17 +134,18 @@ def phase_wheel(primary: str, secondary: str | None = None) -> str:
              f"L{x2:.1f},{y2:.1f} A{r_in},{r_in} 0 0 0 {x3:.1f},{y3:.1f} Z")
         state = "lit" if ph == primary else ("lit2" if ph == secondary else "dim")
         out.append(f'<path class="seg seg-{ph} {state}" d="{d}"/>')
-        name, regime, asset = PHASE_NAMES[ph]
+        name, regime, asset = names[ph]
         mx, my = _pt(112, (a0 + a1) / 2 + (6 if ph in ('recovery', 'stagflation') else -6))
-        out.append(f'<text class="ph-n {state}" x="{mx:.1f}" y="{my - 6:.1f}" text-anchor="middle">{name.upper()}</text>')
+        long = " long" if len(name) >= 12 else ""
+        out.append(f'<text class="ph-n {state}{long}" x="{mx:.1f}" y="{my - 6:.1f}" text-anchor="middle">{name.upper()}</text>')
         out.append(f'<text class="ph-s {state}" x="{mx:.1f}" y="{my + 8:.1f}" text-anchor="middle">{escape(regime.replace("  ", " \u00b7 "))}</text>')
-        out.append(f'<text class="ph-a {state}" x="{mx:.1f}" y="{my + 22:.1f}" text-anchor="middle">best: {asset}</text>')
+        out.append(f'<text class="ph-a {state}" x="{mx:.1f}" y="{my + 22:.1f}" text-anchor="middle">{"best" if lang != "es" else "mejor"}: {asset}</text>')
     # clockwise arrow ring in the centre
     out.append('<circle class="wheel-hub" cx="180" cy="180" r="62"/>')
     out.append(f'<path class="wheel-arrow" d="{_arc(40, -150, 120)}"/>')
     ax, ay = _pt(40, 120)
     out.append(f'<path class="wheel-head" d="M{ax:.1f},{ay:.1f} l-9,-3 l5,-8 z" transform="rotate(30 {ax:.1f} {ay:.1f})"/>')
-    out.append('<text class="wheel-c" x="180" y="184" text-anchor="middle">CYCLE</text>')
+    out.append(f'<text class="wheel-c" x="180" y="184" text-anchor="middle">{"CICLO" if lang == "es" else "CYCLE"}</text>')
     out.append('</svg>')
     return "".join(out)
 
@@ -349,6 +352,6 @@ def mini_gauge(total_return: float, rdir: str, rated: bool = True, size: int = 9
         a = _ang(total_return)
         x, y = _pt(70, a, c, c)
         tx, ty = _pt(-12, a, c, c)
-        out.append(f'<line class="mghand mghand-{rdir}" x1="{tx:.1f}" y1="{ty:.1f}" x2="{x:.1f}" y2="{y:.1f}"/>')
+        out.append(f'<line class="mghand" x1="{tx:.1f}" y1="{ty:.1f}" x2="{x:.1f}" y2="{y:.1f}"/>')
     out.append(f'<circle class="mghub" cx="{c}" cy="{c}" r="9"/></svg>')
     return "".join(out)

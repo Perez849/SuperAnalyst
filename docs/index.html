@@ -1,196 +1,192 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Equity Research — Investment Clock</title>
-<style>
-  *{box-sizing:border-box}
-  body{margin:0;font-family:"Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5}
-  .wrap{max-width:1080px;margin:0 auto;padding:44px 36px 80px}
-  .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif} .mono{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
-  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
-  h1{font-size:42px;line-height:1.05;margin:.12em 0 .15em;font-weight:600;letter-spacing:-.01em}
-  .masthead{padding-top:14px;margin-bottom:26px}
-  .hero{display:grid;grid-template-columns:1fr 330px;gap:40px;align-items:center;margin:18px 0 38px}
-  .lead{font-size:16px;max-width:520px}
-  .wheel{width:100%;height:auto;display:block}
-  .chips{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 18px}
-  .chip{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:5px 12px;border-radius:99px;cursor:pointer;background:none}
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
-  .card{position:relative;border-radius:12px;padding:16px 18px 14px;color:inherit;display:block;transition:border-color .15s,transform .15s}
-  .stretch{color:inherit;text-decoration:none} .stretch::after{content:"";position:absolute;inset:0;border-radius:12px}
-  .links{position:relative;z-index:2}
-  .card:hover{transform:translateY(-2px)}
-  .head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
-  .tk{font-size:22px;font-weight:600;letter-spacing:.01em}
-  .nm{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:190px}
-  .pill{display:inline-block;padding:3px 10px;border-radius:3px;font-weight:800;font-size:10.5px;letter-spacing:.1em;margin-top:6px}
-  .row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;font-size:13px}
-  .row:first-of-type{margin-top:10px}
-  .foot{margin-top:8px;font-size:11.5px;display:flex;justify-content:space-between;align-items:center}
-  .dots i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px}
-  .pdf{font-weight:700;text-decoration:none}
-  .empty{border:1px dashed #25324D;padding:40px;text-align:center}
-  .disc{font-size:11px;margin-top:44px;padding-top:14px;border-top:1px solid #25324D}
-  .legend{font-size:11.5px;margin-top:10px}
-  @media(max-width:820px){.hero{grid-template-columns:1fr}.wrap{padding:24px 16px 60px}h1{font-size:32px}}
-  
-body{background:#0A0F1C;color:#E8EDF6} a{color:#D9B36B}
-.eyebrow,.muted,.nm,.foot,.k,.disc,.legend{color:#8C99B0}
-.masthead{border-top:3px solid #D9B36B}
-.card,.panel{background:#101828;border:1px solid #25324D;box-shadow:0 10px 30px rgba(0,0,0,.35)}
-.card:hover{border-color:#D9B36B}
-.pill.up{background:#38B887;color:#06130D} .pill.down{background:#EB6757;color:#1B0705}
-.pill.flat{background:#8C99B0;color:#0A0F1C}
-.up{color:#38B887} .down{color:#EB6757} .flat{color:#8C99B0}
-.row{border-top:1px solid #25324D}
-.chip{border:1px solid #25324D;color:#8C99B0} .chip.on{border-color:#D9B36B;color:#D9B36B}
-.conf-High{color:#38B887} .conf-Medium{color:#D9B36B} .conf-Low{color:#EB6757}
-.mgband{fill:none;stroke-width:15} .mgband.b-down2{stroke:#EB6757} .mgband.b-down{stroke:#EB6757;opacity:.55}
-.mgband.b-flat{stroke:#8C99B0;opacity:.7} .mgband.b-up{stroke:#38B887;opacity:.6} .mgband.b-up2{stroke:#38B887}
-.mghand{stroke-width:7;stroke-linecap:round} .mghand-up{stroke:#38B887} .mghand-down{stroke:#EB6757} .mghand-flat{stroke:#E8EDF6}
-.mghub{fill:#101828;stroke:#D9B36B;stroke-width:2}
-.dot-recovery{background:#38B887} .dot-overheat{background:#F2A03D}
-.dot-stagflation{background:#A585E8} .dot-reflation{background:#4F94F7}
-.wheel .seg{stroke:#0A0F1C;stroke-width:2} .wheel .seg-recovery{fill:#38B887} .wheel .seg-overheat{fill:#F2A03D}
-.wheel .seg-stagflation{fill:#A585E8} .wheel .seg-reflation{fill:#4F94F7}
-.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
-.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
-.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C} .wheel .dim{fill:#8C99B0}
-.wheel .wheel-hub{fill:#101828;stroke:#25324D} .wheel .wheel-arrow{fill:none;stroke:#D9B36B;stroke-width:2.2}
-.wheel .wheel-head{fill:#D9B36B} .wheel .wheel-c{fill:#8C99B0;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
-.count{fill:#E8EDF6;font:700 22px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SuperAnalyst · Valoración con criterio de industria</title>
+<meta name="description" content="Precios objetivo a 12 meses triangulados con varias lentes (múltiplos forward, DCF acotado y modelos por sector), contrastados con la calle. Genera el informe en PDF desde la propia web.">
+<link rel="stylesheet" href="assets/superanalyst.css?v=20261013790">
+</head><body>
 
-  @media print{ 
-body{background:#FFFFFF;color:#10151F} a{color:#8A6A2C}
-.eyebrow,.muted,.nm,.foot,.k,.disc,.legend{color:#566074}
-.masthead{border-top:3px solid #8A6A2C}
-.card,.panel{background:#F6F4EE;border:1px solid #CFCBBE;box-shadow:none}
-.card:hover{border-color:#8A6A2C}
-.pill.up{background:#1B7A5A;color:#06130D} .pill.down{background:#B23A48;color:#1B0705}
-.pill.flat{background:#566074;color:#0A0F1C}
-.up{color:#1B7A5A} .down{color:#B23A48} .flat{color:#566074}
-.row{border-top:1px solid #CFCBBE}
-.chip{border:1px solid #CFCBBE;color:#566074} .chip.on{border-color:#8A6A2C;color:#8A6A2C}
-.conf-High{color:#1B7A5A} .conf-Medium{color:#8A6A2C} .conf-Low{color:#B23A48}
-.mgband{fill:none;stroke-width:15} .mgband.b-down2{stroke:#B23A48} .mgband.b-down{stroke:#B23A48;opacity:.55}
-.mgband.b-flat{stroke:#566074;opacity:.7} .mgband.b-up{stroke:#1B7A5A;opacity:.6} .mgband.b-up2{stroke:#1B7A5A}
-.mghand{stroke-width:7;stroke-linecap:round} .mghand-up{stroke:#1B7A5A} .mghand-down{stroke:#B23A48} .mghand-flat{stroke:#10151F}
-.mghub{fill:#F6F4EE;stroke:#8A6A2C;stroke-width:2}
-.dot-recovery{background:#1E8E5C} .dot-overheat{background:#C9741A}
-.dot-stagflation{background:#7655C4} .dot-reflation{background:#2C6FD6}
-.wheel .seg{stroke:#FFFFFF;stroke-width:2} .wheel .seg-recovery{fill:#1E8E5C} .wheel .seg-overheat{fill:#C9741A}
-.wheel .seg-stagflation{fill:#7655C4} .wheel .seg-reflation{fill:#2C6FD6}
-.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
-.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
-.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C} .wheel .dim{fill:#566074}
-.wheel .wheel-hub{fill:#F6F4EE;stroke:#CFCBBE} .wheel .wheel-arrow{fill:none;stroke:#8A6A2C;stroke-width:2.2}
-.wheel .wheel-head{fill:#8A6A2C} .wheel .wheel-c{fill:#566074;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
-.count{fill:#10151F;font:700 22px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
- .chips{display:none} }
-</style></head><body><div class="wrap">
-  <div class="masthead">
-    <div class="eyebrow">Equity Research · Investment Clock</div>
-    <h1 class="serif">Valuation library</h1>
-    <div class="mono muted" style="font-size:12px">7 report(s) · updated 2026-10-13</div>
+<header class="top"><div class="wrap top-inner">
+  <a class="brand" href="#top"><svg class="brand-mark" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="14.5" fill="none" stroke="#1B1810" stroke-width="1.3"/><path d="M16 16 L16 6.5" stroke="#A9752C" stroke-width="1.6" stroke-linecap="round"/><path d="M16 16 L23 20" stroke="#1B1810" stroke-width="1.6" stroke-linecap="round"/><circle cx="16" cy="16" r="1.6" fill="#1B1810"/></svg><span><span class="brand-word">SuperAnalyst</span><br><span class="brand-tag">VALORACIÓN · LENTES · EVIDENCIA</span></span></a>
+  <nav class="top-nav"><a href="#generar">Generar PDF</a><a href="#biblioteca">Biblioteca</a><a href="#metodo">Método</a>
+    <a href="https://perez849.github.io/reloj-inversion/" target="_blank" rel="noopener">Reloj de inversión ↗</a></nav>
+  <div class="top-actions"><a class="pdf-btn" href="#generar">⬇ Generar PDF</a></div>
+</div></header>
+
+<section class="hero" id="top"><div class="wrap hero-grid">
+  <div>
+    <div class="eyebrow hero-eyebrow">Biblioteca de valoraciones</div>
+    <h1 class="phase-name">Precios objetivo que se parecen a los de la industria.</h1>
+    <p class="phase-tie flat">7 informes · actualizado 2026-10-13</p>
+    <p class="phase-why">Cada informe triangula un precio objetivo a 12 meses con varias lentes —
+      <b>múltiplos forward</b>, un <b>DCF con crecimiento decreciente</b> y <b>modelos por sector</b>—,
+      lo contrasta con la calle y avisa cuando no puede defender un número.</p>
+    <dl class="hero-stats">
+      <div class="hero-stat"><dt>Informes</dt><dd>7</dd></div>
+      <div class="hero-stat"><dt>Rating positivo</dt><dd>5</dd></div>
+      <div class="hero-stat"><dt>Confianza alta</dt><dd>4</dd></div>
+      <div class="hero-stat"><dt>Sin rating</dt><dd>1</dd></div>
+    </dl>
   </div>
-  <div class="hero">
-    <div>
-      <p class="lead">Every report triangulates a 12-month price target from several lenses — forward multiples,
-        a DCF with decaying growth, and sector models — then cross-checks it against the Street.
-        The dial on each card is the expected total return: green right of centre, red left.</p>
-      <div class="legend">Wheel: where the covered names live on the Investment Clock
-        (sector affinity, clockwise: Recovery → Overheat → Stagflation → Reflation). Numbers are reports whose
-        home phase it is.</div>
-    </div>
-    <div><svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases"><path class="seg seg-recovery lit2" d="M30.1,176.1 A150,150 0 0 1 176.1,30.1 L178.0,102.0 A78,78 0 0 0 102.0,178.0 Z"/><text class="ph-n lit2" x="109.5" y="87.0" text-anchor="middle">RECOVERY</text><text class="ph-s lit2" x="109.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↓</text><text class="ph-a lit2" x="109.5" y="115.0" text-anchor="middle">best: equities</text><path class="seg seg-overheat lit2" d="M183.9,30.1 A150,150 0 0 1 329.9,176.1 L258.0,178.0 A78,78 0 0 0 182.0,102.0 Z"/><text class="ph-n lit2" x="250.5" y="87.0" text-anchor="middle">OVERHEAT</text><text class="ph-s lit2" x="250.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↑</text><text class="ph-a lit2" x="250.5" y="115.0" text-anchor="middle">best: commodities</text><path class="seg seg-stagflation lit2" d="M329.9,183.9 A150,150 0 0 1 183.9,329.9 L182.0,258.0 A78,78 0 0 0 258.0,182.0 Z"/><text class="ph-n lit2" x="250.5" y="261.0" text-anchor="middle">STAGFLATION</text><text class="ph-s lit2" x="250.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↑</text><text class="ph-a lit2" x="250.5" y="289.0" text-anchor="middle">best: cash</text><path class="seg seg-reflation lit2" d="M176.1,329.9 A150,150 0 0 1 30.1,183.9 L102.0,182.0 A78,78 0 0 0 178.0,258.0 Z"/><text class="ph-n lit2" x="109.5" y="261.0" text-anchor="middle">REFLATION</text><text class="ph-s lit2" x="109.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↓</text><text class="ph-a lit2" x="109.5" y="289.0" text-anchor="middle">best: bonds</text><circle class="wheel-hub" cx="180" cy="180" r="62"/><path class="wheel-arrow" d="M145.36,160.00 A40.00,40.00 0 1 1 160.00,214.64"/><path class="wheel-head" d="M160.0,214.6 l-9,-3 l5,-8 z" transform="rotate(30 160.0 214.6)"/><text class="wheel-c" x="180" y="184" text-anchor="middle">CYCLE</text><text class="count" x="62" y="70" text-anchor="middle">3</text><text class="count" x="298" y="70" text-anchor="middle">3</text><text class="count" x="298" y="306" text-anchor="middle">1</text><text class="count" x="62" y="306" text-anchor="middle">0</text></svg></div>
+  <figure class="plane-card">
+    <div class="plane-top"><h3>Dónde viven en el ciclo</h3><span class="small-cap mono">informes por fase</span></div>
+    <p class="cap" style="margin-bottom:12px">Fase en la que cada sector suele liderar (mapa clásico del <i>investment clock</i>).
+      Los números cuentan los informes cuya fase principal es esa.</p>
+    <div style="max-width:340px;margin:auto"><svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases"><path class="seg seg-recovery lit2" d="M30.1,176.1 A150,150 0 0 1 176.1,30.1 L178.0,102.0 A78,78 0 0 0 102.0,178.0 Z"/><text class="ph-n lit2 long" x="109.5" y="87.0" text-anchor="middle">RECUPERACIÓN</text><text class="ph-s lit2" x="109.5" y="101.0" text-anchor="middle">crecimiento ↑ · inflación ↓</text><text class="ph-a lit2" x="109.5" y="115.0" text-anchor="middle">mejor: renta variable</text><path class="seg seg-overheat lit2" d="M183.9,30.1 A150,150 0 0 1 329.9,176.1 L258.0,178.0 A78,78 0 0 0 182.0,102.0 Z"/><text class="ph-n lit2 long" x="250.5" y="87.0" text-anchor="middle">SOBRECALENTAMIENTO</text><text class="ph-s lit2" x="250.5" y="101.0" text-anchor="middle">crecimiento ↑ · inflación ↑</text><text class="ph-a lit2" x="250.5" y="115.0" text-anchor="middle">mejor: materias primas</text><path class="seg seg-stagflation lit2" d="M329.9,183.9 A150,150 0 0 1 183.9,329.9 L182.0,258.0 A78,78 0 0 0 258.0,182.0 Z"/><text class="ph-n lit2 long" x="250.5" y="261.0" text-anchor="middle">ESTANFLACIÓN</text><text class="ph-s lit2" x="250.5" y="275.0" text-anchor="middle">crecimiento ↓ · inflación ↑</text><text class="ph-a lit2" x="250.5" y="289.0" text-anchor="middle">mejor: efectivo</text><path class="seg seg-reflation lit2" d="M176.1,329.9 A150,150 0 0 1 30.1,183.9 L102.0,182.0 A78,78 0 0 0 178.0,258.0 Z"/><text class="ph-n lit2" x="109.5" y="261.0" text-anchor="middle">REFLACIÓN</text><text class="ph-s lit2" x="109.5" y="275.0" text-anchor="middle">crecimiento ↓ · inflación ↓</text><text class="ph-a lit2" x="109.5" y="289.0" text-anchor="middle">mejor: bonos</text><circle class="wheel-hub" cx="180" cy="180" r="62"/><path class="wheel-arrow" d="M145.36,160.00 A40.00,40.00 0 1 1 160.00,214.64"/><path class="wheel-head" d="M160.0,214.6 l-9,-3 l5,-8 z" transform="rotate(30 160.0 214.6)"/><text class="wheel-c" x="180" y="184" text-anchor="middle">CICLO</text><text class="count" x="46" y="66" text-anchor="middle">3</text><text class="count" x="314" y="66" text-anchor="middle">3</text><text class="count" x="314" y="316" text-anchor="middle">1</text><text class="count" x="46" y="316" text-anchor="middle">0</text></svg></div>
+  </figure>
+</div></section>
+
+<section class="section" id="generar"><div class="wrap"><div class="buy"><div class="buy-inner">
+  <div class="eyebrow">Pídelo aquí</div>
+  <h2>Genera un informe en PDF desde la web</h2>
+  <p class="lede">Escribe un ticker. GitHub Actions calcula la valoración, publica el informe en esta biblioteca y
+    te devuelve el <b>PDF</b> y el <b>Excel</b> (2–4 minutos). Sin instalar nada.</p>
+  <form class="gen" id="genForm" autocomplete="off">
+    <label>Ticker<input id="genTicker" name="ticker" placeholder="AAPL · JPM · O · SAN.MC" maxlength="12" required spellcheck="false" autocapitalize="characters"></label>
+    <label>Perfil<select id="genProfile">
+      <option value="auto">Automático</option><option value="standard">Estándar</option><option value="bank">Banco</option>
+      <option value="insurance">Seguro</option><option value="reit">REIT</option><option value="utility">Utility</option>
+      <option value="cyclical">Cíclica</option><option value="high_growth">Alto crecimiento</option></select></label>
+    <label>Datos<select id="genProvider"><option value="auto">Automático</option><option value="yfinance">Yahoo Finance</option><option value="fmp">FMP</option></select></label>
+    <button class="pdf-btn gold" id="genGo" type="submit">⬇ Generar PDF</button>
+  </form>
+  <div class="gen-mode" id="genMode"></div>
+  <div class="gen-status" id="genStatus" hidden>
+    <ul class="gen-steps" id="genSteps"></ul>
+    <p id="genMsg"></p>
+    <div id="genDone" hidden></div>
   </div>
-  <div class="chips"><button class="chip" data-f="all">All</button><button class="chip" data-f="up">Positive</button><button class="chip" data-f="down">Negative</button><button class="chip" data-f="recovery">Recovery</button><button class="chip" data-f="overheat">Overheat</button><button class="chip" data-f="stagflation">Stagflation</button><button class="chip" data-f="reflation">Reflation</button></div>
-  <div class="grid"><div class="card" data-phase="overheat recovery" data-dir="up">
-    <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/DEMO.html">DEMO</a></div><div class="nm" title="Meridian Industrials (illustrative)">Meridian Industrials (illustrative)</div>
-        <span class="pill up">ADD</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return +13%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-up" x1="104.3" y1="111.2" x2="74.7" y2="34.7"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+  <details class="dark-details" id="genConn">
+    <summary>Conexión con GitHub (una sola vez)</summary>
+    <div id="genTokenRow">
+      <p>Esta web es estática: para lanzar el cálculo necesita permiso en GitHub. Hay dos formas:</p>
+      <ul>
+        <li><b>Worker (recomendado, 5 min):</b> despliega <code>worker/</code> en Cloudflare y pon su URL en
+          <code>docs/assets/config.js</code>. El token nunca sale del Worker y cualquiera puede generar sin cuenta de GitHub.</li>
+        <li><b>Token en este navegador:</b> crea un
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">token fino</a>
+          limitado a este repositorio con permiso <i>Actions → Read and write</i> y pégalo aquí. Se guarda solo en tu
+          navegador (<code>localStorage</code>) y solo se envía a <code>api.github.com</code>.</li>
+      </ul>
+      <div class="tokrow"><input id="genTokenInput" type="password" placeholder="github_pat_…" autocomplete="off" spellcheck="false">
+        <button type="button" id="genSave">Guardar token</button><button type="button" id="genForget" hidden>Olvidar token</button></div>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$294.20</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$262.00</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono up">+13%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$285.00 · <span class="conf-High">High</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-overheat" title="overheat"></i><i class="dot-recovery" title="recovery"></i></span><span class="mono">2026-10-13</span><span class="links"><a class="pdf" href="reports/DEMO.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/DEMO.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="recovery reflation" data-dir="up">
+    <p>Sin ninguna de las dos, el botón te lleva a GitHub Actions (<i>Run workflow</i>) y esta página espera aquí al resultado.</p>
+  </details>
+  <p class="buy-foot"><b>Ya publicados:</b> cada tarjeta de la biblioteca tiene su PDF; dentro de cada informe,
+    «Save as PDF» lo guarda desde el navegador sin esperar a nadie.</p>
+</div></div></div></section>
+
+<section class="section tight" id="biblioteca"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Biblioteca</div><h2>Informes publicados</h2>
+    <p class="cap">Cada tarjeta resume el precio objetivo a 12 meses, la rentabilidad esperada, el consenso de la calle y la confianza del modelo. El dial muestra la rentabilidad esperada: verde a la derecha, terracota a la izquierda.</p></div>
+  <div class="seg"><button type="button" data-f="all" aria-pressed="false">Todos</button><button type="button" data-f="up" aria-pressed="false">Positivos</button><button type="button" data-f="down" aria-pressed="false">Negativos</button><button type="button" data-f="recovery" aria-pressed="false">Recuperación</button><button type="button" data-f="overheat" aria-pressed="false">Sobrecalentamiento</button><button type="button" data-f="stagflation" aria-pressed="false">Estanflación</button><button type="button" data-f="reflation" aria-pressed="false">Reflación</button></div>
+  <div class="grid"><article class="rcard" data-phase="overheat recovery" data-dir="up">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/MU.html">MU</a></div><div class="nm" title="Micron Technology, Inc.">Micron Technology, Inc.</div>
-        <span class="pill up">OVERWEIGHT</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return +33%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-up" x1="96.9" y1="111.6" x2="118.2" y2="32.4"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/DEMO.html">DEMO</a></div><div class="nm" title="Meridian Industrials (illustrative)">Meridian Industrials (illustrative)</div>
+        <span class="rpill up">ADD</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return +13%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="104.3" y1="111.2" x2="74.7" y2="34.7"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$1,264.83</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$948.80</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono up">+33%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$1,486.00 · <span class="conf-Medium">Medium</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-recovery" title="recovery"></i><i class="dot-reflation" title="reflation"></i></span><span class="mono">2026-07-09</span><span class="links"><a class="pdf" href="reports/MU.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/MU.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="recovery reflation" data-dir="down">
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$294.20</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$262.00</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono up">+13%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$285.00 · <span class="conf-High">High</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-overheat" title="Sobrecalentamiento"></i><i class="dot-recovery" title="Recuperación"></i></span><span class="mono">2026-10-13</span><span class="rlinks"><a href="reports/DEMO.pdf" download>PDF</a><a href="reports/DEMO.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="overheat stagflation" data-dir="flat">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/SNDK.html">SNDK</a></div><div class="nm" title="Sandisk Corporation">Sandisk Corporation</div>
-        <span class="pill down">UNDERWEIGHT</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return -22%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-down" x1="112.0" y1="101.1" x2="30.3" y2="93.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/UEC.html">UEC</a></div><div class="nm" title="Uranium Energy Corp.">Uranium Energy Corp.</div>
+        <span class="rpill flat">NOT RATED</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return -60%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$1,343.66</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$1,727.18</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono down">-22%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$1,975.95 · <span class="conf-Medium">Medium</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-recovery" title="recovery"></i><i class="dot-reflation" title="reflation"></i></span><span class="mono">2026-07-09</span><span class="links"><a class="pdf" href="reports/SNDK.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/SNDK.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="stagflation reflation" data-dir="up">
+    <div class="rrow"><span class="k">Valor indicativo</span><span class="mono">$3.37*</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$9.93</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono flat">n/d</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">n/d · <span class="conf-Low">Low</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-overheat" title="Sobrecalentamiento"></i><i class="dot-stagflation" title="Estanflación"></i></span><span class="mono">2026-07-08</span><span class="rlinks"><a href="reports/UEC.pdf" download>PDF</a><a href="reports/UEC.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="overheat recovery" data-dir="up">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/CEG.html">CEG</a></div><div class="nm" title="Constellation Energy Corporation">Constellation Energy Corporation</div>
-        <span class="pill up">ADD</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return +14%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-up" x1="103.9" y1="111.3" x2="77.1" y2="33.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/GFI.html">GFI</a></div><div class="nm" title="Gold Fields Limited">Gold Fields Limited</div>
+        <span class="rpill up">OVERWEIGHT</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return +78%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="88.0" y1="99.0" x2="169.8" y2="105.6"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$278.32</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$244.52</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono up">+14%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$357.81 · <span class="conf-High">High</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-stagflation" title="stagflation"></i><i class="dot-reflation" title="reflation"></i></span><span class="mono">2026-07-08</span><span class="links"><a class="pdf" href="reports/CEG.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/CEG.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="overheat recovery" data-dir="up">
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$58.38</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$32.88</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono up">+78%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$54.28 · <span class="conf-High">High</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-overheat" title="Sobrecalentamiento"></i><i class="dot-recovery" title="Recuperación"></i></span><span class="mono">2026-07-08</span><span class="rlinks"><a href="reports/GFI.pdf" download>PDF</a><a href="reports/GFI.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="stagflation reflation" data-dir="up">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/GFI.html">GFI</a></div><div class="nm" title="Gold Fields Limited">Gold Fields Limited</div>
-        <span class="pill up">OVERWEIGHT</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return +78%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-up" x1="88.0" y1="99.0" x2="169.8" y2="105.6"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/CEG.html">CEG</a></div><div class="nm" title="Constellation Energy Corporation">Constellation Energy Corporation</div>
+        <span class="rpill up">ADD</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return +14%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="103.9" y1="111.3" x2="77.1" y2="33.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$58.38</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$32.88</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono up">+78%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$54.28 · <span class="conf-High">High</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-overheat" title="overheat"></i><i class="dot-recovery" title="recovery"></i></span><span class="mono">2026-07-08</span><span class="links"><a class="pdf" href="reports/GFI.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/GFI.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="recovery reflation" data-dir="up">
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$278.32</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$244.52</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono up">+14%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$357.81 · <span class="conf-High">High</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-stagflation" title="Estanflación"></i><i class="dot-reflation" title="Reflación"></i></span><span class="mono">2026-07-08</span><span class="rlinks"><a href="reports/CEG.pdf" download>PDF</a><a href="reports/CEG.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="recovery reflation" data-dir="up">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/NVDA.html">NVDA</a></div><div class="nm" title="NVIDIA Corporation">NVIDIA Corporation</div>
-        <span class="pill up">OVERWEIGHT</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return +32%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand mghand-up" x1="97.2" y1="111.7" x2="116.3" y2="31.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/NVDA.html">NVDA</a></div><div class="nm" title="NVIDIA Corporation">NVIDIA Corporation</div>
+        <span class="rpill up">OVERWEIGHT</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return +32%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="97.2" y1="111.7" x2="116.3" y2="31.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">12M price target</span><span class="mono">$270.37</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$204.12</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono up">+32%</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">$301.62 · <span class="conf-High">High</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-recovery" title="recovery"></i><i class="dot-reflation" title="reflation"></i></span><span class="mono">2026-07-08</span><span class="links"><a class="pdf" href="reports/NVDA.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/NVDA.xlsx">XLS</a></span></div>
-  </div><div class="card" data-phase="overheat stagflation" data-dir="flat">
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$270.37</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$204.12</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono up">+32%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$301.62 · <span class="conf-High">High</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-recovery" title="Recuperación"></i><i class="dot-reflation" title="Reflación"></i></span><span class="mono">2026-07-08</span><span class="rlinks"><a href="reports/NVDA.pdf" download>PDF</a><a href="reports/NVDA.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="recovery reflation" data-dir="down">
     <div class="head">
-      <div><div class="tk"><a class="stretch" href="reports/UEC.html">UEC</a></div><div class="nm" title="Uranium Energy Corp.">Uranium Energy Corp.</div>
-        <span class="pill flat">NOT RATED</span></div>
-      <svg class="mg" viewBox="0 0 200 200" width="92" height="92" role="img" aria-label="expected return -60%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+      <div><div class="tk"><a href="reports/SNDK.html">SNDK</a></div><div class="nm" title="Sandisk Corporation">Sandisk Corporation</div>
+        <span class="rpill down">UNDERWEIGHT</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return -22%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="112.0" y1="101.1" x2="30.3" y2="93.9"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
     </div>
-    <div class="row"><span class="k">Indicative value</span><span class="mono">$3.37*</span></div>
-    <div class="row"><span class="k">Price</span><span class="mono">$9.93</span></div>
-    <div class="row"><span class="k">Expected return</span><span class="mono flat">n/a</span></div>
-    <div class="row"><span class="k">Street · confidence</span><span class="mono">n/a · <span class="conf-Low">Low</span></span></div>
-    <div class="foot"><span class="dots"><i class="dot-overheat" title="overheat"></i><i class="dot-stagflation" title="stagflation"></i></span><span class="mono">2026-07-08</span><span class="links"><a class="pdf" href="reports/UEC.pdf">PDF</a>&nbsp;·&nbsp;<a class="pdf" href="reports/UEC.xlsx">XLS</a></span></div>
-  </div></div><p class="legend">* Not rated: indicative fair value shown, not a price target.</p>
-  <div class="disc">Generado automáticamente por <b>equityval</b>. Cada informe es una valoración independiente y
-    sector-aware; el precio objetivo se ancla ligeramente al consenso de la calle cuando existe y se muestra siempre
-    el valor del modelo por separado. No es asesoramiento de inversión.</div>
-</div>
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$1,343.66</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$1,727.18</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono down">-22%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$1,975.95 · <span class="conf-Medium">Medium</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-recovery" title="Recuperación"></i><i class="dot-reflation" title="Reflación"></i></span><span class="mono">2026-07-09</span><span class="rlinks"><a href="reports/SNDK.pdf" download>PDF</a><a href="reports/SNDK.xlsx">XLS</a></span></div>
+  </article><article class="rcard" data-phase="recovery reflation" data-dir="up">
+    <div class="head">
+      <div><div class="tk"><a href="reports/MU.html">MU</a></div><div class="nm" title="Micron Technology, Inc.">Micron Technology, Inc.</div>
+        <span class="rpill up">OVERWEIGHT</span></div>
+      <svg class="mg" viewBox="0 0 200 200" width="84" height="84" role="img" aria-label="expected return +33%"><path class="mgband b-down2" d="M43.89,154.18 A78.00,78.00 0 0 1 25.41,77.20"/><path class="mgband b-down" d="M26.25,74.61 A78.00,78.00 0 0 1 36.11,55.26"/><path class="mgband b-flat" d="M37.71,53.06 A78.00,78.00 0 0 1 53.06,37.71"/><path class="mgband b-up" d="M55.26,36.11 A78.00,78.00 0 0 1 74.61,26.25"/><path class="mgband b-up2" d="M77.20,25.41 A78.00,78.00 0 0 1 156.11,154.18"/><line class="mghand" x1="96.9" y1="111.6" x2="118.2" y2="32.4"/><circle class="mghub" cx="100.0" cy="100.0" r="9"/></svg>
+    </div>
+    <div class="rrow"><span class="k">Precio objetivo 12m</span><span class="mono">$1,264.83</span></div>
+    <div class="rrow"><span class="k">Precio</span><span class="mono">$948.80</span></div>
+    <div class="rrow"><span class="k">Rentabilidad esperada</span><span class="mono up">+33%</span></div>
+    <div class="rrow"><span class="k">Calle · confianza</span><span class="mono">$1,486.00 · <span class="conf-Medium">Medium</span></span></div>
+    <div class="rfoot"><span class="dots" title="fases del ciclo"><i class="dot-recovery" title="Recuperación"></i><i class="dot-reflation" title="Reflación"></i></span><span class="mono">2026-07-09</span><span class="rlinks"><a href="reports/MU.pdf" download>PDF</a><a href="reports/MU.xlsx">XLS</a></span></div>
+  </article></div><p class="note">* Sin rating: se muestra un valor indicativo, no un precio objetivo.</p>
+</div></section>
+
+<section class="section tight" id="metodo"><div class="wrap">
+  <div class="section-head"><div class="eyebrow">Método</div><h2>Cómo se llega al número</h2>
+    <p class="cap">Un solo modelo no valora bien a todos: un banco no es una minera ni una eléctrica. Por eso el motor clasifica
+      la compañía y combina lentes distintas.</p></div>
+  <ol class="rules">
+    <li><b>Varias lentes, no una</b>Múltiplos forward, DCF y el modelo propio de cada sector (residual income en bancos, FFO en REIT, mid-cycle en cíclicas), con pesos por perfil.</li>
+    <li><b>Múltiplos con criterio</b>El múltiplo objetivo parte de pares y de una tabla sectorial, y se ajusta por crecimiento duradero, apalancamiento y <i>durabilidad de los beneficios</i>: el mercado paga menos por picos de ciclo.</li>
+    <li><b>DCF acotado</b>El crecimiento decae de forma geométrica hacia el terminal y los márgenes revierten a la media. Ningún salto de un año se extrapola una década.</li>
+    <li><b>Guardrails visibles</b>Una lente fuera de 0,2×–5× el precio se excluye; las que se alejan mucho del resto pesan menos. Todo queda escrito en el informe.</li>
+    <li><b>Objetivo a 12 meses</b>Valor justo × (1 + coste del capital) − dividendos, con rango bear–bull, y anclaje ligero (≤ 30 %) al consenso de la calle cuando existe.</li>
+    <li><b>Honestidad</b>Si el modelo no puede defender un número, el informe sale <i>NOT RATED</i> en vez de inventarse un rating.</li>
+  </ol>
+</div></section>
+
+<div class="foot-bar"><div class="wrap"><p class="disclaimer">Generado automáticamente por <b>equityval</b>. Cada informe es una valoración
+  independiente y sector-aware; el objetivo del modelo se muestra siempre por separado del de la calle. Herramienta de análisis,
+  no es recomendación de inversión ni asesoramiento financiero. Diseño: Reloj de inversión.</p></div></div>
+
+<script src="assets/config.js?v=20261013790"></script>
+<script src="assets/generate.js?v=20261013790"></script>
 <script>
-  document.querySelectorAll('.chip').forEach(function(c){c.addEventListener('click',function(){
-    var on=c.classList.toggle('on'); var f=c.dataset.f;
-    document.querySelectorAll('.chip').forEach(function(o){if(o!==c)o.classList.remove('on')});
-    document.querySelectorAll('.card').forEach(function(card){
+  document.querySelectorAll('.seg button').forEach(function(c){c.addEventListener('click',function(){
+    var on=c.getAttribute('aria-pressed')!=='true'; var f=c.dataset.f;
+    document.querySelectorAll('.seg button').forEach(function(o){o.setAttribute('aria-pressed','false')});
+    c.setAttribute('aria-pressed',on?'true':'false');
+    document.querySelectorAll('.rcard').forEach(function(card){
       card.style.display=(!on||f==='all'||card.dataset.phase.indexOf(f)>-1||card.dataset.dir===f)?'':'none';});
   })});
-</script></body></html>
+</script>
+</body></html>

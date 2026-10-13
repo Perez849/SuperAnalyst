@@ -1,0 +1,11 @@
+name = "superanalyst-generar"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://perez849.github.io"
+REPO = "Perez849/SuperAnalyst"
+WORKFLOW = "pages.yml"
+REF = "main"
+MAX_PER_HOUR = "6"
+MAX_TOTAL_PER_HOUR = "30"

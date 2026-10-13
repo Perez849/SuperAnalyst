@@ -38,7 +38,7 @@ with st.sidebar:
 if go and ticker:
     cfg = ValuationConfig(
         horizon=horizon, terminal_growth=tg, risk_free=rf, erp=erp,
-        country_premium=cp, street_weight=sw,
+        country_premium=cp, street_weight=sw, font_base="embed",
         beta_override=float(beta) if beta.strip() else None,
         exit_multiple=float(exit_m) if exit_m.strip() else None,
     )

@@ -37,25 +37,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Ensure a PDF engine (Chrome ships on the runner; wkhtmltopdf is the fallback)
-        run: command -v google-chrome >/dev/null || (sudo apt-get update && sudo apt-get install -y wkhtmltopdf)
+      - name: Comprobar motor de PDF (Chrome viene en el runner)
+        run: google-chrome --version
+
+      - name: Validar entradas
+        env:
+          T: ${{ github.event.inputs.ticker }}
+        run: |
+          if ! [[ "$T" =~ ^[A-Za-z0-9.^=-]{1,12}$ ]]; then
+            echo "::error::Ticker no válido"; exit 1
+          fi
+          echo "TICKER=${T^^}" >> "$GITHUB_ENV"
 
       - name: Run valuation
         env:
           FMP_API_KEY: ${{ secrets.FMP_API_KEY }}   # opcional; sin él usa yfinance
+          PROFILE: ${{ github.event.inputs.profile }}
+          PROVIDER: ${{ github.event.inputs.provider }}
         run: |
-          TICKER="${{ github.event.inputs.ticker }}"
-          ARGS="$TICKER --provider ${{ github.event.inputs.provider }} --pdf --xlsx"
-          if [ "${{ github.event.inputs.profile }}" != "auto" ]; then
-            ARGS="$ARGS --profile ${{ github.event.inputs.profile }}"
-          fi
-          echo "Ejecutando: python valorar.py $ARGS"
-          python valorar.py $ARGS -o "${TICKER}_valuation.html"
+          ARGS=("$TICKER" --provider "$PROVIDER" --pdf --xlsx --embed-fonts)
+          if [ "$PROFILE" != "auto" ]; then ARGS+=(--profile "$PROFILE"); fi
+          echo "Ejecutando: python valorar.py ${ARGS[*]}"
+          python valorar.py "${ARGS[@]}" -o "${TICKER}_valuation.html"
 
       - name: Upload report (HTML + PDF)
         uses: actions/upload-artifact@v4
         with:
-          name: valuation-${{ github.event.inputs.ticker }}
+          name: valuation-${{ env.TICKER }}
           path: |
             *_valuation.html
             *_valuation.pdf

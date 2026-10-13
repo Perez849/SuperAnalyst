@@ -5,7 +5,7 @@ from datetime import date
 
 from jinja2 import Template
 
-from . import charts, theme
+from . import charts, design, theme
 
 
 def fmt_money(v, cur="$"):
@@ -396,258 +396,130 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
 
 
 
-TEMPLATE = Template(r"""{%- macro colors(t) -%}
-body{background:{{t.bg}};color:{{t.ink}}}
-a{color:{{t.brass}}}
-.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:{{t.muted}}}
-.topline{color:{{t.muted}}}
-.masthead{border-top:3px solid {{t.brass}}}
-h1 .tk{color:{{t.muted}}}
-h2.sec{color:{{t.brass}};border-bottom:1px solid {{t.hair}}}
-h2.sec .num{color:{{t.muted}}}
-.card,.tile,.sidebar,.lens,.callout{background:{{t.surface}};border:1px solid {{t.hair}};box-shadow:{{t.shadow}}}
-.callout{border-left:3px solid {{t.brass}}}
-.profiletag{border:1px solid {{t.brass}};color:{{t.brass}}}
-th{border-bottom:1px solid {{t.hair}}} td{border-bottom:1px solid {{t.hair}}}
-tr.total td{border-top:1px solid {{t.ink}}}
-tr.hist td{background:{{t.surface2}};color:{{t.muted}}}
-tr.divider td{border-bottom:1px solid {{t.brass}}}
-tr.off td{color:{{t.muted}};text-decoration:line-through;text-decoration-color:{{t.hair}}}
-.kv{border-bottom:1px solid {{t.hair}}}
-.pill.up{background:{{t.up}};color:#06130D} .pill.down{background:{{t.down}};color:#1B0705} .pill.flat{background:{{t.flat}};color:#0A0F1C}
-.up{color:{{t.up}}} .down{color:{{t.down}}} .flat{color:{{t.flat}}}
-.tag.ok,.tag.low{background:{{t.ok_bg}};color:{{t.up}}} .tag.warn,.tag.high{background:{{t.bad_bg}};color:{{t.down}}}
-.tag.med{background:{{t.warn_bg}};color:{{t.brass}}} .tag.neutral{background:{{t.surface2}}}
-.fam{border:1px solid {{t.hair}};color:{{t.muted}}}
-.bar-w{background:{{t.surface2}}} .bar-w i{background:{{t.brass}}}
-.guard{background:{{t.warn_bg}};border-left:3px solid {{t.brass}}}
-.disc{color:{{t.muted}};border-top:1px solid {{t.hair}}}
-.pdfbtn{background:{{t.brass}};color:{{t.bg}}}
-/* dial */
-.dial .tick{stroke:{{t.hair}};stroke-width:1} .dial .tick-major{stroke:{{t.muted}};stroke-width:1.6}
-.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
-.dial .b-down2{stroke:{{t.down}}} .dial .b-down{stroke:{{t.down}};opacity:.55} .dial .b-flat{stroke:{{t.flat}};opacity:.7}
-.dial .b-up{stroke:{{t.up}};opacity:.6} .dial .b-up2{stroke:{{t.up}}}
-.dial .range{fill:none;stroke:{{t.brass}};stroke-width:5;stroke-linecap:round;opacity:.95}
-.dial .scale{fill:{{t.muted}};font:600 9.5px {{ font_sans }}}
-.dial .street{fill:{{t.brass}}} .dial .street-t{fill:{{t.brass}}}
-.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:{{t.up}}} .dial .hand-down{stroke:{{t.down}}} .dial .hand-flat{stroke:{{t.ink}}}
-.dial .hub-ring{fill:none;stroke:{{t.brass}};stroke-width:1.2} .dial .hub{fill:{{t.surface}}}
-.dial .hub-k{fill:{{t.muted}};font:700 7.5px {{ font_sans }};letter-spacing:.14em}
-.dial .hub-v{fill:{{t.ink}};font:600 25px {{ font_serif }}}
-.dial .hub-r{font:800 11px {{ font_sans }};letter-spacing:.14em}
-.dial .hub-up{fill:{{t.up}}} .dial .hub-down{fill:{{t.down}}} .dial .hub-flat{fill:{{t.muted}}}
-.dial .hub-s{fill:{{t.muted}};font:500 9px {{ font_mono }}}
-/* phase wheel */
-.wheel .seg{stroke:{{t.bg}};stroke-width:2}
-.wheel .seg-recovery{fill:{{t.recovery}}} .wheel .seg-overheat{fill:{{t.overheat}}}
-.wheel .seg-stagflation{fill:{{t.stagflation}}} .wheel .seg-reflation{fill:{{t.reflation}}}
-.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
-.wheel .ph-n{font:800 11px {{ font_sans }};letter-spacing:.1em;fill:#08101C}
-.wheel .ph-s,.wheel .ph-a{font:500 8.5px {{ font_sans }};fill:#08101C}
-.wheel .dim{fill:{{t.muted}}}
-.wheel .wheel-hub{fill:{{t.surface}};stroke:{{t.hair}}} .wheel .wheel-arrow{fill:none;stroke:{{t.brass}};stroke-width:2.2}
-.wheel .wheel-head{fill:{{t.brass}}} .wheel .wheel-c{fill:{{t.muted}};font:700 9px {{ font_sans }};letter-spacing:.2em}
-/* football field + minis */
-.ff .grid,.mini .grid{stroke:{{t.hair}};stroke-width:1} .mini .sep{stroke-dasharray:3 3}
-.ff .axis,.mini .axis{fill:{{t.muted}};font:500 9.5px {{ font_mono }}}
-.ff .lbl{fill:{{t.ink}};font:600 11.5px {{ font_sans }}} .ff .lbl-street,.ff .lbl-target{fill:{{t.brass}}}
-.ff .sub{fill:{{t.muted}};font:500 9.5px {{ font_sans }}}
-.ff .bar-lens{fill:{{t.reflation}};opacity:.28;stroke:{{t.reflation}}} .ff .bar-street{fill:{{t.brass}};opacity:.22;stroke:{{t.brass}}}
-.ff .bar-target{fill:{{t.up}};opacity:.22;stroke:{{t.up}}} .ff .pt-lens{fill:{{t.reflation}}} .ff .pt-street{fill:{{t.brass}}} .ff .pt-target{fill:{{t.up}}}
-.ff .val,.mini .val{fill:{{t.ink}};font:600 10.5px {{ font_mono }}}
-.ff .v-price{stroke:{{t.down}};stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:{{t.down}};font:700 10px {{ font_sans }}}
-.ff .v-target{stroke:{{t.up}};stroke-width:1.8} .ff .v-target-t{fill:{{t.up}};font:700 10px {{ font_sans }}}
-.mini .b-pos{fill:{{t.reflation}}} .mini .b-neg{fill:{{t.down}}} .mini .b-tot{fill:{{t.brass}}}
-.mini .b-rev{fill:{{t.reflation}}} .mini .b-fcf{fill:{{t.brass}}} .mini .k-rev{fill:{{t.reflation}}} .mini .k-fcf{fill:{{t.brass}}}
-.mini .l-act{fill:none;stroke:{{t.ink}};stroke-width:2.2} .mini .l-est{fill:none;stroke:{{t.brass}};stroke-width:2.2;stroke-dasharray:5 3}
-.mini .k-act{fill:{{t.ink}}} .mini .k-est{fill:{{t.brass}}}
-table.sens th{background:{{t.surface2}}} table.sens td{border:1px solid {{t.bg}}}
-table.sens td.up2{background:{{t.up}};color:#06130D} table.sens td.up{background:{{t.ok_bg}};color:{{t.up}}}
-table.sens td.flat{background:{{t.surface2}}} table.sens td.down{background:{{t.bad_bg}};color:{{t.down}}} table.sens td.down2{background:{{t.down}};color:#1B0705}
-table.sens td.base{outline:2px solid {{t.brass}};outline-offset:-2px;font-weight:800}
-{%- endmacro -%}
-<!DOCTYPE html>
+TEMPLATE = Template(r"""<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ d.ticker }} — Equity Research · Investment Clock</title>
-<style>
-  *{box-sizing:border-box}
-  @page{size:A4;margin:11mm 9mm}
-  body{margin:0;font-family:{{ font_sans }};font-size:14px;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .wrap{max-width:1000px;margin:0 auto;padding:40px 36px 80px}
-  .serif{font-family:{{ font_serif }}} .mono{font-family:{{ font_mono }};font-variant-numeric:tabular-nums}
-  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
-  h1{font-size:38px;line-height:1.05;margin:.12em 0 .1em;font-weight:600;letter-spacing:-.01em}
-  h1 .tk{font-size:20px;letter-spacing:.04em}
-  h3{font-size:13.5px;margin:22px 0 6px;font-weight:700}
-  h2.sec{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;margin:46px 0 14px;padding-bottom:9px}
-  h2.sec .num{margin-right:10px;font-weight:600}
-  .masthead{padding-top:14px}
-  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px}
-  .hero{display:grid;grid-template-columns:1fr 340px;gap:30px;align-items:center;margin-top:18px}
-  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
-  .tile{padding:13px 16px;border-radius:10px}
-  .tile .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
-  .tile .v{font-size:25px;font-weight:600;margin-top:3px;line-height:1.15}
-  .tile .s{font-size:11px;margin-top:2px;opacity:.8}
-  .pill{display:inline-block;padding:4px 14px;border-radius:3px;font-weight:800;font-size:12.5px;letter-spacing:.1em}
-  .profiletag{display:inline-block;padding:3px 10px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border-radius:3px;margin-top:10px}
-  .dial,.wheel{width:100%;height:auto;display:block}
-  p{margin:0 0 13px} .lead p:first-child{font-size:15.5px}
-  table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
-  th,td{padding:6px 8px;text-align:right} th:first-child,td:first-child{text-align:left}
-  thead th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
-  tr.total td{font-weight:700} tr.grptop td{border-top:1px solid currentColor}
-  .card,.callout{padding:16px 18px;border-radius:10px;margin:12px 0}
-  .cols{display:grid;grid-template-columns:1fr 270px;gap:30px}
-  .sidebar{padding:12px 16px;border-radius:10px;margin-top:6px;align-self:start}
-  .sidetitle{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
-  .kv{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px} .kv .mono{font-weight:600}
-  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px} .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-  .lenses{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-  .lens{padding:14px 16px;border-radius:10px;break-inside:avoid}
-  .lens h4{margin:0;font-size:13.5px} .lens .big{font-size:24px;font-weight:600;margin:4px 0 2px}
-  .lens table{font-size:11.5px} .lens td:last-child{text-align:right}
-  .fam{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-left:6px;font-weight:700}
-  .tag{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:3px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
-  .bar-w{display:inline-block;width:70px;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px} .bar-w i{display:block;height:6px;border-radius:3px}
-  .guard{padding:10px 14px;border-radius:6px;margin:6px 0;font-size:12.5px}
-  .note{font-size:11.5px;margin-top:6px}
-  .src{display:inline-block;font-size:8px;font-weight:800;border:1px solid currentColor;border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
-  .exh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin:16px 0 4px}
-  ul{margin:6px 0 13px;padding-left:20px} li{margin:4px 0}
-  .disc{font-size:11px;margin-top:44px;padding-top:14px;line-height:1.55}
-  table.sens{table-layout:fixed;text-align:center} table.sens td,table.sens th{text-align:center;padding:7px 4px;font-family:{{ font_mono }};font-size:11.5px}
-  .pdfbtn{position:fixed;right:20px;bottom:20px;border:none;padding:11px 18px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer;z-index:99}
-  .keep{break-inside:avoid;page-break-inside:avoid} h2.sec,h3{break-after:avoid;page-break-after:avoid}
-  .wheelbox{max-width:300px} svg text{font-family:{{ font_sans }}}
-  @media(max-width:820px){.hero,.cols,.two,.three,.lenses{grid-template-columns:1fr}.wrap{padding:24px 16px 60px}h1{font-size:30px}.dial{max-width:340px;margin:auto}}
-  @media screen{ {{ colors(s) }} }
-  @media print{ {{ colors(p) }} .pdfbtn{display:none} .wrap{max-width:100%;padding:0} body{font-size:11px}
-    .hero{grid-template-columns:1fr 280px} h1{font-size:30px} .lens,.card,.callout,tr,svg{break-inside:avoid;page-break-inside:avoid}
-    thead{display:table-header-group} .pill.up,.pill.down,.pill.flat{color:#fff}
-    table.sens td.up2,table.sens td.down2{color:#fff} .wheel .ph-n,.wheel .ph-s,.wheel .ph-a{fill:#fff} }
+<title>{{ d.ticker }} — Equity Research · SuperAnalyst</title>
+<style>{{ design_css|safe }}
+.hero-tiles{display:none}
+.family-w{font-family:var(--mono);font-size:11px;color:rgba(251,249,243,.5)}
+.st{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);border:1px solid rgba(217,185,120,.35);border-radius:99px;padding:0 7px;margin-left:6px}
+.st.bad{color:#E3A596;border-color:rgba(227,165,150,.4)}
+.buy-item.off .nm{text-decoration:line-through;color:rgba(251,249,243,.45)}
 </style></head><body>
-<button class="pdfbtn" onclick="window.print()">Save as PDF</button>
-<div class="wrap">
-{% set n = namespace(i=0) %}
-{%- macro sec(title) -%}{% set n.i = n.i + 1 %}<h2 class="sec"><span class="num">{{ '%02d'|format(n.i) }}</span>{{ title }}</h2>{%- endmacro -%}
+{%- macro head(eyebrow, title, lede=None) -%}
+<div class="section-head"><div class="eyebrow">{{ eyebrow }}</div><h2>{{ title }}</h2>{% if lede %}<p class="cap">{{ lede }}</p>{% endif %}</div>
+{%- endmacro -%}
 
-  <div class="masthead">
-    <div class="topline"><span class="eyebrow">Equity Research · Investment Clock</span>
-      <span class="mono">{{ report_date }}</span></div>
-    <div class="eyebrow" style="margin-top:20px">{{ d.sector }}{% if d.industry %} · {{ d.industry }}{% endif %}</div>
-    <h1 class="serif">{{ d.name|e }} <span class="mono tk">{{ d.ticker }}</span></h1>
-    <span class="profiletag">{{ spec.label }}</span>
-    <div class="hero">
-      <div>
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
-          <span class="pill {{ rating_dir }}">{{ rating }}</span>
-          <span class="muted mono" style="font-size:12px">12-month horizon · confidence <b>{{ tr.confidence }}</b></span>
-        </div>
-        <div class="tiles">
-          {% if tr.rated %}
-          <div class="tile"><div class="k">12M price target</div>
-            <div class="v mono">{{ fmt_ps(tr.target) }}</div>
-            <div class="s mono">bear {{ fmt_ps(tr.bear) }} · bull {{ fmt_ps(tr.bull) }}</div></div>
-          <div class="tile"><div class="k">Expected total return</div>
-            <div class="v mono {{ rating_dir }}">{{ spct(tr.total_return,0) }}</div>
-            <div class="s mono">price {{ spct(tr.upside,0) }}{% if tr.dps %} + yield {{ pct(tr.dps/d.price,1) }}{% endif %}</div></div>
-          {% else %}
-          <div class="tile"><div class="k">Indicative value</div>
-            <div class="v mono muted">{{ fmt_ps(tr.fair_value) }}</div>
-            <div class="s">reference only · not a price target</div></div>
-          <div class="tile"><div class="k">Expected total return</div>
-            <div class="v mono muted">n/a</div>
-            <div class="s">{{ tr.rating_note }}</div></div>
-          {% endif %}
-          <div class="tile"><div class="k">Fair value today</div>
-            <div class="v mono">{{ fmt_ps(tr.fair_value) }}</div>
-            <div class="s mono">{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</div></div>
-          <div class="tile"><div class="k">Street consensus</div>
-            {% if tr.street %}<div class="v mono">{{ fmt_ps(tr.street.mean) }}</div>
-            <div class="s mono">{{ spct(tr.street.upside,0) }}{% if tr.street.n %} · {{ tr.street.n }} analysts{% endif %}</div>
-            {% else %}<div class="v mono muted">n/a</div><div class="s">no consensus available</div>{% endif %}</div>
-        </div>
-        <div class="note mono" style="margin-top:12px">Price {{ fmt_ps(d.price) }} · Ke {{ pct(tr.ke,2) }} · discount rate {{ pct(discount_rate,2) }} · data: {{ d.provider }}</div>
-      </div>
-      <div>{{ clock_svg|safe }}</div>
+<header class="top"><div class="wrap top-inner">
+  <a class="brand" href="{{ library_href or '#top' }}">{{ brand|safe }}<span><span class="brand-word">SuperAnalyst</span><br><span class="brand-tag">VALUATION · LENSES · EVIDENCE</span></span></a>
+  <nav class="top-nav"><a href="#verdict">Verdict</a><a href="#lenses">Lenses</a><a href="#quality">Earnings quality</a>{% if dcf %}<a href="#dcf">DCF</a>{% endif %}<a href="#risks">Risks</a></nav>
+  <div class="top-actions">{% if library_href %}<a class="ghost" href="{{ library_href }}">← Library</a>{% endif %}<button class="pdf-btn" type="button" onclick="window.print()">⬇ Save as PDF</button></div>
+</div></header>
+
+<section class="hero" id="top"><div class="wrap hero-grid">
+  <div>
+    <div class="eyebrow hero-eyebrow">Independent valuation · {{ d.sector }}{% if d.industry %} · {{ d.industry }}{% endif %}</div>
+    <h1 class="phase-name">{{ d.name|e }} <span class="tk">{{ d.ticker }}</span></h1>
+    <p class="phase-tie {{ rating_dir }}">{{ rating }}{% if tr.rated %} · 12M target {{ fmt_ps(tr.target) }} ({{ spct(tr.upside,0) }}){% else %} · indicative value {{ fmt_ps(tr.fair_value) }}{% endif %}</p>
+    <p class="phase-window">{{ report_date }} · 12-month horizon · {{ spec.label }} · confidence {{ tr.confidence }}</p>
+    <p class="phase-why">{{ thesis[0]|safe }}</p>
+    <div class="conf-block">
+      {% for l in tr.lenses %}{% if l.eff_weight > 0 %}
+      <div class="conf-row{% if loop.first %} lead{% endif %}"><span class="nm">{{ l.label }}</span>
+        <span class="conf-bar"><i class="{{ 'int' if l.family=='intrinsic' else ('sec' if l.family=='sector' else 'rel') }}" style="width:{{ (l.eff_weight*100)|round|int }}%"></i></span>
+        <span class="conf-val">{{ pct(l.eff_weight,0) }}</span></div>
+      {% endif %}{% endfor %}
     </div>
+    <p class="conf-note">Lens weights after guardrails. {{ tr.confidence_reasons|join('; ') }}.</p>
   </div>
+  <figure class="plane-card">
+    <div class="plane-top"><h3>Expected return · 12 months</h3><span class="small-cap mono">needle = total return</span></div>
+    <p class="cap" style="margin-bottom:10px">The arc is the bear–bull range of the target; the marker <b>S</b> is the Street consensus.</p>
+    {{ clock_svg|safe }}
+  </figure>
+</div></section>
 
-  <div class="cols">
-    <div>
-      {{ sec('Investment thesis') }}
-      <div class="lead">{% for p in thesis %}<p>{{ p|safe }}</p>{% endfor %}</div>
-      <p class="note">{{ spec.rationale }}</p>
-    </div>
-    <aside class="sidebar">
-      <div class="sidetitle">Key data</div>
-      {% for k,v in key_data %}<div class="kv"><span class="k">{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
-    </aside>
-  </div>
+<div class="wrap"><dl class="outlook">
+  <div class="item"><dt>Price</dt><dd>{{ fmt_ps(d.price) }}</dd><small>Ke {{ pct(tr.ke,2) }} · {{ d.provider }}</small></div>
+  <div class="item"><dt>Fair value today</dt><dd>{{ fmt_ps(tr.fair_value) }}</dd><small>{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</small></div>
+  {% if tr.rated %}<div class="item"><dt>12M price target</dt><dd>{{ fmt_ps(tr.target) }}</dd><small>bear {{ fmt_ps(tr.bear) }} · bull {{ fmt_ps(tr.bull) }}</small></div>
+  <div class="item"><dt>Expected total return</dt><dd class="{{ rating_dir }}">{{ spct(tr.total_return,0) }}</dd><small>price {{ spct(tr.upside,0) }}{% if tr.dps %} + yield {{ pct(tr.dps/d.price,1) }}{% endif %}</small></div>
+  {% else %}<div class="item"><dt>Rating</dt><dd>NOT RATED</dd><small>{{ tr.rating_note }}</small></div>{% endif %}
+  <div class="item"><dt>Street consensus</dt>{% if tr.street %}<dd>{{ fmt_ps(tr.street.mean) }}</dd><small>{{ spct(tr.street.upside,0) }}{% if tr.street.n %} · {{ tr.street.n }} analysts{% endif %}</small>{% else %}<dd class="muted">n/a</dd><small>no consensus available</small>{% endif %}</div>
+</dl></div>
 
-  {{ sec('Valuation summary — what each lens says') }}
-  <div class="keep">
-    <div class="exh">Exhibit 1 · Value per share by lens vs. price, Street and our 12-month target</div>
-    {{ ff_svg|safe }}
+<div class="rule-wrap" style="margin-top:34px"><hr class="rule"></div>
+
+<section class="section tight" id="thesis"><div class="wrap cols">
+  <div>
+    {{ head('Investment thesis', 'Why this number') }}
+    <div class="lede" style="max-width:none">{% for p in thesis[1:] %}<p style="margin-bottom:14px;font-size:{{ '17px' if loop.first else '15px' }}">{{ p|safe }}</p>{% endfor %}</div>
+    <p class="note">{{ spec.rationale }}</p>
   </div>
-  <table><thead><tr><th>Lens</th><th>Type</th><th>Fair value today</th><th>Range</th><th>Weight</th><th>Status</th></tr></thead><tbody>
-  {% for l in tr.lenses %}
-    <tr{% if l.status=='excluded' %} class="off"{% endif %}>
-      <td>{{ l.label }}</td><td><span class="fam">{{ l.family }}</span></td>
-      <td class="mono">{{ fmt_ps(l.value) }}</td><td class="mono">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}</td>
-      <td class="mono"><span class="bar-w"><i style="width:{{ (l.eff_weight*100)|round|int }}%"></i></span>{{ pct(l.eff_weight,0) }}</td>
-      <td>{% if l.status=='ok' and not l.status_note %}<span class="tag ok">used</span>
-          {% elif l.status=='excluded' %}<span class="tag warn">excluded</span>
-          {% else %}<span class="tag med">{{ 'winsorised' if l.status=='winsorized' else 'down-weighted' }}</span>{% endif %}
-          {% if l.status_note %}<div class="note" style="margin:0;text-align:right">{{ l.status_note }}</div>{% endif %}</td></tr>
+  <aside class="sidebar" style="margin-top:62px">
+    <div class="sidetitle">Key data</div>
+    {% for k,v in key_data %}<div class="kv"><span class="k">{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
+  </aside>
+</div></section>
+
+<section class="section" id="verdict"><div class="wrap"><div class="buy"><div class="buy-inner">
+  <div class="eyebrow">The verdict</div>
+  <h2>How the 12-month target is built</h2>
+  <p class="lede">Each lens answers <i>what is a share worth?</i> independently. They are weighted by what fits the
+     business, filtered by plausibility guardrails, rolled forward at the cost of equity and — where it exists —
+     lightly anchored to the Street.</p>
+  <div class="buy-cols">
+  {% for fam in families %}
+    <div class="buy-col"><h4><span>{{ fam.title }}</span><span class="family-w">{{ pct(fam.weight,0) }} of target</span></h4>
+    {% for l in fam.lenses %}
+      <div class="buy-item{% if l.status=='excluded' %} off{% endif %}"><div><span class="nm">{{ l.label }}</span>
+        {% if l.status=='excluded' %}<span class="st bad">excluded</span>{% elif l.status=='winsorized' %}<span class="st bad">winsorised</span>{% elif l.status_note %}<span class="st">down-weighted</span>{% endif %}
+        <span class="tickers"><span class="tick">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}</span></span></div>
+        <div class="wt">{{ fmt_ps(l.value) }}<br><span class="family-w">{{ pct(l.eff_weight,0) }}</span></div></div>
+    {% endfor %}</div>
   {% endfor %}
-    <tr class="total grptop"><td>Blended fair value (today)</td><td></td><td class="mono">{{ fmt_ps(tr.fair_value) }}</td>
-      <td class="mono">{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</td><td></td><td></td></tr>
-    <tr><td>× (1 + Ke) − dividends → model 12-month target</td><td></td><td class="mono">{{ fmt_ps(tr.model_target) }}</td>
-      <td></td><td></td><td></td></tr>
-    {% if tr.street %}<tr><td>Street mean target{% if tr.street_weight>0 %} <span class="muted">(weight {{ pct(tr.street_weight,0) }})</span>{% endif %}</td><td></td>
-      <td class="mono">{{ fmt_ps(tr.street.mean) }}</td>
-      <td class="mono">{% if tr.street.low and tr.street.high %}{{ fmt_ps(tr.street.low) }} – {{ fmt_ps(tr.street.high) }}{% endif %}</td><td></td><td></td></tr>{% endif %}
-    {% if tr.rated %}<tr class="total grptop"><td>Published 12-month price target</td><td></td><td class="mono">{{ fmt_ps(tr.target) }}</td>
-      <td class="mono">{{ fmt_ps(tr.bear) }} – {{ fmt_ps(tr.bull) }}</td><td></td>
-      <td class="{{ rating_dir }}"><b>{{ spct(tr.upside,0) }}</b></td></tr>
-    {% else %}<tr class="total grptop"><td>No published target — NOT RATED</td><td></td><td class="mono muted">{{ fmt_ps(tr.fair_value) }}</td>
-      <td></td><td></td><td><span class="tag neutral">NR</span></td></tr>{% endif %}
-  </tbody></table>
-  <div class="two" style="margin-top:14px">
-    <div>
-      <h3>Confidence: {{ tr.confidence }}</h3>
-      <ul>{% for r in tr.confidence_reasons %}<li>{{ r }}</li>{% endfor %}</ul>
-    </div>
-    <div>
-      <h3>Guardrails &amp; disclosures</h3>
-      {% for g in tr.guardrails %}<div class="guard">{{ g }}</div>{% else %}<p class="note">No guardrail intervened: every lens landed in the plausible band and no Street anchor was applied.</p>{% endfor %}
-      {% for f in fwd.flags %}<div class="guard">{{ f }}</div>{% endfor %}
-    </div>
   </div>
+  <div class="total">
+    <div><span class="k">Fair value today</span><div class="v">{{ fmt_ps(tr.fair_value) }}</div></div>
+    <div style="text-align:right"><span class="k">{{ 'Published 12-month target' if tr.rated else 'Not rated — indicative only' }}</span>
+      <div class="v">{{ fmt_ps(tr.target if tr.rated else tr.fair_value) }}{% if tr.rated %}<small class="{{ rating_dir }}">{{ spct(tr.upside,0) }}</small>{% endif %}</div></div>
+  </div>
+  <p class="buy-foot"><b>The arithmetic.</b> {{ fmt_ps(tr.fair_value) }} × (1 + {{ pct(tr.ke,2) }}){% if tr.dps %} − {{ fmt_ps(tr.dps) }} dividends{% endif %}
+    = model target <b>{{ fmt_ps(tr.model_target) }}</b>{% if tr.street %}; Street mean {{ fmt_ps(tr.street.mean) }}
+    {% if tr.street_weight>0 %}at {{ pct(tr.street_weight,0) }} weight{% else %}shown for reference (weight 0){% endif %}{% endif %}
+    → published <b>{{ fmt_ps(tr.target) }}</b>.</p>
+</div></div></div></section>
 
-  {{ sec('The lenses in detail') }}
-  <p>Each lens is an independent answer to <i>what is a share worth?</i> Relative lenses apply a target
-     multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits
-     the business. Every input is shown so any number can be challenged.</p>
+<section class="section tight"><div class="wrap">
+  {{ head('Exhibit 1', 'Value per share by lens, against price, the Street and our target') }}
+  <div class="card" style="padding:18px 20px">{{ ff_svg|safe }}</div>
+  <div class="two" style="margin-top:22px">
+    <div><h3 style="font-size:19px;margin-bottom:8px">Confidence: {{ tr.confidence }}</h3>
+      <ul>{% for r in tr.confidence_reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+    <div><h3 style="font-size:19px;margin-bottom:8px">Guardrails &amp; disclosures</h3>
+      {% for g in tr.guardrails %}<div class="guard">{{ g }}</div>{% else %}<p class="note">No guardrail intervened: every lens landed in the plausible band and no Street anchor was applied.</p>{% endfor %}
+      {% for f in fwd.flags %}<div class="guard">{{ f }}</div>{% endfor %}</div>
+  </div>
+</div></section>
+
+<section class="section tight" id="lenses"><div class="wrap">
+  {{ head('Por dentro · Inside', 'The lenses in detail', 'Relative lenses apply a target multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits the business. Every input is shown so any number can be challenged.') }}
   <div class="lenses">
   {% for l in tr.lenses %}
-    <div class="lens">
-      <h4>{{ l.label }} <span class="fam">{{ l.family }}</span></h4>
-      <div class="big mono">{{ fmt_ps(l.value) }}</div>
-      <div class="note mono" style="margin:0 0 6px">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }} · {{ pct(l.eff_weight,0) }} weight</div>
-      <table><tbody>{% for k,v in l.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}</tbody></table>
-      <p class="note">{{ l.note }}</p>
-    </div>
+    <article class="lens"><header><h4>{{ l.label }}<span class="fam">{{ l.family }}</span></h4>
+      <span class="tag {{ 'warn' if l.status=='excluded' else ('med' if (l.status!='ok' or l.status_note) else 'ok') }}">{{ 'excluded' if l.status=='excluded' else ('adjusted' if (l.status!='ok' or l.status_note) else pct(l.eff_weight,0) + ' weight') }}</span></header>
+      <div class="body"><div class="big mono" style="font-family:var(--serif)">{{ fmt_ps(l.value) }}</div>
+        <div class="rng">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}{% if l.status_note %} · {{ l.status_note }}{% endif %}</div>
+        <table><tbody>{% for k,v in l.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}</tbody></table>
+        <p class="nt">{{ l.note }}</p></div></article>
   {% endfor %}
   </div>
+</div></section>
 
-  {{ sec('Earnings quality & cycle') }}
+<section class="section tight" id="quality"><div class="wrap">
+  {{ head('Calidad de beneficios · Earnings quality', 'Are the earnings the market is paying for durable?') }}
   <div class="two">
-    <div>
-      <table class="kvt"><tbody>
+    <div class="tblwrap"><table><tbody>
         <tr><td>Trailing EPS</td><td class="mono">{{ fmt_ps(fwd.eps_ltm) }}</td></tr>
         <tr><td>Consensus EPS FY{{ fwd.fy1_year }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy1) }}</td></tr>
         <tr><td>Consensus EPS FY{{ fwd.fy1_year+1 }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy2) }}</td></tr>
@@ -657,42 +529,46 @@ table.sens td.base{outline:2px solid {{t.brass}};outline-offset:-2px;font-weight
         <tr><td>Durable EPS growth used</td><td class="mono">{{ pct(fwd.growth,1) }}</td></tr>
         <tr><td>Earnings-durability factor on multiples</td><td class="mono">×{{ '%.2f'|format(fwd.cycle.durability) }}</td></tr>
         <tr><td>Basis</td><td>{{ fwd.basis }}</td></tr>
-      </tbody></table>
-    </div>
+    </tbody></table></div>
     <div>
-      <p><b>{{ 'Cyclical or in an earnings inflection.' if fwd.cycle.is_cyclical else 'No cyclicality flags.' }}</b>
+      <p class="lede" style="font-size:16px"><b>{{ 'Cyclical or in an earnings inflection.' if fwd.cycle.is_cyclical else 'No cyclicality flags.' }}</b>
          {% if fwd.cycle.reasons %}{{ fwd.cycle.reasons|join('; ') }}.{% else %}Revenue and margins show no peak-to-trough pattern in the reported history, so forward earnings are capitalised at the full target multiple.{% endif %}</p>
       <p class="note">Growth source: {{ fwd.growth_src }}. Multiples price <i>durable</i> growth, so a one-year recovery step is never extrapolated, and when forward EPS is far above what the business has historically earned the target multiple is scaled down — the market pays less for peak earnings.</p>
     </div>
   </div>
+</div></section>
 
-  {{ sec('Where it sits on the Investment Clock') }}
+<section class="section tight" id="clock"><div class="wrap">
+  {{ head('Reloj de inversión · Investment Clock', 'Where it sits on the cycle') }}
   <div class="two" style="align-items:center">
-    <div class="wheelbox">{{ wheel_svg|safe }}</div>
+    <div style="max-width:320px">{{ wheel_svg|safe }}</div>
     <div>
-      <p><b>{{ phase_primary_name }}</b>{% if phase_secondary_name %} and <b>{{ phase_secondary_name }}</b>{% endif %}
-         are the phases in which {{ d.sector or 'this sector' }} has historically led, on the classic Merrill Lynch Investment Clock
-         sector map (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
-      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company
-         fundamentals and consensus, not macro data. Use it to ask whether the thesis above needs the cycle to cooperate.</p>
+      <p class="lede" style="font-size:16px"><b>{{ phase_primary_name }}</b>{% if phase_secondary_name %} and <b>{{ phase_secondary_name }}</b>{% endif %}
+         are the phases in which {{ d.sector or 'this sector' }} has historically led, on the classic Merrill Lynch Investment Clock sector map
+         (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
+      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company fundamentals and consensus,
+         not macro data. Use it to ask whether the thesis above needs the cycle to cooperate. The live phase reading lives in the Reloj de inversión project.</p>
     </div>
   </div>
+</div></section>
 
-  {% if finsum %}
-  {{ sec('Financial summary & valuation') }}
-  <table><thead><tr><th>{{ d.currency_symbol }}, per share where noted</th>
+{% if finsum %}
+<section class="section tight"><div class="wrap">
+  {{ head('Financial summary', 'Multiples at the current price') }}
+  <div class="tblwrap"><table><thead><tr><th>{{ d.currency_symbol }}, per share where noted</th>
     {% for c in finsum.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
   {% for label, vals in finsum.rows.items() %}
-    <tr {% if label in ['EV/EBITDA'] %}class="grptop"{% endif %}>
-      <td{% if label in ['growth'] %} style="padding-left:18px" class="muted"{% endif %}>{{ label }}</td>
+    <tr><td{% if label in ['growth'] %} style="padding-left:24px" class="muted"{% endif %}>{{ label }}</td>
       {% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
-  {% endfor %}</tbody></table>
+  {% endfor %}</tbody></table></div>
   <p class="note">{{ finsum.note }}</p>
-  {% endif %}
+</div></section>
+{% endif %}
 
-  {% if model_rows %}
-  {{ sec('Financial model — historicals & projected P&L') }}
-  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
+{% if model_rows %}
+<section class="section tight"><div class="wrap">
+  {{ head('Modelo', 'Historicals and projected P&L') }}
+  <div class="tblwrap"><table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
     <th>Net income</th><th>EPS</th></tr></thead><tbody>
   {% for r in model_rows %}{% if r.hist %}
     <tr class="hist"><td class="mono">{{ r.year }}A</td>
@@ -711,65 +587,76 @@ table.sens td.base{outline:2px solid {{t.brass}};outline-offset:-2px;font-weight
     <td class="mono">{{ fmt_ps(f.eps) }}{% if f.eps_src=='Analyst' %} <span class="src">A</span>{% endif %}</td></tr>
     {% endfor %}
   {% endif %}
-  </tbody></table>
-  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with
-     flat interest and the normalised tax rate.</p>
-  {% endif %}
+  </tbody></table></div>
+  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with flat interest and the normalised tax rate.</p>
+</div></section>
+{% endif %}
 
-  {% if dcf %}
-  {{ sec('DCF cross-check — drivers & sensitivity') }}
-  <table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
+{% if dcf %}
+<section class="section tight" id="dcf"><div class="wrap">
+  {{ head('DCF', 'Cross-check — drivers and sensitivity') }}
+  <div class="tblwrap"><table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
   {% for drv, path, why in assumptions %}
-    <tr><td><b>{{ drv }}</b></td><td class="mono" style="white-space:nowrap">{{ path }}</td><td style="text-align:left;font-size:12px;line-height:1.5">{{ why }}</td></tr>
-  {% endfor %}</tbody></table>
-  <div class="three" style="margin-top:14px">
-    <div class="keep"><div class="exh">Revenue &amp; FCFF</div>{{ proj_svg|safe }}</div>
-    <div class="keep"><div class="exh">EBIT margin path</div>{{ margin_svg|safe }}</div>
-    <div class="keep"><div class="exh">EV → equity bridge</div>{{ bridge_svg|safe }}</div>
+    <tr><td><b>{{ drv }}</b></td><td class="mono" style="white-space:nowrap">{{ path }}</td><td style="text-align:left;font-size:12.5px;line-height:1.5">{{ why }}</td></tr>
+  {% endfor %}</tbody></table></div>
+  <div class="three" style="margin-top:18px">
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">Revenue &amp; FCFF</div>{{ proj_svg|safe }}</div>
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EBIT margin path</div>{{ margin_svg|safe }}</div>
+    <div class="card" style="padding:14px 16px"><div class="exh" style="margin-top:0">EV → equity bridge</div>{{ bridge_svg|safe }}</div>
   </div>
   {% if sens_html %}
-  <div class="two" style="margin-top:10px">
-    <div><div class="exh">Exhibit · DCF value per share, WACC × terminal growth (vs. price)</div>{{ sens_html|safe }}
-      <p class="note">Shaded against the current price: green = above, red = below. Outlined cell = base case.</p></div>
+  <div class="two" style="margin-top:22px">
+    <div class="sens-wrap"><div class="exh" style="margin-top:0">DCF value per share · WACC × terminal growth (vs. price)</div>{{ sens_html|safe }}
+      <p class="note">Shaded against the current price: green = above, terracotta = below. Outlined cell = base case.</p></div>
     <div>
-      {% if returns_comment %}<p>{{ returns_comment|safe }}</p>{% endif %}
-      {% if diagnostics and diagnostics.flags %}<h3>Model diagnostics</h3>
-      <table><tbody>{% for k, v, st in diagnostics.flags %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td>
-        <td><span class="tag {{ 'ok' if st=='ok' else 'warn' }}">{{ st }}</span></td></tr>{% endfor %}</tbody></table>{% endif %}
+      {% if returns_comment %}<p class="lede" style="font-size:15px">{{ returns_comment|safe }}</p>{% endif %}
+      {% if diagnostics and diagnostics.flags %}<h3 style="font-size:17px;margin:16px 0 6px">Model diagnostics</h3>
+      <div class="tblwrap"><table><tbody>{% for k, v, st in diagnostics.flags %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td>
+        <td><span class="tag {{ 'ok' if st=='ok' else 'warn' }}">{{ st }}</span></td></tr>{% endfor %}</tbody></table></div>{% endif %}
     </div>
   </div>
   {% endif %}
-  {% endif %}
+</div></section>
+{% endif %}
 
-  {% if ratios %}
-  {{ sec('Ratio analysis — leverage, coverage & returns') }}
-  <table><thead><tr><th>Metric</th>{% for c in ratios.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
+{% if ratios %}
+<section class="section tight"><div class="wrap">
+  {{ head('Ratios', 'Leverage, coverage and returns') }}
+  <div class="tblwrap"><table><thead><tr><th>Metric</th>{% for c in ratios.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
   {% for label, vals in ratios.rows %}
     <tr><td>{{ label }}</td>{% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
-  {% endfor %}</tbody></table>
-  {% endif %}
+  {% endfor %}</tbody></table></div>
+</div></section>
+{% endif %}
 
-  {% if factors %}
-  {{ sec('Factor sensitivity map — what moves this stock') }}
-  <table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
-    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
+{% if factors %}
+<section class="section tight"><div class="wrap">
+  {{ head('Factores', 'What moves this stock') }}
+  <div class="tblwrap"><table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
+    <th style="width:9%">Exposure</th><th style="width:24%;text-align:left">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
   {% for f in factors %}
     <tr><td>{{ f.cat }}</td><td><b>{{ f.factor }}</b></td>
     <td><span class="tag {{ 'high' if f.level=='High' else ('med' if f.level=='Medium' else 'low') }}">{{ f.level }}</span></td>
     <td class="mono" style="text-align:left;font-size:11.5px">{{ f.evidence }}</td>
-    <td style="text-align:left;font-size:12px;line-height:1.5">{{ f.why }}</td></tr>
-  {% endfor %}</tbody></table>
-  {% endif %}
+    <td style="text-align:left;font-size:12.5px;line-height:1.5">{{ f.why }}</td></tr>
+  {% endfor %}</tbody></table></div>
+</div></section>
+{% endif %}
 
-  {% if catalysts %}
-  {{ sec('Catalysts & what each lever is worth') }}
+{% if catalysts %}
+<section class="section tight"><div class="wrap">
+  {{ head('Catalizadores', 'What each lever is worth') }}
   <ul>{% for c in catalysts %}<li>{{ c|safe }}</li>{% endfor %}</ul>
-  {% endif %}
+</div></section>
+{% endif %}
 
-  {{ sec('Key risks') }}
+<section class="section tight" id="risks"><div class="wrap">
+  {{ head('Riesgos', 'Key risks') }}
   <ul>{% for r in risks %}<li>{{ r }}</li>{% endfor %}</ul>
+</div></section>
 
-  <div class="disc"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
+<div class="foot-bar"><div class="wrap">
+  <p class="disclaimer"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
     public data ({{ d.provider }}). {{ d.ticker }} was classified as <b>{{ spec.label }}</b>. The 12-month price target
     triangulates several lenses — target multiples on consensus forward earnings (peer/sector-anchored and adjusted for
     durable growth, leverage and earnings durability), a 10-year DCF with decaying growth and mean-reverting margins, and
@@ -777,9 +664,22 @@ table.sens td.base{outline:2px solid {{t.brass}};outline-offset:-2px;font-weight
     of equity net of dividends, and lightly anchors it to Street consensus when available. Reference multiples are
     long-run developed-market medians; live peer medians replace them when fetched. Forward numbers come from analyst
     consensus where available and from reported figures otherwise; they are not a substitute for fundamental judgement.
-    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
-</div></body></html>""")
+    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</p>
+</div></div>
+<script>if(location.search.indexOf('print=1')>-1){window.addEventListener('load',function(){setTimeout(function(){window.print()},400)})}</script>
+</body></html>""")
 
+
+def _families(tr):
+    """Group lenses for the dark verdict block: relative / intrinsic / sector."""
+    titles = {"relative": "Relative \u00b7 multiples", "intrinsic": "Intrinsic \u00b7 cash flows",
+              "sector": "Sector models"}
+    out = []
+    for fam in ("relative", "intrinsic", "sector"):
+        ls = [l for l in tr.lenses if l.family == fam]
+        if ls:
+            out.append({"title": titles[fam], "lenses": ls, "weight": sum(l.eff_weight for l in ls)})
+    return out
 
 
 def _football_rows(tr, data):
@@ -801,7 +701,8 @@ def _football_rows(tr, data):
 
 def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenarios,
                  sens, comps, base_drivers, diagnostics, reverse, target, upside, blend, risks,
-                 tr, fwd, ref, fwd_model=None, peers=None):
+                 tr, fwd, ref, fwd_model=None, peers=None, library_href=None,
+                 font_base="../assets/fonts/"):
     cur = data.currency_symbol
     price = data.price
     rating, rdir = derive_rating(tr.total_return, tr.rated)
@@ -861,8 +762,8 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
     factors = build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate)
 
     kw = dict(
-        s=theme.SCREEN, p=theme.PRINT, font_sans=theme.FONT_SANS, font_serif=theme.FONT_SERIF,
-        font_mono=theme.FONT_MONO,
+        design_css=design.css(font_base), brand=theme.brand_mark(30), library_href=library_href,
+        families=_families(tr),
         key_data=key_data, finsum=finsum, ratios=ratios, catalysts=catalysts, factors=factors,
         fwd_model=fwd_model, d=data, spec=spec, report_date=date.today().strftime("%d %b %Y"),
         rating=rating, rating_dir=rdir, tr=tr, fwd=fwd, thesis=thesis, discount_rate=discount_rate,

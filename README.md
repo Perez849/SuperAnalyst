@@ -56,7 +56,7 @@ depreciación no-cash distorsiona el GAAP). Puedes forzar el perfil con `--profi
 
 ```bash
 pip install -r requirements.txt
-# para PDF por CLI: Chrome/Chromium (o wkhtmltopdf), o el botón "Save as PDF" del HTML
+# para PDF por CLI: Chrome/Chromium (o el botón "Save as PDF" del HTML)
 ```
 
 ## Uso — CLI
@@ -72,7 +72,7 @@ python valorar.py CEG --erp 0.05 --terminal-growth 0.025 --exit-multiple 12 --pd
 python valorar.py SAN.MC --country-premium 0.012  # europea: prima país + divisa auto
 ```
 
-Exporta a PDF con `--pdf` (Chrome headless → wkhtmltopdf → weasyprint), o abre el HTML y pulsa
+Exporta a PDF con `--pdf` (Chrome headless → weasyprint), o abre el HTML y pulsa
 el botón flotante **Save as PDF** (usa el print CSS optimizado; se oculta al imprimir).
 
 ## Uso — GitHub Actions (a demanda, eliges tú el valor)
@@ -86,7 +86,7 @@ el botón flotante **Save as PDF** (usa el print CSS optimizado; se oculta al im
    horizonte / múltiplo de salida. Run.
 4. Al terminar, descarga el artifact `valuation-<TICKER>` con el **HTML y el PDF**.
 
-Sin secret usa yfinance automáticamente. Chrome ya viene en el runner (y wkhtmltopdf se instala si faltara), así que el PDF
+Sin secret usa yfinance automáticamente. Chrome ya viene en el runner, así que el PDF
 sale sin tocar nada.
 
 
@@ -118,30 +118,37 @@ Nota: la hoja **Target Price** del Excel reproduce la triangulación con pesos e
 Nota: en Excel el terminal g y los drivers anuales son inputs independientes (como en un
 modelo de banca); en el motor Python cambiar el terminal también mueve el fade del crecimiento.
 
-## Web en GitHub Pages (biblioteca de valoraciones)
+## Web en GitHub Pages (biblioteca + generador de PDFs)
 
 Pages solo sirve estáticos, así que el patrón es: **el Action genera el informe y lo publica
-en `/docs`, y Pages lo sirve**. La web se va llenando con un índice que se autoconstruye.
+en `/docs`, y Pages lo sirve**. La web (`docs/index.html`, se autoconstruye con
+`scripts/build_index.py`) lista los informes y trae un panel **«Genera un informe en PDF desde la
+web»**: escribes un ticker, la página lanza el workflow, espera 2–4 min y ofrece PDF, HTML y Excel.
 
 **Alta (una vez):**
 1. Sube el repo a GitHub. (Opcional) añade el secret `FMP_API_KEY` en *Settings → Secrets and
    variables → Actions*.
 2. *Settings → Pages → Build and deployment → Source: Deploy from a branch*, rama `main`,
-   carpeta **`/docs`**. Guarda. Tu web queda en `https://<usuario>.github.io/<repo>/`.
-3. *Settings → Actions → General → Workflow permissions*: marca **Read and write permissions**
-   (para que el workflow pueda commitear en `/docs`).
+   carpeta **`/docs`**. Tu web queda en `https://<usuario>.github.io/<repo>/`.
+3. *Settings → Actions → General → Workflow permissions*: **Read and write permissions**.
 
-**Cada valoración:**
-1. Pestaña **Actions → "Equity valuation → Pages" → Run workflow**.
-2. Escribe el **ticker** (y ajusta perfil / Rf / ERP / país / terminal si quieres). Run.
-3. El workflow genera `docs/reports/<TICKER>.html` + `.pdf` + `.json`, reconstruye
-   `docs/index.html` y hace commit. En ~1 min tu web muestra la nueva tarjeta con rating,
-   precio objetivo y upside, enlazando al informe y al PDF.
+**Cómo se lanza la generación desde la web** (la web es estática y necesita permiso en GitHub):
 
-El repo ya trae un `docs/` de ejemplo con el informe DEMO; bórralo cuando quieras.
+| Modo | Qué hace | Configuración |
+|---|---|---|
+| **Worker** (recomendado) | Un Worker de Cloudflare guarda el token y lanza el workflow; cualquiera puede generar sin cuenta de GitHub, con límites por IP | `worker/README.md` → pon su URL en `docs/assets/config.js` (`api`) |
+| **Token en tu navegador** | Pegas un token fino (solo *Actions: Read and write* sobre este repo); se guarda en `localStorage` y solo viaja a `api.github.com` | desde el propio panel, «Conexión con GitHub» |
+| **Manual** | El botón te lleva a *Actions → Run workflow* y la página espera aquí al resultado | nada |
 
-> Si prefieres no acumular informes en el repo, usa el otro workflow (`valuation.yml`), que
-> deja HTML+PDF como *artifact* descargable sin tocar `/docs`.
+El workflow valida el ticker (`^[A-Za-z0-9.^=-]{1,12}$`) y nunca lo interpola en el shell; el
+Worker valida ticker, perfil y proveedor con listas cerradas y limita peticiones.
+
+**Cada valoración, a mano:** *Actions → "Equity valuation → Pages" → Run workflow* con el ticker.
+Genera `docs/reports/<TICKER>.html` + `.pdf` + `.xlsx` + `.json`, reconstruye el índice y hace commit.
+Además, dentro de cada informe el botón **Save as PDF** guarda el PDF desde el navegador al instante.
+
+> Si prefieres no acumular informes en el repo, usa `valuation.yml`, que deja HTML+PDF+Excel como
+> *artifact* descargable (HTML autocontenido, con las fuentes incrustadas) sin tocar `/docs`.
 
 ## Uso — app Streamlit
 
@@ -203,25 +210,34 @@ equityval/
   models.py         residual income, DDM, P/B–ROE, FFO, AFFO, normalizado
   lenses.py         cada lente con rango y traza de auditoría
   triangulate.py    mezcla, guardrails, objetivo a 12m, calle, confianza, NOT RATED
-  theme.py          tokens de diseño "Investment Clock" (un único sitio para re-skin)
+  theme.py          tokens del diseño Reloj de inversión + fases del ciclo
+  design.py         hoja de estilos compartida (informes + biblioteca) y fuentes
   charts.py         esfera de valoración, rueda de fases, football field (SVG)
   report.py         informe HTML + Save-as-PDF
   excel_export.py   modelo Excel con fórmulas vivas (+ hoja Target Price)
   engine.py         orquestador
-tests/              regresión con instantáneas reales (MU, SNDK, NVDA, CEG, GFI, UEC)
+tests/              regresión con instantáneas reales (MU, SNDK, NVDA, CEG, GFI, UEC) y test de la web
+worker/             Worker de Cloudflare que lanza la generación desde la web
+docs/               web publicada: index.html, assets/ (css, js, fuentes), reports/
 valorar.py                       CLI (--pdf, --xlsx, --profile, --snapshot, --street-weight)
 streamlit_app.py                 app interactiva
 .github/workflows/               valuation.yml, pages.yml, tests.yml
 ```
 
-## Diseño "Investment Clock"
+## Diseño: Reloj de inversión
 
-Esfera de 270° con 12 horas como identidad: la aguja marca la rentabilidad esperada a 12 m,
-el arco dorado es el rango bear–bull y el triángulo "S" el consenso de la calle. La rueda de
-cuatro fases (Recovery → Overheat → Stagflation → Reflation) muestra en qué fases suele liderar
-el sector de la compañía (mapa sectorial clásico de Merrill Lynch; es afinidad ilustrativa, no
-una lectura macro actual). Pantalla oscura, impresión/PDF en claro. Todos los colores viven en
-`equityval/theme.py`.
+Informes y web comparten el sistema visual del proyecto
+[reloj-inversion](https://github.com/Perez849/reloj-inversion): papel crema, tinta, un único
+acento ocre, Fraunces / Inter / IBM Plex Mono (alojadas en `docs/assets/fonts`, licencia OFL),
+los cuatro colores de fase (verde bosque, ocre, terracota, índigo) y un único bloque oscuro para
+"la respuesta". La firma de cada informe es una **esfera de valoración**: la aguja marca la
+rentabilidad esperada a 12 m, el arco ocre el rango bear–bull y la "S" el consenso de la calle.
+La rueda de cuatro fases (Recuperación → Sobrecalentamiento → Estanflación → Reflación) muestra en
+qué fases suele liderar el sector (mapa clásico del *investment clock*; afinidad ilustrativa, no una
+lectura macro actual — esa vive en el proyecto del reloj).
+
+Todo sale de dos archivos: `equityval/theme.py` (tokens) y `equityval/design.py` (hoja de estilos
+compartida). Cambiar ahí reestiliza informes y biblioteca.
 
 ## Offline y tests
 
@@ -230,8 +246,8 @@ python valorar.py --snapshot tests/fixtures/MU.json --pdf --xlsx   # reproducibl
 python -m pytest tests -q
 ```
 
-El PDF se genera con Chrome/Chromium headless si lo encuentra (`CHROME_BIN` para forzarlo),
-con wkhtmltopdf y weasyprint como alternativas.
+El PDF se genera con Chrome/Chromium headless (`CHROME_BIN` para forzarlo; el runner de GitHub ya
+lo trae), con weasyprint como alternativa. wkhtmltopdf ya no se usa: no entiende variables CSS.
 
 ## Límites
 
