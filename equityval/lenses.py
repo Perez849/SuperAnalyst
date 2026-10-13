@@ -7,7 +7,7 @@ answer. The lenses mirror how a sell-side desk actually builds a target:
 
   relative    target multiple x forward earnings / EBITDA / sales / book
               (peer-anchored, then adjusted for growth, leverage and earnings durability)
-  intrinsic   10-year FCFF DCF with decaying growth and mean-reverting margins
+  intrinsic   10-year FCFF DCF with fading growth and mean-reverting margins
   sector      residual income, justified P/B, FFO/AFFO, dividends, mid-cycle EBITDA
               (the models in models.py, wrapped so they share the same shape)
 """
@@ -278,7 +278,7 @@ def dcf_lens(scenarios: dict, data: CompanyData) -> Optional[Lens]:
     ]
     lo = max(min(bear.value_per_share, base.value_per_share), 0.0)
     hi = max(bull.value_per_share, base.value_per_share)
-    note = ("10-year FCFF DCF: consensus for the near years, geometric growth decay, mean-reverting "
+    note = ("10-year FCFF DCF: consensus for the near years, a steady growth fade, mean-reverting "
             "margins, terminal reinvestment tied to growth/ROIC. Range = bear/bull scenarios.")
     if base.tv_pct_of_ev > 0.80:
         note += f" Terminal value is {base.tv_pct_of_ev:.0%} of EV — treat as less reliable."

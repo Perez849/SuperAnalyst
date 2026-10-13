@@ -7,8 +7,8 @@ Design principles that keep the forecast honest (these are the guardrails whose 
 produced $34,000 targets for a $950 stock):
 
   - Consensus is used for what it is good at -- the next one or two fiscal years. Beyond
-    that, growth DECAYS GEOMETRICALLY toward a terminal rate at or below long-run nominal
-    GDP, so a +100% step can never be compounded for a decade.
+    that, growth FADES (linearly; convexly for cyclicals) toward a terminal rate at or below
+    long-run nominal GDP, so a +100% step can never be compounded for a decade.
   - EBIT margin MEAN-REVERTS toward the company's through-cycle average (strongly for
     cyclicals, gently for compounders), and the consensus-implied margin is capped at
     1.5x the highest margin the company has ever reported.
@@ -109,7 +109,7 @@ def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float =
     term_g = min(terminal_growth, LONG_RUN_NOMINAL_GDP)
     term_g_s = min(max(term_g + tilt * 0.003, 0.0), LONG_RUN_NOMINAL_GDP)
 
-    # --- revenue: explicit consensus years, then geometric decay -------------
+    # --- revenue: explicit consensus years, then a fade to the terminal rate -----
     explicit: list[float] = []
     growth_src = ""
     if fwd.rev_fy1 and last.revenue and -0.6 < fwd.rev_fy1 / last.revenue - 1 < 3.0:
@@ -133,13 +133,23 @@ def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float =
 
     g_start = min(max(explicit[-1], term_g_s), 0.22)
     if cyc.is_cyclical:
-        g_start = min(g_start, ref.growth + 0.02)       # the recovery year is not a trend
+        # a recovery year is not a trend: cap what carries past the consensus window, but leave room
+        # above the sector rate so the path does not fall off a cliff in the first year after it
+        g_start = min(g_start, ref.growth + 0.05)
+    if len(explicit) == 1:
+        # a single consensus year is a thinner anchor than two: start the fade 40% of the way back
+        # toward the sector's growth rate rather than at the full (possibly one-off) step
+        sector_g = max(ref.growth, term_g_s)
+        if g_start > sector_g:
+            g_start = sector_g + 0.6 * (g_start - sector_g)
     n_tail = H - len(explicit)
     tail: list[float] = []
     if n_tail > 0:
-        decay = 0.05 ** (1.0 / max(n_tail, 1))           # ~95% of the excess gone by the last year
+        # Linear fade from the last consensus year to the terminal rate (hitting it in the final year).
+        # Cyclicals fade on a convex path: their above-trend growth is more likely to be a cycle.
+        shape_p = 1.5 if cyc.is_cyclical else 1.0
         for j in range(1, n_tail + 1):
-            tail.append(term_g_s + (g_start - term_g_s) * decay ** j)
+            tail.append(term_g_s + (g_start - term_g_s) * (1.0 - j / n_tail) ** shape_p)
         tail[-1] = term_g_s
     rev_growth = explicit + tail
 
@@ -201,7 +211,8 @@ def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float =
         ds.rationale = [
             ("Revenue growth",
              f"{rev_growth[0]:.1%} → {rev_growth[-1]:.1%} over {H}y",
-             f"{'Year 1 follows' if len(explicit) == 1 else 'Years 1–' + str(len(explicit)) + ' follow'} {growth_src}. Growth then decays geometrically "
+             f"{'Year 1 follows' if len(explicit) == 1 else 'Years 1–' + str(len(explicit)) + ' follow'} {growth_src}. Growth then fades "
+             f"{'linearly' if not cyc.is_cyclical else 'on a convex path (faster early, as cyclical growth tends to mean-revert)'} "
              f"from {g_start:.1%} to the {term_g_s:.1%} terminal rate as revenue compounds toward "
              f"{(cur + format(term_rev / 1e9, ',.0f') + 'bn') if term_rev >= 1e10 else (cur + format(term_rev / 1e9, ',.2f') + 'bn') if term_rev >= 1e9 else (cur + format(term_rev / 1e6, ',.0f') + 'mn')} — competitive entry and the law of large numbers "
              f"compress incremental growth; no single year's step is ever extrapolated."),

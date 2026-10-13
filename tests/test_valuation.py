@@ -102,6 +102,22 @@ def test_drivers_decay_and_stay_bounded(results):
     assert max(dr.ebit_margin) <= dr.anchors["margin_cap"] + 1e-9
 
 
+def test_growth_fades_gradually_instead_of_falling_off_a_cliff(results):
+    """After the consensus window growth fades smoothly: in the first half of the fade no single year
+    loses more than 30% of its excess over the terminal rate, and mid-horizon growth is still
+    visibly above trend (the old geometric decay lost ~30% a year and was at trend by year 6)."""
+    for t in ("MU", "NVDA", "SNDK", "CEG", "GFI", "UEC"):
+        d = results[t]["data"]
+        ref = lookup(d.sector, d.industry)
+        dr = build_drivers(d, 10, 0.025, "base", fwd=forward_numbers(d, ref), ref=ref)
+        g, tg = dr.revenue_growth, dr.terminal_growth
+        tail = g[2:]
+        first_half = tail[: len(tail) // 2]
+        steps = [(first_half[i] - tg) / (first_half[i - 1] - tg) for i in range(1, len(first_half))]
+        assert all(x >= 0.7 for x in steps), (t, [round(x, 3) for x in g])
+        assert g[5] - tg >= 0.4 * (g[2] - tg), (t, [round(x, 3) for x in g])
+
+
 def _lens(key, value, weight=0.3):
     return Lens(key, key, "relative", value, value * 0.8, value * 1.2, weight=weight)
 

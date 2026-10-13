@@ -534,13 +534,17 @@ def grouped_bars(labels: list[str], series: list[tuple[str, list, str]], unit: s
 
 
 def line_chart(labels: list[str], series: list[tuple[str, list, str]], pct: bool = True, width: int = 520,
-               height: int = 230, fill_between: tuple[int, int] | None = None) -> str:
+               height: int = 230, fill_between: tuple[int, int] | None = None, ymax: float | None = None) -> str:
+    """ymax caps the y-axis (in data units); points above it are pinned to the top edge with their value
+    printed, so a one-off spike in year 1 does not flatten the rest of the path."""
     n = len(labels)
     nums = [v for _, vals, _ in series for v in vals if v is not None and math.isfinite(v)]
     if not nums:
         return ""
     scale = 100 if pct else 1
     lo, hi = min(nums + [0.0]) * scale, max(nums) * scale * 1.15
+    if ymax is not None and ymax * scale * 1.1 < hi:
+        hi = ymax * scale * 1.1
     left, right, bottom, top = 38, 12, 30, 26
     ph, pw = height - bottom - top, width - left - right
 
@@ -548,7 +552,7 @@ def line_chart(labels: list[str], series: list[tuple[str, list, str]], pct: bool
         return left + (i + 0.5) / n * pw
 
     def y(v):
-        return top + (hi - v * scale) / (hi - lo) * ph
+        return top + (hi - min(v * scale, hi)) / (hi - lo) * ph
 
     out = [f'<svg class="mini" viewBox="0 0 {width} {height}" role="img" aria-label="line chart">']
     for t in _nice_ticks(lo, hi, 4):
@@ -567,6 +571,10 @@ def line_chart(labels: list[str], series: list[tuple[str, list, str]], pct: bool
             out.append(f'<polyline class="{cls}" points="' + " ".join(f"{px:.1f},{py:.1f}" for px, py in pts) + '"/>')
         for px, py in pts:
             out.append(f'<circle class="{cls}-dot" cx="{px:.1f}" cy="{py:.1f}" r="2.6"/>')
+        clipped = [(i, v) for i, v in enumerate(vals) if v is not None and math.isfinite(v) and v * scale > hi]
+        if clipped:
+            lab = " · ".join(f'{v * scale:.0f}{"%" if pct else ""}' for _, v in clipped)
+            out.append(f'<text class="axis" x="{x(clipped[-1][0]) + 6:.1f}" y="{top + 4}">▲ {lab}</text>')
     for i, lab in enumerate(labels):
         if width >= 320 or n <= 6 or i % 2 == 0:
             out.append(f'<text class="axis" x="{x(i):.1f}" y="{height - 10}" text-anchor="middle">{escape(str(lab))}</text>')

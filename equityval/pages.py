@@ -285,6 +285,16 @@ def _lens_row(l, *keys):
     return None
 
 
+def _fade_ymax(g: list[float]):
+    """Cap the growth chart's axis when the consensus years are spikes far above the rest of the path,
+    so the fade itself stays readable (clipped points are labelled on the chart)."""
+    ref = max(g[len(g) // 2], 0.04)
+    kept = [v for v in g if v <= 4 * ref]
+    if kept and len(kept) < len(g):
+        return max(kept) * 1.2
+    return None
+
+
 def compose(f) -> list[NS]:
     cx = f.ctx
     d, tr, cur = f.data, f.tr, f.cur
@@ -508,7 +518,7 @@ def compose(f) -> list[NS]:
         gser = [fc[i].revenue / prev_rev[i] - 1 for i in range(len(fc))]
         side = [ex("wacc", "Cost of capital build", table(None, wrows) + _take(f"Beta: {w.beta_method}."), src_model),
                 ex("drivers", "DCF drivers along the forecast", table([""] + [f"{fc[i].year}E" for i in idx], drows), src_model),
-                ex("fade", "Revenue growth: consensus, then geometric decay", charts.line_chart(yl, [("Revenue growth", gser, "lc-roic")], pct=True, width=SW, height=150), src_model),
+                ex("fade", "Revenue growth: consensus, then fade to terminal", charts.line_chart(yl, [("Revenue growth", gser, "lc-roic")], pct=True, width=SW, height=150, ymax=_fade_ymax(gser)), src_model),
                 ex("reinv", "Reinvestment and profitability path", charts.line_chart(yl, [("EBIT margin", [x.ebit_margin for x in fc], "lc-roic"), ("Capex/rev", [abs(x.capex) / x.revenue for x in fc], "lc-roe"),
                                                                                               ("FCFF/rev", [x.fcff / x.revenue for x in fc], "lc-wacc")], pct=True, width=SW, height=150), src_model, opt=True)]
         band = [ex("fcff", f"Free-cash-flow build · {ft.unit_label}", table([""] + [f"{r_['year']}E" for r_ in cx["fcff_rows"]], [{"label": lab, "cells": [r_[key] for r_ in cx["fcff_rows"]], "cls": cls} for lab, key, cls in cx["fcff_lines"]], cls="wide"), src_model)]

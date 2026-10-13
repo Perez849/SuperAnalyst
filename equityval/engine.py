@@ -132,7 +132,7 @@ def value_data(data: CompanyData, prov, cfg: ValuationConfig, peer_snaps: Option
     methods: dict[str, MethodResult] = {}
     scenarios = sens = diagnostics = reverse = base_drivers = dcf_base = None
 
-    # ---- intrinsic: FCFF DCF with decaying growth and mean-reverting margins ----------
+    # ---- intrinsic: FCFF DCF with fading growth and mean-reverting margins ----------
     if "dcf" in weights:
         try:
             scenarios = {}

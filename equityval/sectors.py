@@ -40,7 +40,7 @@ PROFILE_SPECS = {
         {"dcf": 0.35, "pe_fwd": 0.30, "ev_ebitda_fwd": 0.25, "ddm": 0.10}, "wacc", 10,
         "Priced like the sell-side prices it: a target multiple on forward earnings and EBITDA "
         "(peer-anchored, adjusted for growth and earnings durability), cross-checked against a "
-        "10-year FCFF DCF whose growth decays and whose margins mean-revert."),
+        "10-year FCFF DCF whose growth fades and whose margins mean-revert."),
     Profile.BANK: ProfileSpec(
         Profile.BANK, "Bank / Diversified Financials (P/B-ROE + residual income)",
         {"pb_roe": 0.35, "residual_income": 0.30, "pe_fwd": 0.25, "ddm": 0.10}, "ke", 6,

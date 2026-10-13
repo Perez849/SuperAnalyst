@@ -405,7 +405,7 @@ def _lens_story(f, l) -> str:
         return head + f"scales a {g('anchor p/b').split('—')[0].strip() if g('anchor p/b') else ''} book multiple by returns on equity relative to the cost of equity ({_flat(g('returns factor') or '')})."
     if l.key == "dcf":
         return head + (f"values ten years of free cash flow to the firm at a {g('wacc')} WACC with {g('terminal growth')} terminal growth; the terminal value is {g('pv of terminal') or ''}. "
-                       "Growth decays geometrically and margins mean-revert, so it does not extrapolate today's profitability"
+                       "Growth fades toward the terminal rate and margins mean-revert, so it does not extrapolate today's profitability"
                        + (f"; here it sits {'below' if l.value < _others_mean(f, 'dcf') else 'above'} the multiples lenses." if _others_mean(f, 'dcf') else "."))
     return head.rstrip() + (": " + l.note[:1].lower() + l.note[1:] if l.note else ".")
 
@@ -545,7 +545,7 @@ def scenarios_page(f) -> dict:
                     f"and a higher reinvestment burden. Our published bear target of {ps(f.bear)} ({spct(f.bear / f.price - 1)} from today's price) blends that with the lower ends of the multiples lenses"
                     + (", so it is the multiples, not the cash-flow model, that set the floor of the range." if f.dcf_bear < f.bear else ".")
                     + (" On the DCF's own terms the shares offer no margin of safety in a downturn." if f.dcf_bear < f.price * 0.8 else "")))
-        mm.append(P(f"{b('Base.')} Consensus for the near years, growth fading geometrically to {pct(f.dcf.terminal_growth, 1)}, margins mean-reverting from {pct(f.margin_last, 0)} toward {pct(f.dcf_m_term, 0)}, "
+        mm.append(P(f"{b('Base.')} Consensus for the near years, growth fading to {pct(f.dcf.terminal_growth, 1)}, margins mean-reverting from {pct(f.margin_last, 0)} toward {pct(f.dcf_m_term, 0)}, "
                     f"and a {pct(f.wacc, 1)} WACC: {ps(f.dcf_vps)} a share on the cash-flow lens, {ps(f.fv)} once the multiples lenses are blended."))
         mm.append(P(f"{b('Bull.')} The DCF's bull scenario reaches {ps(f.dcf_bull)}: growth that fades more slowly and margins that hold closer to today's level. "
                     f"Our published bull target of {ps(f.bull)} ({spct(f.bull / f.price - 1)}) is the upper end of the lens ranges rolled forward."))
@@ -647,7 +647,7 @@ def growth_margins(f) -> dict:
         p += (f"Consensus looks for revenue of {b(money(f.rev_fy1, cur))} in FY{f.fy1} ({spct(f.g_fy1)})"
               + (f" and {money(f.rev_fy2, cur)} in FY{f.fy1 + 1} ({spct(f.g_fy2)})" if f.rev_fy2 and ok(f.g_fy2) else "") + ". ")
     if f.has_dcf:
-        p += (f"Our DCF takes consensus for the first two years and then lets growth decay geometrically toward the {pct(f.dcf.terminal_growth, 1)} terminal rate, "
+        p += (f"Our DCF takes consensus for the first two years and then fades growth toward the {pct(f.dcf.terminal_growth, 1)} terminal rate, "
               f"so revenue reaches {money(f.dcf_rev_term, cur)} by year {f.dcf_horizon} ({pct(f.dcf_cagr, 1)} a year over the period). "
               "Large numbers compress growth and competition erodes it; we do not extrapolate any single year.")
     mm.append(P(p))
@@ -878,7 +878,7 @@ def dcf_assumptions(f) -> dict:
     w = f.wacc_res
     mm = []
     mm.append(P(f"The DCF is the cross-check that ignores what other investors pay. It values {b(_words(f.dcf_horizon) + ' years')} of unlevered free cash flow plus a terminal value, discounted at the "
-                f"{b(pct(f.wacc, 2))} WACC. The early years follow consensus; thereafter growth decays geometrically and margins mean-revert, so the model cannot extrapolate a single strong year.", lead=True))
+                f"{b(pct(f.wacc, 2))} WACC. The early years follow consensus; thereafter growth fades toward the terminal rate and margins mean-revert, so the model cannot extrapolate a single strong year.", lead=True))
     mm.append(H("The drivers"))
     for drv, path, why in (f.drivers.rationale if f.drivers else []):
         mm.append(P(f"{b(drv)}: <span style='font-family:var(--mono);font-size:.9em;color:var(--ink-soft)'>{path}</span>. {why}"))
@@ -899,7 +899,7 @@ def dcf_assumptions(f) -> dict:
                 f"and the horizon is {_words(f.dcf_horizon)} years for this profile. The sensitivity table varies the WACC by ±150bps and terminal growth by ±100bps around the base case.", more=True))
     return dict(key="p9", nav="DCF", kicker="Valuation · discounted cash flow (1/2)",
                 title="DCF: the assumptions behind the cash flows",
-                sub="Consensus for the near years, then geometric growth decay, mean-reverting margins and reinvestment tied to growth and returns.", main=mm)
+                sub="Consensus for the near years, then a steady growth fade, mean-reverting margins and reinvestment tied to growth and returns.", main=mm)
 
 
 def dcf_results(f) -> dict:
@@ -1152,7 +1152,7 @@ def appendix_method(f) -> dict:
     mm = []
     mm.append(H("Method in one paragraph"))
     mm.append(P(f"The price target triangulates relative lenses (target multiples on consensus forward numbers, anchored on peers or a sector reference table and adjusted for durable growth, leverage and earnings durability), "
-                f"a {f.dcf_horizon if f.has_dcf else 10}-year DCF (consensus for the near years, geometric growth decay, mean-reverting margins) and sector models (residual income, justified P/B, FFO/AFFO, dividends, mid-cycle EBITDA), "
+                f"a {f.dcf_horizon if f.has_dcf else 10}-year DCF (consensus for the near years, a steady growth fade, mean-reverting margins) and sector models (residual income, justified P/B, FFO/AFFO, dividends, mid-cycle EBITDA), "
                 "weighted by company profile. Fair value is rolled forward at the cost of equity and reduced by dividends to give a 12-month target."))
     mm.append(H("Guardrails"))
     mm.append(P("A lens outside 0.2×–5× the share price is excluded; a lens more than 2.2× away from the median of the others is down-weighted by 60%; the published target is limited to 0.4×–2.5× the price; "
