@@ -36,40 +36,43 @@ class ProfileSpec:
 
 PROFILE_SPECS = {
     Profile.STANDARD: ProfileSpec(
-        Profile.STANDARD, "Standard (2-Stage FCFE)",
-        {"fcff_dcf": 0.55, "comps": 0.30, "ddm": 0.15}, "ke", 5,
-        "Fair value from a 2-stage Free Cash Flow to Equity model: analyst levered-FCF "
-        "estimates over 10 years plus a Gordon terminal, discounted at the cost of equity."),
+        Profile.STANDARD, "Standard (forward multiples + DCF)",
+        {"dcf": 0.35, "pe_fwd": 0.30, "ev_ebitda_fwd": 0.25, "ddm": 0.10}, "wacc", 10,
+        "Priced like the sell-side prices it: a target multiple on forward earnings and EBITDA "
+        "(peer-anchored, adjusted for growth and earnings durability), cross-checked against a "
+        "10-year FCFF DCF whose growth decays and whose margins mean-revert."),
     Profile.BANK: ProfileSpec(
-        Profile.BANK, "Bank / Diversified Financials (Excess Returns)",
-        {"residual_income": 0.50, "ddm": 0.30, "pb_roe": 0.20}, "ke", 6,
-        "Leverage is the business, not a financing choice, so cash-flow models don't apply. "
-        "Value = book value + present value of excess returns (ROE above the cost of equity)."),
+        Profile.BANK, "Bank / Diversified Financials (P/B-ROE + residual income)",
+        {"pb_roe": 0.35, "residual_income": 0.30, "pe_fwd": 0.25, "ddm": 0.10}, "ke", 6,
+        "Leverage is the business, not a financing choice, so cash-flow models do not apply. "
+        "Value = book value + the present value of returns above the cost of equity, "
+        "cross-checked against justified P/B and forward P/E."),
     Profile.INSURANCE: ProfileSpec(
-        Profile.INSURANCE, "Insurance (Excess Returns)",
-        {"residual_income": 0.45, "pb_roe": 0.30, "ddm": 0.25}, "ke", 6,
-        "Valued off book value and sustainable ROE versus the cost of equity via the "
-        "Excess Returns model, the balance-sheet-appropriate approach for financials."),
+        Profile.INSURANCE, "Insurance (P/B-ROE + residual income)",
+        {"pb_roe": 0.30, "residual_income": 0.30, "pe_fwd": 0.30, "ddm": 0.10}, "ke", 6,
+        "Valued off book value and sustainable ROE versus the cost of equity, with forward "
+        "P/E as the market cross-check."),
     Profile.REIT: ProfileSpec(
-        Profile.REIT, "REIT (AFFO 2-Stage)",
-        {"ffo_multiple": 0.45, "affo_yield": 0.35, "ddm": 0.20}, "ke", 5,
-        "Property cash flow is measured by AFFO, not free cash flow. A 2-stage AFFO model "
-        "discounts adjusted funds from operations at the cost of equity (NAV fallback)."),
+        Profile.REIT, "REIT (P/FFO + AFFO yield)",
+        {"ffo_multiple": 0.40, "affo_yield": 0.30, "ddm": 0.15, "ev_ebitda_fwd": 0.15}, "ke", 10,
+        "Property cash flow is measured by FFO/AFFO, not free cash flow or GAAP earnings: "
+        "price-to-FFO, a capitalised AFFO yield, and EV/EBITDA as a leverage-aware cross-check."),
     Profile.UTILITY: ProfileSpec(
-        Profile.UTILITY, "Utility (2-Stage FCFE)",
-        {"ddm": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "ke", 7,
-        "Regulated, low-growth, high-payout: valued on a 2-stage cash-flow-to-equity model "
-        "off analyst estimates, or a dividend model where FCF estimates are unavailable."),
+        Profile.UTILITY, "Utility (P/E + dividends + DCF)",
+        {"pe_fwd": 0.30, "ddm": 0.25, "dcf": 0.25, "ev_ebitda_fwd": 0.20}, "wacc", 10,
+        "Regulated, low-growth, high-payout: forward P/E against regulated peers, a multi-stage "
+        "dividend model, and a DCF with rate-base-style reinvestment."),
     Profile.CYCLICAL: ProfileSpec(
-        Profile.CYCLICAL, "Cyclical / Commodities (2-Stage FCFE)",
-        {"normalized": 0.45, "fcff_dcf": 0.30, "comps": 0.25}, "ke", 5,
-        "Valued on a 2-stage Free Cash Flow to Equity model off analyst estimates, which "
-        "already reflect through-cycle expectations for cash generation."),
+        Profile.CYCLICAL, "Cyclical / Commodities (mid-cycle multiples + DCF)",
+        {"normalized": 0.30, "ev_ebitda_fwd": 0.25, "pe_fwd": 0.15, "dcf": 0.30}, "wacc", 10,
+        "Spot margins mislead at both ends of the cycle: value on mid-cycle EBITDA and "
+        "through-cycle multiples, with forward multiples (scaled for earnings durability) and a "
+        "mean-reverting DCF as cross-checks."),
     Profile.HIGH_GROWTH: ProfileSpec(
-        Profile.HIGH_GROWTH, "High-growth (2-Stage FCFE)",
-        {"fcff_dcf": 0.55, "comps": 0.45}, "ke", 8,
-        "A 2-stage Free Cash Flow to Equity model captures the analyst growth ramp over a "
-        "10-year explicit horizon before fading to the terminal rate."),
+        Profile.HIGH_GROWTH, "High-growth (EV/Sales + DCF)",
+        {"ev_sales_fwd": 0.35, "dcf": 0.30, "pe_fwd": 0.20, "pb_book": 0.15}, "wacc", 10,
+        "Thin or negative earnings: forward EV/Sales sized to growth and margin potential, a "
+        "long-horizon DCF with margin convergence, and book value as the downside anchor."),
 }
 
 

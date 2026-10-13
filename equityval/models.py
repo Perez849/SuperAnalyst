@@ -255,7 +255,8 @@ def normalized_cyclical(data: CompanyData, peers: Optional[list[PeerData]] = Non
             ("Normalized EBITDA", f"{cur}{norm_ebitda/1e9:,.2f}bn"),
             ("EV/EBITDA multiple", f"{mult:.1f}x ({src})"),
             ("Enterprise value", f"{cur}{ev/1e9:,.2f}bn"),
-            ("− Net debt", f"{cur}{data.net_debt/1e9:,.2f}bn"),
+            ("− Net debt" if data.net_debt >= 0 else "+ Net cash",
+             f"{cur}{abs(data.net_debt)/1e9:,.2f}bn"),
             ("Value per share", f"{cur}{value:,.2f}"),
         ],
         note="Commodity spot margins mislead at cycle peaks and troughs; this "

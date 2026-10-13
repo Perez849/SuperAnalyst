@@ -1,16 +1,20 @@
-"""Assumption engine — with explicit, defensible reasoning.
+"""Assumption engine -- with explicit, defensible reasoning.
 
-Every projection driver is derived from history and/or consensus, sanity-checked,
-and paired with an analyst-style rationale explaining *why* it is what it is.
+Every projection driver is derived from consensus and history, sanity-checked, and paired
+with an analyst-style rationale explaining *why* it is what it is.
 
-Design principles that keep the forecast honest:
-  - Revenue growth DECELERATES monotonically toward a terminal rate at or below
-    long-run nominal GDP (law of large numbers).
-  - EBIT margin MEAN-REVERTS partway toward its through-cycle average rather than
-    holding a possibly-peak spot margin.
-  - Reinvestment (capex, D&A, working capital) is tied to the revenue base so the
-    implied ROIC and fundamental growth stay internally consistent.
-  - Terminal growth must sit below the discount rate.
+Design principles that keep the forecast honest (these are the guardrails whose absence
+produced $34,000 targets for a $950 stock):
+
+  - Consensus is used for what it is good at -- the next one or two fiscal years. Beyond
+    that, growth DECAYS GEOMETRICALLY toward a terminal rate at or below long-run nominal
+    GDP, so a +100% step can never be compounded for a decade.
+  - EBIT margin MEAN-REVERTS toward the company's through-cycle average (strongly for
+    cyclicals, gently for compounders), and the consensus-implied margin is capped at
+    1.5x the highest margin the company has ever reported.
+  - Capex converges to a sustainable multiple of D&A, so the terminal year is neither
+    starved of reinvestment nor weighed down by growth capex it no longer needs.
+  - Terminal growth must sit below the discount rate (enforced in dcf.run_dcf).
 """
 from __future__ import annotations
 
@@ -18,6 +22,8 @@ import math
 from dataclasses import dataclass, field
 from typing import Optional
 
+from .estimates import Forward, forward_numbers
+from .reference import SectorRef, lookup
 from .schema import CompanyData
 
 # Long-run nominal GDP anchor for terminal growth sanity (US ~ real 2% + infl 2%).
@@ -40,27 +46,50 @@ class DriverSet:
 
 
 def _clean_mean(vals, lo=-1e9, hi=1e9):
-    vals = [v for v in vals if v is not None and isinstance(v,(int,float)) and math.isfinite(v) and lo <= v <= hi]
+    vals = [v for v in vals if v is not None and isinstance(v, (int, float))
+            and math.isfinite(v) and lo <= v <= hi]
     return sum(vals) / len(vals) if vals else None
 
 
-def _fade(start: float, end: float, n: int) -> list[float]:
+def _lin(start: float, end: float, n: int) -> list[float]:
+    if n <= 0:
+        return []
     if n == 1:
         return [end]
     return [start + (end - start) * i / (n - 1) for i in range(n)]
 
 
-def build_drivers(data: CompanyData, horizon: int = 5,
-                  terminal_growth: float = 0.025, scenario: str = "base") -> DriverSet:
+def _implied_ebit_margin(data: CompanyData, eps: Optional[float], rev: Optional[float],
+                         tax: float) -> Optional[float]:
+    """EBIT margin implied by consensus EPS and revenue for one fiscal year."""
+    if not eps or not rev or rev <= 0 or not data.shares_diluted:
+        return None
+    ni = eps * data.shares_diluted
+    pretax = ni / (1 - tax) if ni > 0 else ni
+    ebit = pretax + data.latest.interest_expense
+    return ebit / rev
+
+
+def build_drivers(data: CompanyData, horizon: int = 10, terminal_growth: float = 0.025,
+                  scenario: str = "base", fwd: Optional[Forward] = None,
+                  ref: Optional[SectorRef] = None) -> DriverSet:
     yrs = data.years
     cur = data.currency_symbol
+    ref = ref or lookup(data.sector, data.industry)
+    fwd = fwd or forward_numbers(data, ref)
+    cyc = fwd.cycle
+    last = yrs[-1]
+    H = max(int(horizon), 3)
 
     # --- historical anchors -------------------------------------------------
     hist_cagr = data.cagr("revenue")
     hist_cagr_c = min(max(hist_cagr if hist_cagr is not None else 0.05, -0.10), 0.40)
     margins_hist = [y.ebit_margin for y in yrs if y.ebit_margin is not None]
-    margin_mean = _clean_mean(margins_hist, -0.5, 0.7) or 0.12
-    last_margin = yrs[-1].ebit_margin or margin_mean
+    margin_mean = cyc.mid_margin if cyc.mid_margin is not None else \
+        (_clean_mean(margins_hist, -0.5, 0.7) or ref.margin)
+    last_margin = last.ebit_margin if last.ebit_margin is not None else margin_mean
+    max_margin = max([m for m in margins_hist if m is not None and m < 0.9] or [ref.margin])
+    margin_cap = min(0.80, max(0.35, 1.5 * max_margin))
     da_pct = _clean_mean([y.depreciation_amort / y.revenue for y in yrs if y.revenue], 0, 0.5) or 0.05
     capex_pct = _clean_mean([y.capex / y.revenue for y in yrs if y.revenue], 0, 0.5) or 0.05
 
@@ -70,99 +99,134 @@ def build_drivers(data: CompanyData, horizon: int = 5,
         if d_rev > 0:
             nwc_ratios.append(b.change_in_nwc / d_rev)
     nwc_pct = _clean_mean(nwc_ratios, -0.5, 0.5)
-    if nwc_pct is None:
-        nwc_pct = 0.05
+    nwc_pct = 0.05 if nwc_pct is None else min(max(nwc_pct, -0.10), 0.35)
 
     tax = _clean_mean([y.effective_tax_rate for y in yrs], 0, 0.6) or 0.25
     tax = min(max(tax, 0.10), 0.35)
 
-    # --- forward starting growth: consensus blended with history ------------
-    est = data.estimates
-    raw_consensus = est.revenue_growth_next
-    # Guard against corrupt consensus figures (data-provider errors around
-    # accounting changes or odd base years routinely produce >40% "growth").
-    consensus = raw_consensus
-    consensus_flag = ""
-    if consensus is not None and (consensus > 0.40 or consensus < -0.30):
-        consensus_flag = f" (raw consensus {consensus:.0%} rejected as implausible)"
-        consensus = None
-    if consensus is not None:
-        start_growth = 0.6 * consensus + 0.4 * hist_cagr_c
-        growth_src = (f"year-1 consensus of {consensus:.1%} blended 60/40 with the "
-                      f"{len(yrs)-1}-yr historical CAGR of {hist_cagr_c:.1%}")
-    else:
-        start_growth = hist_cagr_c
-        growth_src = (f"the {len(yrs)-1}-yr historical revenue CAGR of {hist_cagr_c:.1%}"
-                      f"{consensus_flag or ' (no reliable consensus available)'}")
-    # No mature company sustains >25% revenue growth in year 1 of a fade; cap it.
-    start_growth = min(max(start_growth, -0.05), 0.25)
-
-    # terminal growth: capped at long-run nominal GDP
-    term_g = min(terminal_growth, LONG_RUN_NOMINAL_GDP)
-
     # --- scenario tilts -----------------------------------------------------
     tilt = {"bear": -1, "base": 0, "bull": +1}[scenario]
-    g_start = min(max(start_growth + tilt * 0.03, -0.08), 0.40)
-    # ensure monotone deceleration to terminal (growth fades DOWN unless a slow grower)
-    g_end = max(term_g, min(g_start, term_g + tilt * 0.005))
-    if g_start < term_g:                       # low grower: gentle rise, capped
-        g_end = min(g_start + 0.005, term_g)
+    term_g = min(terminal_growth, LONG_RUN_NOMINAL_GDP)
+    term_g_s = min(max(term_g + tilt * 0.003, 0.0), LONG_RUN_NOMINAL_GDP)
 
-    # margin: partial mean reversion (40%) toward through-cycle average
-    reversion = 0.40
-    margin_end = last_margin + reversion * (margin_mean - last_margin) + tilt * 0.015
-    margin_end = min(max(margin_end, 0.0), 0.6)
-    term_g_s = min(term_g + tilt * 0.003, LONG_RUN_NOMINAL_GDP)
+    # --- revenue: explicit consensus years, then geometric decay -------------
+    explicit: list[float] = []
+    growth_src = ""
+    if fwd.rev_fy1 and last.revenue and -0.6 < fwd.rev_fy1 / last.revenue - 1 < 3.0:
+        explicit.append(fwd.rev_fy1 / last.revenue - 1)
+        if fwd.rev_fy2 and fwd.rev_fy1 and -0.6 < fwd.rev_fy2 / fwd.rev_fy1 - 1 < 2.0:
+            explicit.append(fwd.rev_fy2 / fwd.rev_fy1 - 1)
+        growth_src = (f"consensus revenue for FY{fwd.fy1_year}"
+                      + (f" and FY{fwd.fy1_year + 1}" if len(explicit) > 1 else ""))
+    if not explicit:
+        g1 = hist_cagr_c
+        if data.estimates.revenue_growth_next is not None and \
+                -0.3 < data.estimates.revenue_growth_next < 0.6:
+            g1 = 0.6 * data.estimates.revenue_growth_next + 0.4 * hist_cagr_c
+            growth_src = (f"year-1 consensus of {data.estimates.revenue_growth_next:.1%} blended "
+                          f"60/40 with the {len(yrs)-1}-yr historical CAGR of {hist_cagr_c:.1%}")
+        else:
+            growth_src = f"the {len(yrs)-1}-yr historical revenue CAGR of {hist_cagr_c:.1%}"
+        explicit = [min(max(g1, -0.05), 0.25)]
+    explicit = explicit[:H]
+    explicit = [g + tilt * max(0.02, 0.08 * abs(g)) for g in explicit]
 
-    rev_growth = _fade(g_start, g_end, horizon)
-    margins = _fade(last_margin, margin_end, horizon)
+    g_start = min(max(explicit[-1], term_g_s), 0.22)
+    if cyc.is_cyclical:
+        g_start = min(g_start, ref.growth + 0.02)       # the recovery year is not a trend
+    n_tail = H - len(explicit)
+    tail: list[float] = []
+    if n_tail > 0:
+        decay = 0.05 ** (1.0 / max(n_tail, 1))           # ~95% of the excess gone by the last year
+        for j in range(1, n_tail + 1):
+            tail.append(term_g_s + (g_start - term_g_s) * decay ** j)
+        tail[-1] = term_g_s
+    rev_growth = explicit + tail
+
+    # --- EBIT margin: consensus-implied (capped), then mean reversion --------
+    m_cons1 = _implied_ebit_margin(data, fwd.eps_fy1, fwd.rev_fy1, tax)
+    m_cons2 = _implied_ebit_margin(data, fwd.eps_fy2, fwd.rev_fy2, tax) if fwd.eps_fy2 else None
+    cons_note = ""
+    explicit_m: list[float] = []
+    if m_cons1 is not None and len(explicit) >= 1:
+        m1 = min(max(m_cons1, -0.5), margin_cap)
+        if m_cons1 > margin_cap:
+            cons_note = (f" (consensus implies {m_cons1:.0%}; capped at {margin_cap:.0%}, 1.5x the "
+                         f"highest margin ever reported)")
+        explicit_m.append(m1)
+        if m_cons2 is not None and len(explicit) >= 2:
+            explicit_m.append(min(max(m_cons2, -0.5), margin_cap))
+    if not explicit_m:
+        explicit_m = [last_margin]
+    explicit_m = [m + tilt * 0.015 for m in explicit_m]
+    explicit_m = explicit_m + [explicit_m[-1]] * max(0, len(explicit) - len(explicit_m))
+
+    rho = 0.60 if cyc.is_cyclical else 0.30
+    m_anchor = explicit_m[-1]
+    margin_end = m_anchor + rho * (margin_mean - m_anchor) + tilt * 0.01
+    margin_end = min(max(margin_end, -0.5 if m_anchor < 0 else 0.0), margin_cap)
+    k = len(explicit_m)
+    ramp_n = max(H - k - 2, 1)
+    margins = list(explicit_m[:H])
+    if H - k > 0:
+        margins += _lin(m_anchor, margin_end, ramp_n + 1)[1:][:H - k]
+        while len(margins) < H:
+            margins.append(margin_end)
+    margins = margins[:H]
+
+    # --- reinvestment: capex converges to a sustainable multiple of D&A ------
+    capex_end = da_pct * 1.10
+    capex_path = _lin(capex_pct, capex_end, H)
 
     # --- terminal-year revenue base for context -----------------------------
-    term_rev = yrs[-1].revenue
+    term_rev = last.revenue
     for g in rev_growth:
         term_rev *= (1 + g)
 
     ds = DriverSet(
-        revenue_growth=rev_growth, ebit_margin=margins, da_pct=[da_pct] * horizon,
-        capex_pct=[capex_pct] * horizon, nwc_pct_delta=nwc_pct, tax_rate=tax,
-        terminal_growth=term_g_s, horizon=horizon, label=scenario,
-        anchors=dict(hist_cagr=hist_cagr_c, consensus=consensus, margin_mean=margin_mean,
+        revenue_growth=rev_growth, ebit_margin=margins, da_pct=[da_pct] * H,
+        capex_pct=capex_path, nwc_pct_delta=nwc_pct, tax_rate=tax,
+        terminal_growth=term_g_s, horizon=H, label=scenario,
+        anchors=dict(hist_cagr=hist_cagr_c, consensus=fwd.rev_fy1, margin_mean=margin_mean,
                      last_margin=last_margin, capex_pct=capex_pct, da_pct=da_pct,
-                     nwc_pct=nwc_pct, tax=tax, term_rev=term_rev),
+                     nwc_pct=nwc_pct, tax=tax, term_rev=term_rev, margin_cap=margin_cap,
+                     cyclical=cyc.is_cyclical),
     )
 
     if scenario == "base":
-        margin_dir = ("expands" if margin_end > last_margin + 0.002 else
-                      "compresses" if margin_end < last_margin - 0.002 else "holds broadly flat")
-        margin_why = (
-            f"Spot EBIT margin is {last_margin:.1%} versus a through-cycle average of "
-            f"{margin_mean:.1%}. We revert {reversion:.0%} of the way toward that average, "
-            f"landing at {margin_end:.1%} by year {horizon} \u2014 crediting some but not all "
-            f"of current profitability as durable, which guards against extrapolating a peak.")
+        margin_dir = ("expands" if margins[-1] > last_margin + 0.002 else
+                      "compresses" if margins[-1] < last_margin - 0.002 else "holds broadly flat")
+        shape = ("a cyclical business, so we revert " if cyc.is_cyclical else
+                 "a compounder, so we revert only ")
         ds.rationale = [
             ("Revenue growth",
-             f"{g_start:.1%} \u2192 {g_end:.1%} over {horizon}y",
-             f"Year-1 growth is set from {growth_src}. Growth then decelerates monotonically "
-             f"to the terminal rate as the base compounds toward {cur}{term_rev/1e9:,.0f}bn "
-             f"\u2014 the law of large numbers and competitive entry compress incremental growth."),
+             f"{rev_growth[0]:.1%} → {rev_growth[-1]:.1%} over {H}y",
+             f"{'Year 1 follows' if len(explicit) == 1 else 'Years 1–' + str(len(explicit)) + ' follow'} {growth_src}. Growth then decays geometrically "
+             f"from {g_start:.1%} to the {term_g_s:.1%} terminal rate as revenue compounds toward "
+             f"{cur}{term_rev/1e9:,.0f}bn — competitive entry and the law of large numbers "
+             f"compress incremental growth; no single year's step is ever extrapolated."),
             ("EBIT margin",
-             f"{last_margin:.1%} \u2192 {margin_end:.1%} ({margin_dir})",
-             margin_why),
+             f"{last_margin:.1%} → {margins[0]:.1%} → {margins[-1]:.1%} ({margin_dir})",
+             f"Reported margin is {last_margin:.1%}; year-1 margin is {margins[0]:.1%}{cons_note}. "
+             f"This is {shape}{rho:.0%} of the way toward the through-cycle average of "
+             f"{margin_mean:.1%}, landing at {margins[-1]:.1%} — crediting some but not all "
+             f"of current profitability as durable."),
             ("Reinvestment (capex)",
-             f"{capex_pct:.1%} of sales",
-             f"Held at the historical average capex intensity ({capex_pct:.1%}), against D&A of "
-             f"{da_pct:.1%} \u2014 a capex/D&A ratio of {capex_pct/da_pct:.2f}x, consistent with "
-             f"{'net capacity growth' if capex_pct>da_pct else 'a maintenance-led, capital-light steady state'}."),
+             f"{capex_pct:.1%} → {capex_end:.1%} of sales",
+             f"Starts at the historical capex intensity ({capex_pct:.1%}) against D&A of "
+             f"{da_pct:.1%}, converging to 1.10x D&A by the terminal year — a steady state that "
+             f"funds growth without permanent over- or under-investment."),
             ("Working capital",
-             f"{nwc_pct:.1%} of \u0394revenue",
-             f"Incremental working capital absorbs {nwc_pct:.1%} of each year's revenue increase, "
-             f"the historical median \u2014 {'a cash drag as the business scales' if nwc_pct>0 else 'a source of cash (negative working-capital model)'}."),
+             f"{nwc_pct:.1%} of Δrevenue",
+             f"Incremental working capital absorbs {nwc_pct:.1%} of each year's revenue increase "
+             f"(historical median) — "
+             f"{'a cash drag as the business scales' if nwc_pct > 0 else 'a source of cash (negative working-capital model)'}."),
             ("Tax rate",
              f"{tax:.1%}",
              f"Normalised to the trailing effective rate of {tax:.1%}, applied to EBIT to derive NOPAT."),
             ("Terminal growth",
              f"{term_g_s:.1%}",
-             f"Set at {term_g_s:.1%}, at or below long-run nominal GDP ({LONG_RUN_NOMINAL_GDP:.1%}); "
-             f"a mature going concern cannot outgrow the economy in perpetuity. Must stay below the WACC."),
+             f"At or below long-run nominal GDP ({LONG_RUN_NOMINAL_GDP:.1%}); a mature going concern "
+             f"cannot outgrow the economy in perpetuity. Terminal reinvestment is g/ROIC."),
         ]
     return ds

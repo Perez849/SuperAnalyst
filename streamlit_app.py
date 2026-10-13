@@ -2,18 +2,20 @@
 
     streamlit run streamlit_app.py
 
-Type a ticker, tweak the cost-of-capital and growth levers in the sidebar, and
-the research note regenerates live. Uses FMP if FMP_API_KEY is set, else yfinance.
+Type a ticker, tweak the cost-of-capital and growth levers in the sidebar, and the research
+note regenerates live. Uses FMP if FMP_API_KEY is set, else yfinance.
 """
 import os
 import streamlit as st
 import streamlit.components.v1 as components
 
 from equityval.engine import ValuationConfig, value_company
+from equityval.report import derive_rating
 
 st.set_page_config(page_title="Equity Valuation Engine", layout="wide")
 st.title("Equity valuation engine")
-st.caption("Automated DCF + comps + DDM research note. Not investment advice.")
+st.caption("Triangulated 12-month price target: forward multiples + DCF + sector models, "
+           "with guardrails and a Street cross-check. Not investment advice.")
 
 with st.sidebar:
     st.header("Inputs")
@@ -27,33 +29,35 @@ with st.sidebar:
     cp = st.slider("Country risk premium", 0.0, 0.08, 0.0, 0.001, format="%.3f")
     beta = st.text_input("Beta override (blank = auto)", "")
     st.subheader("Growth & terminal")
-    horizon = st.slider("Explicit horizon (yrs)", 3, 10, 5)
+    horizon = st.slider("DCF horizon (yrs)", 5, 12, 10)
     tg = st.slider("Terminal growth", 0.0, 0.05, 0.025, 0.001, format="%.3f")
     exit_m = st.text_input("Exit EV/EBITDA (blank = none)", "")
-    cw = st.slider("Comps weight in target", 0.0, 1.0, 0.35, 0.05)
+    sw = st.slider("Max Street weight in target", 0.0, 0.5, 0.30, 0.05)
     go = st.button("Run valuation", type="primary")
 
 if go and ticker:
     cfg = ValuationConfig(
         horizon=horizon, terminal_growth=tg, risk_free=rf, erp=erp,
-        country_premium=cp, comps_weight=cw,
+        country_premium=cp, street_weight=sw,
         beta_override=float(beta) if beta.strip() else None,
         exit_multiple=float(exit_m) if exit_m.strip() else None,
     )
-    with st.spinner(f"Valuing {ticker}…"):
+    with st.spinner(f"Valuing {ticker}\u2026"):
         try:
             res = value_company(ticker, provider, fmp_key or None, cfg)
         except Exception as e:
             st.error(f"Could not value {ticker}: {e}")
             st.stop()
 
-    d = res["data"]
+    d, tr = res["data"], res["tr"]
     cur = d.currency_symbol
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Fair value", f"{cur}{res['target']:.2f}")
-    c2.metric("Current price", f"{cur}{d.price:.2f}")
-    c3.metric("Upside", f"{res['upside']:+.1%}")
-    c4.metric("WACC", f"{res['wacc'].wacc:.2%}")
+    rating, _ = derive_rating(tr.total_return, tr.rated)
+    c1, c2, c3, c4, c5 = st.columns(5)
+    c1.metric("Rating", rating)
+    c2.metric("12m price target", f"{cur}{tr.target:,.2f}", f"{tr.upside:+.1%}")
+    c3.metric("Fair value today", f"{cur}{tr.fair_value:,.2f}")
+    c4.metric("Street consensus", f"{cur}{tr.street.mean:,.2f}" if tr.street else "n/a")
+    c5.metric("Confidence", tr.confidence)
 
     components.html(res["html"], height=1600, scrolling=True)
     st.download_button("Download HTML report", res["html"],

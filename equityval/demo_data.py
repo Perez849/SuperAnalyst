@@ -46,10 +46,10 @@ def demo_company() -> CompanyData:
     return CompanyData(
         ticker="DEMO", name="Meridian Industrials (illustrative)", currency="USD",
         sector="Industrials", industry="Diversified Machinery",
-        price=182.0, shares_diluted=1.52e9, market_cap=182.0 * 1.52e9,
+        price=262.0, shares_diluted=1.52e9, market_cap=262.0 * 1.52e9,
         beta=1.12, dividend_per_share=2.40, years=years,
-        estimates=Estimates(revenue_growth_next=0.07, target_price_mean=205.0,
-                             num_analysts=24),
+        estimates=Estimates(revenue_growth_next=0.07, target_price_mean=285.0,
+                             target_price_low=235.0, target_price_high=320.0, num_analysts=24),
         provider="DEMO (synthetic)",
         raw_statements=raw,
     )

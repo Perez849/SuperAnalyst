@@ -1,195 +1,415 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MU — Equity Research</title>
+<title>MU — Equity Research · Investment Clock</title>
 <style>
-  :root{--ink:#0E1116;--paper:#FBFBF9;--teal:#0F6466;--up:#1B7A5A;--down:#B23A48;
-    --hair:#C9C9C2;--muted:#6B6F76;--gold:#B9892E;--hist:#F1F0EA;}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Helvetica Neue",Arial,system-ui,sans-serif;font-size:14.5px;line-height:1.55;}
-  .wrap{max-width:900px;margin:0 auto;padding:48px 42px 80px;}
-  .serif{font-family:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;}
-  .mono{font-family:ui-monospace,"SF Mono","Menlo",monospace;font-variant-numeric:tabular-nums;}
-  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;}
-  h1{font-size:34px;line-height:1.08;margin:.15em 0 .1em;font-weight:600;}
-  h2{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;
-    margin:42px 0 12px;padding-bottom:8px;border-bottom:1.5px solid var(--ink);}
-  h3{font-size:14.5px;margin:22px 0 4px;font-weight:600;}
-  .masthead{border-top:3px solid var(--ink);padding-top:14px;}
-  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);}
-  .hero{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 6px;}
-  .pill{display:inline-block;padding:5px 14px;border-radius:2px;font-weight:700;font-size:13px;
-    letter-spacing:.08em;color:#fff;}
-  .pill.up{background:var(--up)} .pill.down{background:var(--down)} .pill.flat{background:var(--muted)}
-  .profiletag{display:inline-block;padding:3px 10px;border:1px solid var(--teal);color:var(--teal);
-    font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;border-radius:2px;margin-top:10px;}
-  .stat{flex:1;min-width:140px;border:1px solid var(--hair);padding:11px 14px;background:#fff;}
-  .stat .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-  .stat .v{font-size:25px;font-weight:600;margin-top:2px}
-  .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
-  p{margin:0 0 13px} .lead p:first-child{font-size:16px}
+  @page{size:A4;margin:11mm 9mm}
+  body{margin:0;font-family:"Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 36px 80px}
+  .serif{font-family:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif} .mono{font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+  h1{font-size:38px;line-height:1.05;margin:.12em 0 .1em;font-weight:600;letter-spacing:-.01em}
+  h1 .tk{font-size:20px;letter-spacing:.04em}
+  h3{font-size:13.5px;margin:22px 0 6px;font-weight:700}
+  h2.sec{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;margin:46px 0 14px;padding-bottom:9px}
+  h2.sec .num{margin-right:10px;font-weight:600}
+  .masthead{padding-top:14px}
+  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px}
+  .hero{display:grid;grid-template-columns:1fr 340px;gap:30px;align-items:center;margin-top:18px}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  .tile{padding:13px 16px;border-radius:10px}
+  .tile .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .tile .v{font-size:25px;font-weight:600;margin-top:3px;line-height:1.15}
+  .tile .s{font-size:11px;margin-top:2px;opacity:.8}
+  .pill{display:inline-block;padding:4px 14px;border-radius:3px;font-weight:800;font-size:12.5px;letter-spacing:.1em}
+  .profiletag{display:inline-block;padding:3px 10px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border-radius:3px;margin-top:10px}
+  .dial,.wheel{width:100%;height:auto;display:block}
+  p{margin:0 0 13px} .lead p:first-child{font-size:15.5px}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
-  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--hair)}
-  th:first-child,td:first-child{text-align:left}
-  thead th{border-bottom:1.5px solid var(--ink);font-size:10.5px;letter-spacing:.05em;
-    text-transform:uppercase;color:var(--muted)}
-  tr.total td{border-top:1.5px solid var(--ink);font-weight:700;border-bottom:none}
-  tr.hist td{background:var(--hist);color:var(--muted)}
-  tr.divider td{border-bottom:1.5px solid var(--ink);padding:0;height:0}
-  .src{display:inline-block;font-size:8px;font-weight:700;color:var(--teal);
-    border:1px solid var(--teal);border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
-  img.chart{width:100%;margin:10px 0 4px;border:1px solid var(--hair);background:#fff}
-  .two{display:table;width:100%;table-layout:fixed;border-spacing:22px 0;margin-left:-22px;
-    width:calc(100% + 44px);}
-  .two>div{display:table-cell;vertical-align:top;}
-  .note{font-size:11.5px;color:var(--muted);margin-top:6px}
-  ul{margin:6px 0 13px;padding-left:20px} li{margin:3px 0}
-  .kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--hair);padding:5px 0;font-size:12.5px}
-  .kv .mono{font-weight:600}
-  .methodcard{border:1px solid var(--hair);background:#fff;padding:16px 18px;margin:14px 0;}
-  .methodcard.primary{border-left:3px solid var(--teal);}
-  .assum td:last-child{text-align:left;color:var(--ink);font-size:12px;line-height:1.5}
-  .assum td.path{white-space:nowrap;color:var(--teal);font-weight:600}
-  .callout{border:1px solid var(--teal);background:#fff;padding:14px 16px;margin:14px 0;
-    border-left:3px solid var(--teal);}
-  .callout .big{font-size:22px;font-weight:600;}
-  .lenses{display:table;width:100%;table-layout:fixed;border-spacing:14px 0;margin:14px -14px;
-    width:calc(100% + 28px);}
-  .lens{display:table-cell;vertical-align:top;border:1px solid var(--hair);background:#fff;
-    padding:16px 18px;width:50%;}
-  .lens.believer{border:1.5px solid var(--teal);}
-  .lenskicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
-    font-weight:700;}
-  .lenstitle{font-size:13px;font-weight:600;margin:2px 0 8px;}
-  .lensbig{font-size:30px;font-weight:600;line-height:1;}
-  .lensup{font-size:13px;margin:4px 0 8px;}
-  table.kv{width:100%;border-collapse:collapse;}
-  table.kv td{padding:4px 0;border-bottom:1px solid var(--hair);font-size:12.5px;}
-  table.kv td:last-child{text-align:right;}
-  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:2px;font-weight:700;
-    letter-spacing:.04em;text-transform:uppercase;}
-  .tag.ok{background:#E3F0E9;color:var(--up)} .tag.warn{background:#F6E7E3;color:var(--down)}
-  .tag.neutral{background:#EDEDE7;color:var(--muted)}
-  .cols{display:table;width:100%;table-layout:fixed;border-spacing:0;}
-  .cols>div{display:table-cell;vertical-align:top;padding-right:26px;}
-  .cols>aside{display:table-cell;vertical-align:top;width:255px;}
-  .sidebar{border:1px solid var(--hair);background:#fff;padding:12px 14px;margin-top:24px;}
-  .sidetitle{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);
-    font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:6px;margin-bottom:4px;}
-  tr.grptop td{border-top:1.5px solid var(--ink);}
-  .exh{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
-    font-weight:700;margin:14px 0 2px;}
-  @media(max-width:760px){.cols,.cols>div,.cols>aside{display:block;width:auto;padding-right:0}}
-  .keep{page-break-inside:avoid;}
-  .hsp{height:150px;margin-bottom:-150px;}
-  .tag.high{background:#F6E7E3;color:var(--down)} .tag.med{background:#F5EEDC;color:var(--gold)}
-  .tag.low{background:#E3F0E9;color:var(--up)}
-  .disc{font-size:11px;color:var(--muted);margin-top:40px;border-top:1px solid var(--hair);padding-top:14px;line-height:1.5}
-  .pdfbtn{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;border:none;padding:11px 18px;
-    font-size:13px;font-weight:600;border-radius:3px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:99;}
-  @media(max-width:660px){.two,.two>div{display:block;width:auto;margin-left:0}.wrap{padding:28px 18px 60px}h1{font-size:27px}}
-  @media print{.wrap{max-width:100%}body{font-size:11px}.pdfbtn{display:none}h2{margin-top:24px}
-    .methodcard,.callout,img.chart{page-break-inside:avoid}tr{page-break-inside:avoid}thead{display:table-header-group}}
+  th,td{padding:6px 8px;text-align:right} th:first-child,td:first-child{text-align:left}
+  thead th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+  tr.total td{font-weight:700} tr.grptop td{border-top:1px solid currentColor}
+  .card,.callout{padding:16px 18px;border-radius:10px;margin:12px 0}
+  .cols{display:grid;grid-template-columns:1fr 270px;gap:30px}
+  .sidebar{padding:12px 16px;border-radius:10px;margin-top:6px;align-self:start}
+  .sidetitle{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+  .kv{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px} .kv .mono{font-weight:600}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px} .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .lenses{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .lens{padding:14px 16px;border-radius:10px;break-inside:avoid}
+  .lens h4{margin:0;font-size:13.5px} .lens .big{font-size:24px;font-weight:600;margin:4px 0 2px}
+  .lens table{font-size:11.5px} .lens td:last-child{text-align:right}
+  .fam{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-left:6px;font-weight:700}
+  .tag{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:3px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .bar-w{display:inline-block;width:70px;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px} .bar-w i{display:block;height:6px;border-radius:3px}
+  .guard{padding:10px 14px;border-radius:6px;margin:6px 0;font-size:12.5px}
+  .note{font-size:11.5px;margin-top:6px}
+  .src{display:inline-block;font-size:8px;font-weight:800;border:1px solid currentColor;border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
+  .exh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin:16px 0 4px}
+  ul{margin:6px 0 13px;padding-left:20px} li{margin:4px 0}
+  .disc{font-size:11px;margin-top:44px;padding-top:14px;line-height:1.55}
+  table.sens{table-layout:fixed;text-align:center} table.sens td,table.sens th{text-align:center;padding:7px 4px;font-family:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;font-size:11.5px}
+  .pdfbtn{position:fixed;right:20px;bottom:20px;border:none;padding:11px 18px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer;z-index:99}
+  .keep{break-inside:avoid;page-break-inside:avoid} h2.sec,h3{break-after:avoid;page-break-after:avoid}
+  .wheelbox{max-width:300px} svg text{font-family:"Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+  @media(max-width:820px){.hero,.cols,.two,.three,.lenses{grid-template-columns:1fr}.wrap{padding:24px 16px 60px}h1{font-size:30px}.dial{max-width:340px;margin:auto}}
+  @media screen{ body{background:#0A0F1C;color:#E8EDF6}
+a{color:#D9B36B}
+.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:#8C99B0}
+.topline{color:#8C99B0}
+.masthead{border-top:3px solid #D9B36B}
+h1 .tk{color:#8C99B0}
+h2.sec{color:#D9B36B;border-bottom:1px solid #25324D}
+h2.sec .num{color:#8C99B0}
+.card,.tile,.sidebar,.lens,.callout{background:#101828;border:1px solid #25324D;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.callout{border-left:3px solid #D9B36B}
+.profiletag{border:1px solid #D9B36B;color:#D9B36B}
+th{border-bottom:1px solid #25324D} td{border-bottom:1px solid #25324D}
+tr.total td{border-top:1px solid #E8EDF6}
+tr.hist td{background:#16213A;color:#8C99B0}
+tr.divider td{border-bottom:1px solid #D9B36B}
+tr.off td{color:#8C99B0;text-decoration:line-through;text-decoration-color:#25324D}
+.kv{border-bottom:1px solid #25324D}
+.pill.up{background:#38B887;color:#06130D} .pill.down{background:#EB6757;color:#1B0705} .pill.flat{background:#8C99B0;color:#0A0F1C}
+.up{color:#38B887} .down{color:#EB6757} .flat{color:#8C99B0}
+.tag.ok,.tag.low{background:#10261F;color:#38B887} .tag.warn,.tag.high{background:#2D1A1A;color:#EB6757}
+.tag.med{background:#2A2417;color:#D9B36B} .tag.neutral{background:#16213A}
+.fam{border:1px solid #25324D;color:#8C99B0}
+.bar-w{background:#16213A} .bar-w i{background:#D9B36B}
+.guard{background:#2A2417;border-left:3px solid #D9B36B}
+.disc{color:#8C99B0;border-top:1px solid #25324D}
+.pdfbtn{background:#D9B36B;color:#0A0F1C}
+/* dial */
+.dial .tick{stroke:#25324D;stroke-width:1} .dial .tick-major{stroke:#8C99B0;stroke-width:1.6}
+.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
+.dial .b-down2{stroke:#EB6757} .dial .b-down{stroke:#EB6757;opacity:.55} .dial .b-flat{stroke:#8C99B0;opacity:.7}
+.dial .b-up{stroke:#38B887;opacity:.6} .dial .b-up2{stroke:#38B887}
+.dial .range{fill:none;stroke:#D9B36B;stroke-width:5;stroke-linecap:round;opacity:.95}
+.dial .scale{fill:#8C99B0;font:600 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.dial .street{fill:#D9B36B} .dial .street-t{fill:#D9B36B}
+.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:#38B887} .dial .hand-down{stroke:#EB6757} .dial .hand-flat{stroke:#E8EDF6}
+.dial .hub-ring{fill:none;stroke:#D9B36B;stroke-width:1.2} .dial .hub{fill:#101828}
+.dial .hub-k{fill:#8C99B0;font:700 7.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
+.dial .hub-v{fill:#E8EDF6;font:600 25px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+.dial .hub-r{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
+.dial .hub-up{fill:#38B887} .dial .hub-down{fill:#EB6757} .dial .hub-flat{fill:#8C99B0}
+.dial .hub-s{fill:#8C99B0;font:500 9px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+/* phase wheel */
+.wheel .seg{stroke:#0A0F1C;stroke-width:2}
+.wheel .seg-recovery{fill:#38B887} .wheel .seg-overheat{fill:#F2A03D}
+.wheel .seg-stagflation{fill:#A585E8} .wheel .seg-reflation{fill:#4F94F7}
+.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
+.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
+.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C}
+.wheel .dim{fill:#8C99B0}
+.wheel .wheel-hub{fill:#101828;stroke:#25324D} .wheel .wheel-arrow{fill:none;stroke:#D9B36B;stroke-width:2.2}
+.wheel .wheel-head{fill:#D9B36B} .wheel .wheel-c{fill:#8C99B0;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
+/* football field + minis */
+.ff .grid,.mini .grid{stroke:#25324D;stroke-width:1} .mini .sep{stroke-dasharray:3 3}
+.ff .axis,.mini .axis{fill:#8C99B0;font:500 9.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+.ff .lbl{fill:#E8EDF6;font:600 11.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif} .ff .lbl-street,.ff .lbl-target{fill:#D9B36B}
+.ff .sub{fill:#8C99B0;font:500 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.ff .bar-lens{fill:#4F94F7;opacity:.28;stroke:#4F94F7} .ff .bar-street{fill:#D9B36B;opacity:.22;stroke:#D9B36B}
+.ff .bar-target{fill:#38B887;opacity:.22;stroke:#38B887} .ff .pt-lens{fill:#4F94F7} .ff .pt-street{fill:#D9B36B} .ff .pt-target{fill:#38B887}
+.ff .val,.mini .val{fill:#E8EDF6;font:600 10.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+.ff .v-price{stroke:#EB6757;stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:#EB6757;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.ff .v-target{stroke:#38B887;stroke-width:1.8} .ff .v-target-t{fill:#38B887;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.mini .b-pos{fill:#4F94F7} .mini .b-neg{fill:#EB6757} .mini .b-tot{fill:#D9B36B}
+.mini .b-rev{fill:#4F94F7} .mini .b-fcf{fill:#D9B36B} .mini .k-rev{fill:#4F94F7} .mini .k-fcf{fill:#D9B36B}
+.mini .l-act{fill:none;stroke:#E8EDF6;stroke-width:2.2} .mini .l-est{fill:none;stroke:#D9B36B;stroke-width:2.2;stroke-dasharray:5 3}
+.mini .k-act{fill:#E8EDF6} .mini .k-est{fill:#D9B36B}
+table.sens th{background:#16213A} table.sens td{border:1px solid #0A0F1C}
+table.sens td.up2{background:#38B887;color:#06130D} table.sens td.up{background:#10261F;color:#38B887}
+table.sens td.flat{background:#16213A} table.sens td.down{background:#2D1A1A;color:#EB6757} table.sens td.down2{background:#EB6757;color:#1B0705}
+table.sens td.base{outline:2px solid #D9B36B;outline-offset:-2px;font-weight:800} }
+  @media print{ body{background:#FFFFFF;color:#10151F}
+a{color:#8A6A2C}
+.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:#566074}
+.topline{color:#566074}
+.masthead{border-top:3px solid #8A6A2C}
+h1 .tk{color:#566074}
+h2.sec{color:#8A6A2C;border-bottom:1px solid #CFCBBE}
+h2.sec .num{color:#566074}
+.card,.tile,.sidebar,.lens,.callout{background:#F6F4EE;border:1px solid #CFCBBE;box-shadow:none}
+.callout{border-left:3px solid #8A6A2C}
+.profiletag{border:1px solid #8A6A2C;color:#8A6A2C}
+th{border-bottom:1px solid #CFCBBE} td{border-bottom:1px solid #CFCBBE}
+tr.total td{border-top:1px solid #10151F}
+tr.hist td{background:#EEEBE2;color:#566074}
+tr.divider td{border-bottom:1px solid #8A6A2C}
+tr.off td{color:#566074;text-decoration:line-through;text-decoration-color:#CFCBBE}
+.kv{border-bottom:1px solid #CFCBBE}
+.pill.up{background:#1B7A5A;color:#06130D} .pill.down{background:#B23A48;color:#1B0705} .pill.flat{background:#566074;color:#0A0F1C}
+.up{color:#1B7A5A} .down{color:#B23A48} .flat{color:#566074}
+.tag.ok,.tag.low{background:#E3F0E9;color:#1B7A5A} .tag.warn,.tag.high{background:#F6E7E3;color:#B23A48}
+.tag.med{background:#F7EEDA;color:#8A6A2C} .tag.neutral{background:#EEEBE2}
+.fam{border:1px solid #CFCBBE;color:#566074}
+.bar-w{background:#EEEBE2} .bar-w i{background:#8A6A2C}
+.guard{background:#F7EEDA;border-left:3px solid #8A6A2C}
+.disc{color:#566074;border-top:1px solid #CFCBBE}
+.pdfbtn{background:#8A6A2C;color:#FFFFFF}
+/* dial */
+.dial .tick{stroke:#CFCBBE;stroke-width:1} .dial .tick-major{stroke:#566074;stroke-width:1.6}
+.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
+.dial .b-down2{stroke:#B23A48} .dial .b-down{stroke:#B23A48;opacity:.55} .dial .b-flat{stroke:#566074;opacity:.7}
+.dial .b-up{stroke:#1B7A5A;opacity:.6} .dial .b-up2{stroke:#1B7A5A}
+.dial .range{fill:none;stroke:#8A6A2C;stroke-width:5;stroke-linecap:round;opacity:.95}
+.dial .scale{fill:#566074;font:600 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.dial .street{fill:#8A6A2C} .dial .street-t{fill:#8A6A2C}
+.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:#1B7A5A} .dial .hand-down{stroke:#B23A48} .dial .hand-flat{stroke:#10151F}
+.dial .hub-ring{fill:none;stroke:#8A6A2C;stroke-width:1.2} .dial .hub{fill:#F6F4EE}
+.dial .hub-k{fill:#566074;font:700 7.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
+.dial .hub-v{fill:#10151F;font:600 25px "Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif}
+.dial .hub-r{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.14em}
+.dial .hub-up{fill:#1B7A5A} .dial .hub-down{fill:#B23A48} .dial .hub-flat{fill:#566074}
+.dial .hub-s{fill:#566074;font:500 9px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+/* phase wheel */
+.wheel .seg{stroke:#FFFFFF;stroke-width:2}
+.wheel .seg-recovery{fill:#1E8E5C} .wheel .seg-overheat{fill:#C9741A}
+.wheel .seg-stagflation{fill:#7655C4} .wheel .seg-reflation{fill:#2C6FD6}
+.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
+.wheel .ph-n{font:800 11px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.1em;fill:#08101C}
+.wheel .ph-s,.wheel .ph-a{font:500 8.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;fill:#08101C}
+.wheel .dim{fill:#566074}
+.wheel .wheel-hub{fill:#F6F4EE;stroke:#CFCBBE} .wheel .wheel-arrow{fill:none;stroke:#8A6A2C;stroke-width:2.2}
+.wheel .wheel-head{fill:#8A6A2C} .wheel .wheel-c{fill:#566074;font:700 9px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif;letter-spacing:.2em}
+/* football field + minis */
+.ff .grid,.mini .grid{stroke:#CFCBBE;stroke-width:1} .mini .sep{stroke-dasharray:3 3}
+.ff .axis,.mini .axis{fill:#566074;font:500 9.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+.ff .lbl{fill:#10151F;font:600 11.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif} .ff .lbl-street,.ff .lbl-target{fill:#8A6A2C}
+.ff .sub{fill:#566074;font:500 9.5px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.ff .bar-lens{fill:#2C6FD6;opacity:.28;stroke:#2C6FD6} .ff .bar-street{fill:#8A6A2C;opacity:.22;stroke:#8A6A2C}
+.ff .bar-target{fill:#1B7A5A;opacity:.22;stroke:#1B7A5A} .ff .pt-lens{fill:#2C6FD6} .ff .pt-street{fill:#8A6A2C} .ff .pt-target{fill:#1B7A5A}
+.ff .val,.mini .val{fill:#10151F;font:600 10.5px ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+.ff .v-price{stroke:#B23A48;stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:#B23A48;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.ff .v-target{stroke:#1B7A5A;stroke-width:1.8} .ff .v-target-t{fill:#1B7A5A;font:700 10px "Inter","Helvetica Neue",Arial,system-ui,-apple-system,sans-serif}
+.mini .b-pos{fill:#2C6FD6} .mini .b-neg{fill:#B23A48} .mini .b-tot{fill:#8A6A2C}
+.mini .b-rev{fill:#2C6FD6} .mini .b-fcf{fill:#8A6A2C} .mini .k-rev{fill:#2C6FD6} .mini .k-fcf{fill:#8A6A2C}
+.mini .l-act{fill:none;stroke:#10151F;stroke-width:2.2} .mini .l-est{fill:none;stroke:#8A6A2C;stroke-width:2.2;stroke-dasharray:5 3}
+.mini .k-act{fill:#10151F} .mini .k-est{fill:#8A6A2C}
+table.sens th{background:#EEEBE2} table.sens td{border:1px solid #FFFFFF}
+table.sens td.up2{background:#1B7A5A;color:#06130D} table.sens td.up{background:#E3F0E9;color:#1B7A5A}
+table.sens td.flat{background:#EEEBE2} table.sens td.down{background:#F6E7E3;color:#B23A48} table.sens td.down2{background:#B23A48;color:#1B0705}
+table.sens td.base{outline:2px solid #8A6A2C;outline-offset:-2px;font-weight:800} .pdfbtn{display:none} .wrap{max-width:100%;padding:0} body{font-size:11px}
+    .hero{grid-template-columns:1fr 280px} h1{font-size:30px} .lens,.card,.callout,tr,svg{break-inside:avoid;page-break-inside:avoid}
+    thead{display:table-header-group} .pill.up,.pill.down,.pill.flat{color:#fff}
+    table.sens td.up2,table.sens td.down2{color:#fff} .wheel .ph-n,.wheel .ph-s,.wheel .ph-a{fill:#fff} }
 </style></head><body>
 <button class="pdfbtn" onclick="window.print()">Save as PDF</button>
 <div class="wrap">
-
-  <div class="masthead">
-    <div class="topline"><span class="eyebrow">Equity Research · Independent Valuation</span>
-      <span class="mono">09 Jul 2026</span></div>
-    <div class="eyebrow" style="margin-top:18px">Technology · Semiconductors</div>
-    <h1 class="serif">Micron Technology, Inc. <span class="mono" style="font-size:22px;color:var(--muted)">MU</span></h1>
-    <div><span class="profiletag">Standard (2-Stage FCFE)</span></div>
+<div class="masthead">
+    <div class="topline"><span class="eyebrow">Equity Research · Investment Clock</span>
+      <span class="mono">13 Oct 2026</span></div>
+    <div class="eyebrow" style="margin-top:20px">Technology · Semiconductors</div>
+    <h1 class="serif">Micron Technology, Inc. <span class="mono tk">MU</span></h1>
+    <span class="profiletag">Standard (forward multiples + DCF)</span>
     <div class="hero">
-      <div class="stat"><div class="k">Rating</div><div class="v"><span class="pill up">OVERWEIGHT</span></div></div>
-      <div class="stat"><div class="k">Fair value</div><div class="v mono">$34,784.07</div></div>
-      <div class="stat"><div class="k">Price</div><div class="v mono">$948.80</div></div>
-      <div class="stat"><div class="k">Upside</div>
-        <div class="v mono up">+3566%</div></div>
+      <div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span class="pill up">OVERWEIGHT</span>
+          <span class="muted mono" style="font-size:12px">12-month horizon · confidence <b>Medium</b></span>
+        </div>
+        <div class="tiles">
+          
+          <div class="tile"><div class="k">12M price target</div>
+            <div class="v mono">$1,264.83</div>
+            <div class="s mono">bear $1,034.09 · bull $1,497.99</div></div>
+          <div class="tile"><div class="k">Expected total return</div>
+            <div class="v mono up">+33%</div>
+            <div class="s mono">price +33% + yield 0.0%</div></div>
+          
+          <div class="tile"><div class="k">Fair value today</div>
+            <div class="v mono">$1,100.96</div>
+            <div class="s mono">$904.32 – $1,300.15</div></div>
+          <div class="tile"><div class="k">Street consensus</div>
+            <div class="v mono">$1,486.00</div>
+            <div class="s mono">+57%</div>
+            </div>
+        </div>
+        <div class="note mono" style="margin-top:12px">Price $948.80 · Ke 11.38% · discount rate 11.28% · data: Yahoo snapshot as of 2026-07-09</div>
+      </div>
+      <div><svg class="dial" viewBox="0 0 360 360" role="img" aria-label="12-month expected return +33%, rating OVERWEIGHT"><line class="tick-major" x1="180.0" y1="18.0" x2="180.0" y2="10.0"/><line class="tick" x1="197.4" y1="14.9" x2="197.8" y2="10.9"/><line class="tick" x1="214.5" y1="17.6" x2="215.3" y2="13.7"/><line class="tick" x1="231.3" y1="22.1" x2="232.5" y2="18.3"/><line class="tick" x1="247.5" y1="28.4" x2="249.1" y2="24.7"/><line class="tick-major" x1="261.0" y1="39.7" x2="265.0" y2="32.8"/><line class="tick" x1="277.6" y1="45.7" x2="279.9" y2="42.5"/><line class="tick" x1="291.1" y1="56.6" x2="293.8" y2="53.7"/><line class="tick" x1="303.4" y1="68.9" x2="306.3" y2="66.2"/><line class="tick" x1="314.3" y1="82.4" x2="317.5" y2="80.1"/><line class="tick-major" x1="320.3" y1="99.0" x2="327.2" y2="95.0"/><line class="tick" x1="331.6" y1="112.5" x2="335.3" y2="110.9"/><line class="tick" x1="337.9" y1="128.7" x2="341.7" y2="127.5"/><line class="tick" x1="342.4" y1="145.5" x2="346.3" y2="144.7"/><line class="tick" x1="345.1" y1="162.6" x2="349.1" y2="162.2"/><line class="tick-major" x1="342.0" y1="180.0" x2="350.0" y2="180.0"/><line class="tick" x1="345.1" y1="197.4" x2="349.1" y2="197.8"/><line class="tick" x1="342.4" y1="214.5" x2="346.3" y2="215.3"/><line class="tick" x1="337.9" y1="231.3" x2="341.7" y2="232.5"/><line class="tick" x1="331.6" y1="247.5" x2="335.3" y2="249.1"/><line class="tick-major" x1="320.3" y1="261.0" x2="327.2" y2="265.0"/><line class="tick" x1="314.3" y1="277.6" x2="317.5" y2="279.9"/><line class="tick" x1="303.4" y1="291.1" x2="306.3" y2="293.8"/><line class="tick" x1="291.1" y1="303.4" x2="293.8" y2="306.3"/><line class="tick" x1="277.6" y1="314.3" x2="279.9" y2="317.5"/><line class="tick-major" x1="261.0" y1="320.3" x2="265.0" y2="327.2"/><line class="tick" x1="247.5" y1="331.6" x2="249.1" y2="335.3"/><line class="tick" x1="231.3" y1="337.9" x2="232.5" y2="341.7"/><line class="tick" x1="214.5" y1="342.4" x2="215.3" y2="346.3"/><line class="tick" x1="197.4" y1="345.1" x2="197.8" y2="349.1"/><line class="tick-major" x1="180.0" y1="342.0" x2="180.0" y2="350.0"/><line class="tick" x1="162.6" y1="345.1" x2="162.2" y2="349.1"/><line class="tick" x1="145.5" y1="342.4" x2="144.7" y2="346.3"/><line class="tick" x1="128.7" y1="337.9" x2="127.5" y2="341.7"/><line class="tick" x1="112.5" y1="331.6" x2="110.9" y2="335.3"/><line class="tick-major" x1="99.0" y1="320.3" x2="95.0" y2="327.2"/><line class="tick" x1="82.4" y1="314.3" x2="80.1" y2="317.5"/><line class="tick" x1="68.9" y1="303.4" x2="66.2" y2="306.3"/><line class="tick" x1="56.6" y1="291.1" x2="53.7" y2="293.8"/><line class="tick" x1="45.7" y1="277.6" x2="42.5" y2="279.9"/><line class="tick-major" x1="39.7" y1="261.0" x2="32.8" y2="265.0"/><line class="tick" x1="28.4" y1="247.5" x2="24.7" y2="249.1"/><line class="tick" x1="22.1" y1="231.3" x2="18.3" y2="232.5"/><line class="tick" x1="17.6" y1="214.5" x2="13.7" y2="215.3"/><line class="tick" x1="14.9" y1="197.4" x2="10.9" y2="197.8"/><line class="tick-major" x1="18.0" y1="180.0" x2="10.0" y2="180.0"/><line class="tick" x1="14.9" y1="162.6" x2="10.9" y2="162.2"/><line class="tick" x1="17.6" y1="145.5" x2="13.7" y2="144.7"/><line class="tick" x1="22.1" y1="128.7" x2="18.3" y2="127.5"/><line class="tick" x1="28.4" y1="112.5" x2="24.7" y2="110.9"/><line class="tick-major" x1="39.7" y1="99.0" x2="32.8" y2="95.0"/><line class="tick" x1="45.7" y1="82.4" x2="42.5" y2="80.1"/><line class="tick" x1="56.6" y1="68.9" x2="53.7" y2="66.2"/><line class="tick" x1="68.9" y1="56.6" x2="66.2" y2="53.7"/><line class="tick" x1="82.4" y1="45.7" x2="80.1" y2="42.5"/><line class="tick-major" x1="99.0" y1="39.7" x2="95.0" y2="32.8"/><line class="tick" x1="112.5" y1="28.4" x2="110.9" y2="24.7"/><line class="tick" x1="128.7" y1="22.1" x2="127.5" y2="18.3"/><line class="tick" x1="145.5" y1="17.6" x2="144.7" y2="13.7"/><line class="tick" x1="162.6" y1="14.9" x2="162.2" y2="10.9"/><path class="band b-down2" d="M81.40,276.55 A138.00,138.00 0 0 1 48.31,138.73"/><path class="band b-down" d="M49.21,135.98 A138.00,138.00 0 0 1 67.51,100.06"/><path class="band b-flat" d="M69.21,97.72 A138.00,138.00 0 0 1 97.72,69.21"/><path class="band b-up" d="M100.06,67.51 A138.00,138.00 0 0 1 135.98,49.21"/><path class="band b-up2" d="M138.73,48.31 A138.00,138.00 0 0 1 278.60,276.55"/><path class="range" d="M123.28,76.53 A118.00,118.00 0 0 1 281.44,119.71"/><text class="scale" x="109.3" y="250.7" text-anchor="middle" dominant-baseline="middle">−50%</text><text class="scale" x="109.3" y="109.3" text-anchor="middle" dominant-baseline="middle">0</text><text class="scale" x="250.7" y="109.3" text-anchor="middle" dominant-baseline="middle">+50%</text><text class="scale" x="250.7" y="250.7" text-anchor="middle" dominant-baseline="middle">+100%</text><path class="street" d="M307.5,97.2 L321.4,92.9 L317.0,86.2 Z"/><text class="scale street-t" x="329.3" y="83.1" text-anchor="middle" dominant-baseline="middle">S</text><line class="hand hand-up" x1="173.3" y1="205.1" x2="213.7" y2="54.5"/><circle class="hub-ring" cx="180" cy="180" r="62"/><circle class="hub" cx="180" cy="180" r="58"/><text class="hub-k" x="180" y="152" text-anchor="middle">12M PRICE TARGET</text><text class="hub-v" x="180" y="186" text-anchor="middle">$1,264.83</text><text class="hub-r hub-up" x="180" y="206" text-anchor="middle">OVERWEIGHT</text><text class="hub-s" x="180" y="222" text-anchor="middle">price $948.80</text></svg></div>
     </div>
-    <div class="note mono">Discount rate 9.18% · data: yfinance</div>
   </div>
 
   <div class="cols">
     <div>
-      <h2 style="margin-top:24px">Investment thesis</h2>
-      <div class="lead"><p>We initiate our independent valuation of <b>Micron Technology, Inc. (MU)</b> with a <b>OVERWEIGHT</b> stance and a fair value of <b>$34,784.07</b>, +3566% against the current $948.80. Fair value is derived using the <b>2-Stage Free Cash Flow to Equity</b>, selected for this company's sector — anchored to forward analyst estimates and discounted at a 9.2% cost of equity. Cash flows are sourced from analyst levered-FCF consensus (10y) then fade to 2.5%.</p><p>Micron Technology, Inc. generated $37.38bn of revenue at a 26% EBIT margin in the latest fiscal year, having compounded the top line at 6.7% over the historical window. Market capitalisation stands at $1.07trn with $4.97bn of net debt.</p><p>Consistent with a long-duration cash-flow profile, 77% of the intrinsic value sits in the terminal value — the present value of cash flows beyond the explicit 10-year forecast. This is normal for a growth or infrastructure asset and underlines that the valuation rests on analyst growth expectations being realised.</p><p>By way of contrast, the 12-month analyst price target of $1,486.00 (+57%) sits below our intrinsic fair value. These measure different things: our fair value is what the business is worth on its projected cash flows, while the price target is where analysts expect the shares to trade near-term. A persistent gap is normal and reflects how much of the intrinsic value the market is currently willing to pay for.</p></div>
-      <p class="note">Fair value from a 2-stage Free Cash Flow to Equity model: analyst levered-FCF estimates over 10 years plus a Gordon terminal, discounted at the cost of equity.</p>
+      <h2 class="sec"><span class="num">01</span>Investment thesis</h2>
+      <div class="lead"><p>We rate <b>Micron Technology, Inc. (MU)</b> <b>OVERWEIGHT</b> with a 12-month price target of <b>$1,264.83</b> — a +33% move from $948.80 and a +33% total return including the dividend. The shares look undervalued on 3 lenses: Discounted cash flow (FCFF), Forward P/E, Forward EV/EBITDA. Their weighted fair value today is <b>$1,100.96</b>, rolled forward at the 11.4% cost of equity.</p><p>Micron Technology, Inc. generated $37.38bn of revenue at a 26% EBIT margin in the latest fiscal year, having compounded the top line at 6.7% over the historical window. Market capitalisation stands at $1.07trn with $4.97bn of net debt.</p><p>Consensus EPS of $73.32 and $149.64 gives an NTM figure of $111.48, i.e. 8.5x at today's price. Because forward earnings are 20.0x what the business has earned through the cycle, we scale target multiples by 0.60 — the market pays less for peak earnings, and so do we.</p><p>For context, the Street's mean 12-month target is $1,486.00 (+57%). Our model-only target of $1,225.80 sits 18% below it; the published target gives the consensus a 15% weight, a deliberate hedge against model error that we disclose rather than hide.</p><p>A reverse DCF shows the market is discounting year-one revenue growth of 257.7% against our 246.7% base — the price already discounts more than we model.</p></div>
+      <p class="note">Priced like the sell-side prices it: a target multiple on forward earnings and EBITDA (peer-anchored, adjusted for growth and earnings durability), cross-checked against a 10-year FCFF DCF whose growth decays and whose margins mean-revert.</p>
     </div>
     <aside class="sidebar">
       <div class="sidetitle">Key data</div>
-      <div class="kv"><span>Market cap</span><span class="mono">$1.07trn</span></div><div class="kv"><span>Enterprise value</span><span class="mono">$1.08trn</span></div><div class="kv"><span>Net debt</span><span class="mono">$4.97bn</span></div><div class="kv"><span>Net debt / EBITDA</span><span class="mono">0.3x</span></div><div class="kv"><span>EV / EBITDA (LTM)</span><span class="mono">58.2x</span></div><div class="kv"><span>P/E (LTM)</span><span class="mono">125.0x</span></div><div class="kv"><span>FCF yield (LTM)</span><span class="mono">0.0%</span></div><div class="kv"><span>Dividend yield</span><span class="mono">0.1%</span></div><div class="kv"><span>Beta</span><span class="mono">2.14</span></div><div class="kv"><span>Diluted shares</span><span class="mono">1,129mn</span></div>
+      <div class="kv"><span class="k">Market cap</span><span class="mono">$1.07trn</span></div><div class="kv"><span class="k">Enterprise value</span><span class="mono">$1.08trn</span></div><div class="kv"><span class="k">Net debt</span><span class="mono">$4.97bn</span></div><div class="kv"><span class="k">Net debt / EBITDA</span><span class="mono">0.3x</span></div><div class="kv"><span class="k">EV / EBITDA (LTM)</span><span class="mono">58.2x</span></div><div class="kv"><span class="k">P/E (LTM)</span><span class="mono">125.0x</span></div><div class="kv"><span class="k">FCF yield (LTM)</span><span class="mono">0.0%</span></div><div class="kv"><span class="k">Dividend yield</span><span class="mono">0.0%</span></div><div class="kv"><span class="k">Beta</span><span class="mono">2.14</span></div><div class="kv"><span class="k">Diluted shares</span><span class="mono">1,129mn</span></div>
     </aside>
   </div>
 
+  <h2 class="sec"><span class="num">02</span>Valuation summary — what each lens says</h2>
+  <div class="keep">
+    <div class="exh">Exhibit 1 · Value per share by lens vs. price, Street and our 12-month target</div>
+    <svg class="ff" viewBox="0 0 760 250" role="img" aria-label="Valuation football field"><line class="grid" x1="188.0" y1="18" x2="188.0" y2="224"/><text class="axis" x="188.0" y="240" text-anchor="middle">$307</text><line class="grid" x1="298.0" y1="18" x2="298.0" y2="224"/><text class="axis" x="298.0" y="240" text-anchor="middle">$608</text><line class="grid" x1="408.0" y1="18" x2="408.0" y2="224"/><text class="axis" x="408.0" y="240" text-anchor="middle">$910</text><line class="grid" x1="518.0" y1="18" x2="518.0" y2="224"/><text class="axis" x="518.0" y="240" text-anchor="middle">$1,211</text><line class="grid" x1="628.0" y1="18" x2="628.0" y2="224"/><text class="axis" x="628.0" y="240" text-anchor="middle">$1,512</text><line class="grid" x1="738.0" y1="18" x2="738.0" y2="224"/><text class="axis" x="738.0" y="240" text-anchor="middle">$1,813</text><text class="lbl lbl-lens" x="176" y="41" text-anchor="end">Discounted cash flow (FCFF)</text><text class="sub" x="176" y="54" text-anchor="end">20% weight</text><rect class="bar bar-lens" x="225.9" y="32" width="62.6" height="16" rx="3"/><path class="pt pt-lens" d="M254.9,29 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="296.5" y="44" >$491</text><text class="lbl lbl-lens" x="176" y="79" text-anchor="end">Forward P/E</text><text class="sub" x="176" y="92" text-anchor="end">43% weight</text><rect class="bar bar-lens" x="456.1" y="70" width="167.0" height="16" rx="3"/><path class="pt pt-lens" d="M539.6,67 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="631.1" y="82" >$1,270</text><text class="lbl lbl-lens" x="176" y="117" text-anchor="end">Forward EV/EBITDA</text><text class="sub" x="176" y="130" text-anchor="end">36% weight</text><rect class="bar bar-lens" x="447.0" y="108" width="163.7" height="16" rx="3"/><path class="pt pt-lens" d="M528.9,105 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="618.7" y="120" >$1,240</text><text class="lbl lbl-street" x="176" y="155" text-anchor="end">Street targets (12m)</text><text class="sub" x="176" y="168" text-anchor="end">consensus</text><rect class="bar bar-street" x="537.2" y="146" width="162.9" height="16" rx="3"/><path class="pt pt-street" d="M618.6,143 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="708.1" y="158" >$1,486</text><text class="lbl lbl-target" x="176" y="193" text-anchor="end">Our 12-month target</text><text class="sub" x="176" y="206" text-anchor="end">bear – bull</text><rect class="bar bar-target" x="453.5" y="184" width="169.5" height="16" rx="3"/><path class="pt pt-target" d="M537.8,181 l7,11 l-7,11 l-7,-11 z"/><text class="val" x="631.0" y="196" >$1,265</text><line class="v-price" x1="422.3" y1="16" x2="422.3" y2="224"/><text class="v-price-t" x="422.3" y="12" text-anchor="middle">price $949</text><line class="v-target" x1="537.8" y1="16" x2="537.8" y2="224"/><text class="v-target-t" x="537.8" y="220" text-anchor="middle">target $1,265</text></svg>
+  </div>
+  <table><thead><tr><th>Lens</th><th>Type</th><th>Fair value today</th><th>Range</th><th>Weight</th><th>Status</th></tr></thead><tbody>
   
-  <div class="keep"><h2>Financial summary &amp; valuation</h2><div class="hsp"></div></div>
+    <tr>
+      <td>Discounted cash flow (FCFF)</td><td><span class="fam">intrinsic</span></td>
+      <td class="mono">$490.59</td><td class="mono">$411.26 – $582.47</td>
+      <td class="mono"><span class="bar-w"><i style="width:20%"></i></span>20%</td>
+      <td><span class="tag med">down-weighted</span>
+          <div class="note" style="margin:0;text-align:right">down-weighted: 0.4x the median of the other lenses</div></td></tr>
+  
+    <tr>
+      <td>Forward P/E</td><td><span class="fam">relative</span></td>
+      <td class="mono">$1,269.66</td><td class="mono">$1,041.12 – $1,498.20</td>
+      <td class="mono"><span class="bar-w"><i style="width:43%"></i></span>43%</td>
+      <td><span class="tag ok">used</span>
+          
+          </td></tr>
+  
+    <tr>
+      <td>Forward EV/EBITDA</td><td><span class="fam">relative</span></td>
+      <td class="mono">$1,240.33</td><td class="mono">$1,016.28 – $1,464.39</td>
+      <td class="mono"><span class="bar-w"><i style="width:36%"></i></span>36%</td>
+      <td><span class="tag ok">used</span>
+          
+          </td></tr>
+  
+    <tr class="total grptop"><td>Blended fair value (today)</td><td></td><td class="mono">$1,100.96</td>
+      <td class="mono">$904.32 – $1,300.15</td><td></td><td></td></tr>
+    <tr><td>× (1 + Ke) − dividends → model 12-month target</td><td></td><td class="mono">$1,225.80</td>
+      <td></td><td></td><td></td></tr>
+    <tr><td>Street mean target <span class="muted">(weight 15%)</span></td><td></td>
+      <td class="mono">$1,486.00</td>
+      <td class="mono"></td><td></td><td></td></tr>
+    <tr class="total grptop"><td>Published 12-month price target</td><td></td><td class="mono">$1,264.83</td>
+      <td class="mono">$1,034.09 – $1,497.99</td><td></td>
+      <td class="up"><b>+33%</b></td></tr>
+    
+  </tbody></table>
+  <div class="two" style="margin-top:14px">
+    <div>
+      <h3>Confidence: Medium</h3>
+      <ul><li>3 independent lenses agree on a valuation</li><li>lens dispersion is moderate (CV 36%)</li><li>model target is within 25% of the Street</li><li>2 data-quality / earnings-quality flag(s)</li></ul>
+    </div>
+    <div>
+      <h3>Guardrails &amp; disclosures</h3>
+      <div class="guard">Discounted cash flow (FCFF) sits 0.4x the lens median and was down-weighted by 60%.</div><div class="guard">Target anchored 15% to the Street consensus ($1,486.00); model-only target $1,225.80.</div>
+      <div class="guard">Forward EPS is 14.7x trailing: earnings are in a steep inflection and carry high forecast risk.</div><div class="guard">Forward EPS is 20.0x the through-cycle average; target multiples are scaled by 0.60 for earnings durability.</div>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="num">03</span>The lenses in detail</h2>
+  <p>Each lens is an independent answer to <i>what is a share worth?</i> Relative lenses apply a target
+     multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits
+     the business. Every input is shown so any number can be challenged.</p>
+  <div class="lenses">
+  
+    <div class="lens">
+      <h4>Discounted cash flow (FCFF) <span class="fam">intrinsic</span></h4>
+      <div class="big mono">$490.59</div>
+      <div class="note mono" style="margin:0 0 6px">$411.26 – $582.47 · 20% weight</div>
+      <table><tbody><tr><td>WACC</td><td class="mono">11.28%</td></tr><tr><td>Terminal growth</td><td class="mono">2.50%</td></tr><tr><td>PV of explicit FCFF</td><td class="mono">$335.60bn</td></tr><tr><td>PV of terminal value</td><td class="mono">$223.43bn  (40% of EV)</td></tr><tr><td>Enterprise value</td><td class="mono">$559.04bn</td></tr><tr><td>− Net debt & minorities</td><td class="mono">$4.97bn</td></tr><tr><td>Equity value</td><td class="mono">$554.07bn</td></tr><tr><td>Value per share</td><td class="mono">$490.59</td></tr></tbody></table>
+      <p class="note">10-year FCFF DCF: consensus for the near years, geometric growth decay, mean-reverting margins, terminal reinvestment tied to growth/ROIC. Range = bear/bull scenarios.</p>
+    </div>
+  
+    <div class="lens">
+      <h4>Forward P/E <span class="fam">relative</span></h4>
+      <div class="big mono">$1,269.66</div>
+      <div class="note mono" style="margin:0 0 6px">$1,041.12 – $1,498.20 · 43% weight</div>
+      <table><tbody><tr><td>Consensus EPS</td><td class="mono">$73.32 (FY2026) / $149.64 (FY2027)</td></tr><tr><td>NTM EPS (blend of the two years)</td><td class="mono">$111.48</td></tr><tr><td>Anchor P/E</td><td class="mono">21.0x  — Semiconductors reference 21.0x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×0.90  (8.6% durable growth vs 12.0% sector)</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.60  (forward EPS far above through-cycle)</td></tr><tr><td>Leverage adjustment</td><td class="mono">×1.00</td></tr><tr><td>Target P/E</td><td class="mono">11.4x</td></tr><tr><td>Value per share</td><td class="mono">$1,269.66</td></tr></tbody></table>
+      <p class="note">Target multiple x NTM EPS. The multiple is anchored on peers/sector, then scaled for durable growth, leverage and how far forward earnings sit above what the business has historically earned.</p>
+    </div>
+  
+    <div class="lens">
+      <h4>Forward EV/EBITDA <span class="fam">relative</span></h4>
+      <div class="big mono">$1,240.33</div>
+      <div class="note mono" style="margin:0 0 6px">$1,016.28 – $1,464.39 · 36% weight</div>
+      <table><tbody><tr><td>NTM EBITDA (from consensus earnings)</td><td class="mono">$172.81bn</td></tr><tr><td>Anchor EV/EBITDA</td><td class="mono">15.0x  — Semiconductors reference 15.0x (no usable peer set)</td></tr><tr><td>Growth adjustment</td><td class="mono">×0.90</td></tr><tr><td>Earnings-durability factor</td><td class="mono">×0.60</td></tr><tr><td>Target EV/EBITDA</td><td class="mono">8.1x</td></tr><tr><td>Enterprise value</td><td class="mono">$1,405.80bn</td></tr><tr><td>− Net debt</td><td class="mono">$4.97bn</td></tr><tr><td>Value per share</td><td class="mono">$1,240.33</td></tr></tbody></table>
+      <p class="note">Capital-structure-neutral cross-check to forward P/E: it values the operating business and then bridges to equity through net debt.</p>
+    </div>
+  
+  </div>
+
+  <h2 class="sec"><span class="num">04</span>Earnings quality & cycle</h2>
+  <div class="two">
+    <div>
+      <table class="kvt"><tbody>
+        <tr><td>Trailing EPS</td><td class="mono">$7.59</td></tr>
+        <tr><td>Consensus EPS FY2026</td><td class="mono">$73.32</td></tr>
+        <tr><td>Consensus EPS FY2027</td><td class="mono">$149.64</td></tr>
+        <tr><td>NTM EPS used</td><td class="mono"><b>$111.48</b></td></tr>
+        <tr><td>Through-cycle (historical average) EPS</td><td class="mono">$2.67</td></tr>
+        <tr><td>Forward ÷ through-cycle</td><td class="mono">20.0x</td></tr>
+        <tr><td>Durable EPS growth used</td><td class="mono">8.6%</td></tr>
+        <tr><td>Earnings-durability factor on multiples</td><td class="mono">×0.60</td></tr>
+        <tr><td>Basis</td><td>consensus</td></tr>
+      </tbody></table>
+    </div>
+    <div>
+      <p><b>Cyclical or in an earnings inflection.</b>
+         revenue fell 49% in a single year; EBIT margin has swung 66pts peak-to-trough.</p>
+      <p class="note">Growth source: historical revenue CAGR (capped at 15%); capped at sector growth (cyclical). Multiples price <i>durable</i> growth, so a one-year recovery step is never extrapolated, and when forward EPS is far above what the business has historically earned the target multiple is scaled down — the market pays less for peak earnings.</p>
+    </div>
+  </div>
+
+  <h2 class="sec"><span class="num">05</span>Where it sits on the Investment Clock</h2>
+  <div class="two" style="align-items:center">
+    <div class="wheelbox"><svg class="wheel" viewBox="0 0 360 360" role="img" aria-label="Investment Clock phases"><path class="seg seg-recovery lit" d="M30.1,176.1 A150,150 0 0 1 176.1,30.1 L178.0,102.0 A78,78 0 0 0 102.0,178.0 Z"/><text class="ph-n lit" x="109.5" y="87.0" text-anchor="middle">RECOVERY</text><text class="ph-s lit" x="109.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↓</text><text class="ph-a lit" x="109.5" y="115.0" text-anchor="middle">best: equities</text><path class="seg seg-overheat dim" d="M183.9,30.1 A150,150 0 0 1 329.9,176.1 L258.0,178.0 A78,78 0 0 0 182.0,102.0 Z"/><text class="ph-n dim" x="250.5" y="87.0" text-anchor="middle">OVERHEAT</text><text class="ph-s dim" x="250.5" y="101.0" text-anchor="middle">growth ↑ · inflation ↑</text><text class="ph-a dim" x="250.5" y="115.0" text-anchor="middle">best: commodities</text><path class="seg seg-stagflation dim" d="M329.9,183.9 A150,150 0 0 1 183.9,329.9 L182.0,258.0 A78,78 0 0 0 258.0,182.0 Z"/><text class="ph-n dim" x="250.5" y="261.0" text-anchor="middle">STAGFLATION</text><text class="ph-s dim" x="250.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↑</text><text class="ph-a dim" x="250.5" y="289.0" text-anchor="middle">best: cash</text><path class="seg seg-reflation lit2" d="M176.1,329.9 A150,150 0 0 1 30.1,183.9 L102.0,182.0 A78,78 0 0 0 178.0,258.0 Z"/><text class="ph-n lit2" x="109.5" y="261.0" text-anchor="middle">REFLATION</text><text class="ph-s lit2" x="109.5" y="275.0" text-anchor="middle">growth ↓ · inflation ↓</text><text class="ph-a lit2" x="109.5" y="289.0" text-anchor="middle">best: bonds</text><circle class="wheel-hub" cx="180" cy="180" r="62"/><path class="wheel-arrow" d="M145.36,160.00 A40.00,40.00 0 1 1 160.00,214.64"/><path class="wheel-head" d="M160.0,214.6 l-9,-3 l5,-8 z" transform="rotate(30 160.0 214.6)"/><text class="wheel-c" x="180" y="184" text-anchor="middle">CYCLE</text></svg></div>
+    <div>
+      <p><b>Recovery</b> and <b>Reflation</b>
+         are the phases in which Technology has historically led, on the classic Merrill Lynch Investment Clock
+         sector map (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
+      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company
+         fundamentals and consensus, not macro data. Use it to ask whether the thesis above needs the cycle to cooperate.</p>
+    </div>
+  </div>
+
+  
+  <h2 class="sec"><span class="num">06</span>Financial summary & valuation</h2>
   <table><thead><tr><th>$, per share where noted</th>
     <th>FY2024A</th><th>FY2025A</th><th>FY2026E</th><th>FY2027E</th><th>FY2028E</th><th>FY2029E</th></tr></thead><tbody>
   
     <tr >
       <td>Revenue</td>
-      <td class="mono">$25.11bn</td><td class="mono">$37.38bn</td><td class="mono">$39.89bn</td><td class="mono">$42.15bn</td><td class="mono">$44.09bn</td><td class="mono">$45.65bn</td></tr>
+      <td class="mono">$25.11bn</td><td class="mono">$37.38bn</td><td class="mono">$129.59bn</td><td class="mono">$234.24bn</td><td class="mono">$258.62bn</td><td class="mono">$279.15bn</td></tr>
   
     <tr >
-      <td style="color:var(--muted);padding-left:18px">growth</td>
-      <td class="mono">+61.6%</td><td class="mono">+48.9%</td><td class="mono">+6.7%</td><td class="mono">+5.7%</td><td class="mono">+4.6%</td><td class="mono">+3.6%</td></tr>
+      <td style="padding-left:18px" class="muted">growth</td>
+      <td class="mono">+61.6%</td><td class="mono">+48.9%</td><td class="mono">+246.7%</td><td class="mono">+80.8%</td><td class="mono">+10.4%</td><td class="mono">+7.9%</td></tr>
   
     <tr >
       <td>EBITDA</td>
-      <td class="mono">$9.58bn</td><td class="mono">$18.48bn</td><td class="mono">$23.07bn</td><td class="mono">$23.57bn</td><td class="mono">$23.81bn</td><td class="mono">$23.78bn</td></tr>
+      <td class="mono">$9.58bn</td><td class="mono">$18.48bn</td><td class="mono">$102.30bn</td><td class="mono">$184.91bn</td><td class="mono">$193.74bn</td><td class="mono">$197.87bn</td></tr>
   
     <tr >
       <td>EBIT margin</td>
-      <td class="mono">5.2%</td><td class="mono">26.2%</td><td class="mono">26.2%</td><td class="mono">24.3%</td><td class="mono">22.4%</td><td class="mono">20.5%</td></tr>
+      <td class="mono">5.2%</td><td class="mono">26.2%</td><td class="mono">47.3%</td><td class="mono">47.3%</td><td class="mono">43.3%</td><td class="mono">39.3%</td></tr>
   
     <tr >
       <td>EPS</td>
-      <td class="mono">$0.70</td><td class="mono">$7.59</td><td class="mono">$7.16</td><td class="mono">$7.00</td><td class="mono">$6.73</td><td class="mono">$6.36</td></tr>
+      <td class="mono">$0.70</td><td class="mono">$7.59</td><td class="mono">$43.61</td><td class="mono">$79.11</td><td class="mono">$79.91</td><td class="mono">$78.22</td></tr>
   
     <tr >
       <td>FCFF/share</td>
-      <td class="mono">($0.83)</td><td class="mono">$0.44</td><td class="mono">$3.94</td><td class="mono">$3.62</td><td class="mono">$3.21</td><td class="mono">$2.73</td></tr>
+      <td class="mono">($0.83)</td><td class="mono">$0.44</td><td class="mono">$25.85</td><td class="mono">$53.02</td><td class="mono">$59.79</td><td class="mono">$58.68</td></tr>
   
     <tr class="grptop">
       <td>EV/EBITDA</td>
-      <td class="mono">112.4x</td><td class="mono">58.2x</td><td class="mono">46.7x</td><td class="mono">45.7x</td><td class="mono">45.2x</td><td class="mono">45.3x</td></tr>
+      <td class="mono">112.4x</td><td class="mono">58.2x</td><td class="mono">10.5x</td><td class="mono">5.8x</td><td class="mono">5.6x</td><td class="mono">5.4x</td></tr>
   
     <tr >
       <td>P/E</td>
-      <td class="mono">1363.4x</td><td class="mono">125.0x</td><td class="mono">132.6x</td><td class="mono">135.5x</td><td class="mono">140.9x</td><td class="mono">149.2x</td></tr>
+      <td class="mono">1363.4x</td><td class="mono">125.0x</td><td class="mono">21.8x</td><td class="mono">12.0x</td><td class="mono">11.9x</td><td class="mono">12.1x</td></tr>
   
     <tr >
       <td>FCF yield</td>
-      <td class="mono">-0.1%</td><td class="mono">0.0%</td><td class="mono">0.4%</td><td class="mono">0.4%</td><td class="mono">0.3%</td><td class="mono">0.3%</td></tr>
+      <td class="mono">-0.1%</td><td class="mono">0.0%</td><td class="mono">2.7%</td><td class="mono">5.6%</td><td class="mono">6.3%</td><td class="mono">6.2%</td></tr>
   </tbody></table>
   <p class="note">Multiples struck at the current price/EV against each year's estimates. Forecast EPS approximates net income as (EBIT − LTM interest) × (1−t).</p>
   
 
-  <div class="keep"><div class="keep"><h2>Valuation summary</h2><div class="hsp"></div></div>
-  <div class="exh">Exhibit 1 · Fair value vs. price</div>
-  <img class="chart" src="data:image/png;base64,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" alt="Football field"></div>
-  <table><thead><tr><th>Estimate</th><th>Value / share</th><th>Upside</th></tr></thead><tbody>
   
-    <tr class="total"><td>2-Stage Free Cash Flow to Equity (fair value)</td>
-    <td class="mono">$34,784.07</td>
-    <td class="mono up">+3566%</td></tr>
-  
-    <tr><td>Analyst price target (12m consensus)</td>
-    <td class="mono">$1,486.00</td>
-    <td class="mono up">+57%</td></tr>
-  
-  </tbody></table>
-  <p class="note">The headline fair value is the intrinsic valuation (Simply Wall St methodology,
-     analyst-driven cash flows). The analyst price target is a 12-month price forecast shown for
-     contrast — it answers a different question (where the market may trade the stock) and is not
-     part of the intrinsic value.</p>
-
-  
-  <div class="keep"><h2>Financial model — historicals &amp; analyst forecast</h2><div class="hsp"></div></div>
-  <p>Reported actuals (A) followed by the analyst-estimate forecast (E). The <b>Levered FCF</b> column
-     is the exact cash-flow stream discounted in the intrinsic valuation below — the P&amp;L, the cash
-     flow and the fair value are one reconciled chain.</p>
+  <h2 class="sec"><span class="num">07</span>Financial model — historicals & projected P&L</h2>
   <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
     <th>Net income</th><th>EPS</th></tr></thead><tbody>
   
@@ -219,160 +439,117 @@
     <tr><td class="mono">2026E</td>
     <td class="mono">$129.59bn <span class="src">A</span></td>
     <td class="mono">+246.7%</td>
-    <td class="mono">$34.01bn</td><td class="mono">26.2%</td>
+    <td class="mono">$61.36bn</td><td class="mono">47.3%</td>
     <td class="mono">$82.81bn</td>
     <td class="mono">$73.32 <span class="src">A</span></td></tr>
     
     <tr><td class="mono">2027E</td>
     <td class="mono">$234.24bn <span class="src">A</span></td>
     <td class="mono">+80.8%</td>
-    <td class="mono">$61.47bn</td><td class="mono">26.2%</td>
-    <td class="mono">$52.88bn</td>
-    <td class="mono">$46.82</td></tr>
+    <td class="mono">$110.91bn</td><td class="mono">47.3%</td>
+    <td class="mono">$169.00bn</td>
+    <td class="mono">$149.64 <span class="src">A</span></td></tr>
     
     <tr><td class="mono">2028E</td>
-    <td class="mono">$448.30bn</td>
-    <td class="mono">+91.4%</td>
-    <td class="mono">$117.65bn</td><td class="mono">26.2%</td>
-    <td class="mono">$101.21bn</td>
-    <td class="mono">$89.61</td></tr>
+    <td class="mono">$258.62bn</td>
+    <td class="mono">+10.4%</td>
+    <td class="mono">$112.03bn</td><td class="mono">43.3%</td>
+    <td class="mono">$90.25bn</td>
+    <td class="mono">$79.91</td></tr>
     
     <tr><td class="mono">2029E</td>
-    <td class="mono">$801.05bn</td>
-    <td class="mono">+78.7%</td>
-    <td class="mono">$210.22bn</td><td class="mono">26.2%</td>
-    <td class="mono">$180.84bn</td>
-    <td class="mono">$160.12</td></tr>
+    <td class="mono">$279.15bn</td>
+    <td class="mono">+7.9%</td>
+    <td class="mono">$109.68bn</td><td class="mono">39.3%</td>
+    <td class="mono">$88.35bn</td>
+    <td class="mono">$78.22</td></tr>
     
     <tr><td class="mono">2030E</td>
-    <td class="mono">$1.33trn</td>
-    <td class="mono">+66.0%</td>
-    <td class="mono">$348.93bn</td><td class="mono">26.2%</td>
-    <td class="mono">$300.18bn</td>
-    <td class="mono">$265.79</td></tr>
+    <td class="mono">$296.57bn</td>
+    <td class="mono">+6.2%</td>
+    <td class="mono">$104.57bn</td><td class="mono">35.3%</td>
+    <td class="mono">$84.22bn</td>
+    <td class="mono">$74.57</td></tr>
     
     <tr><td class="mono">2031E</td>
-    <td class="mono">$2.04trn</td>
-    <td class="mono">+53.3%</td>
-    <td class="mono">$534.88bn</td><td class="mono">26.2%</td>
-    <td class="mono">$460.14bn</td>
-    <td class="mono">$407.42</td></tr>
+    <td class="mono">$311.61bn</td>
+    <td class="mono">+5.1%</td>
+    <td class="mono">$97.32bn</td><td class="mono">31.2%</td>
+    <td class="mono">$78.35bn</td>
+    <td class="mono">$69.37</td></tr>
     
     <tr><td class="mono">2032E</td>
-    <td class="mono">$2.87trn</td>
-    <td class="mono">+40.6%</td>
-    <td class="mono">$752.00bn</td><td class="mono">26.2%</td>
-    <td class="mono">$646.92bn</td>
-    <td class="mono">$572.80</td></tr>
+    <td class="mono">$324.91bn</td>
+    <td class="mono">+4.3%</td>
+    <td class="mono">$88.38bn</td><td class="mono">27.2%</td>
+    <td class="mono">$71.12bn</td>
+    <td class="mono">$62.97</td></tr>
     
     <tr><td class="mono">2033E</td>
-    <td class="mono">$3.66trn</td>
-    <td class="mono">+27.9%</td>
-    <td class="mono">$961.78bn</td><td class="mono">26.2%</td>
-    <td class="mono">$827.38bn</td>
-    <td class="mono">$732.59</td></tr>
+    <td class="mono">$336.98bn</td>
+    <td class="mono">+3.7%</td>
+    <td class="mono">$78.09bn</td><td class="mono">23.2%</td>
+    <td class="mono">$62.79bn</td>
+    <td class="mono">$55.60</td></tr>
     
     <tr><td class="mono">2034E</td>
-    <td class="mono">$4.22trn</td>
-    <td class="mono">+15.2%</td>
-    <td class="mono">$1.11trn</td><td class="mono">26.2%</td>
-    <td class="mono">$953.12bn</td>
-    <td class="mono">$843.92</td></tr>
+    <td class="mono">$348.22bn</td>
+    <td class="mono">+3.3%</td>
+    <td class="mono">$80.69bn</td><td class="mono">23.2%</td>
+    <td class="mono">$64.90bn</td>
+    <td class="mono">$57.46</td></tr>
     
     <tr><td class="mono">2035E</td>
-    <td class="mono">$4.33trn</td>
+    <td class="mono">$356.93bn</td>
     <td class="mono">+2.5%</td>
-    <td class="mono">$1.14trn</td><td class="mono">26.2%</td>
-    <td class="mono">$976.95bn</td>
-    <td class="mono">$865.02</td></tr>
+    <td class="mono">$82.71bn</td><td class="mono">23.2%</td>
+    <td class="mono">$66.53bn</td>
+    <td class="mono">$58.91</td></tr>
     
   
   </tbody></table>
+  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with
+     flat interest and the normalised tax rate.</p>
+  
 
   
-  <div class="keep"><h3>Bridge to levered free cash flow (what the DCF discounts)</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Net income</th><th>Levered FCF</th>
-    <th>FCF margin</th><th>Source</th></tr></thead><tbody>
-    
-    <tr><td class="mono">2026E</td>
-    <td class="mono">$129.59bn</td>
-    <td class="mono">$82.81bn</td>
-    <td class="mono"><b>$82.81bn</b></td>
-    <td class="mono">63.9%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2027E</td>
-    <td class="mono">$234.24bn</td>
-    <td class="mono">$52.88bn</td>
-    <td class="mono"><b>$169.00bn</b></td>
-    <td class="mono">72.1%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2028E</td>
-    <td class="mono">$448.30bn</td>
-    <td class="mono">$101.21bn</td>
-    <td class="mono"><b>$326.00bn</b></td>
-    <td class="mono">72.7%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2029E</td>
-    <td class="mono">$801.05bn</td>
-    <td class="mono">$180.84bn</td>
-    <td class="mono"><b>$592.43bn</b></td>
-    <td class="mono">74.0%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2030E</td>
-    <td class="mono">$1.33trn</td>
-    <td class="mono">$300.18bn</td>
-    <td class="mono"><b>$1.01trn</b></td>
-    <td class="mono">76.0%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2031E</td>
-    <td class="mono">$2.04trn</td>
-    <td class="mono">$460.14bn</td>
-    <td class="mono"><b>$1.61trn</b></td>
-    <td class="mono">79.0%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2032E</td>
-    <td class="mono">$2.87trn</td>
-    <td class="mono">$646.92bn</td>
-    <td class="mono"><b>$2.39trn</b></td>
-    <td class="mono">83.3%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2033E</td>
-    <td class="mono">$3.66trn</td>
-    <td class="mono">$827.38bn</td>
-    <td class="mono"><b>$3.27trn</b></td>
-    <td class="mono">89.2%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2034E</td>
-    <td class="mono">$4.22trn</td>
-    <td class="mono">$953.12bn</td>
-    <td class="mono"><b>$4.12trn</b></td>
-    <td class="mono">97.5%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
-    <tr><td class="mono">2035E</td>
-    <td class="mono">$4.33trn</td>
-    <td class="mono">$976.95bn</td>
-    <td class="mono"><b>$4.72trn</b></td>
-    <td class="mono">109.1%</td>
-    <td style="font-size:11px">Analyst</td></tr>
-    
+  <h2 class="sec"><span class="num">08</span>DCF cross-check — drivers & sensitivity</h2>
+  <table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
+  
+    <tr><td><b>Revenue growth</b></td><td class="mono" style="white-space:nowrap">246.7% → 2.5% over 10y</td><td style="text-align:left;font-size:12px;line-height:1.5">Years 1–2 follow consensus revenue for FY2026 and FY2027. Growth then decays geometrically from 14.0% to the 2.5% terminal rate as revenue compounds toward $357bn — competitive entry and the law of large numbers compress incremental growth; no single year's step is ever extrapolated.</td></tr>
+  
+    <tr><td><b>EBIT margin</b></td><td class="mono" style="white-space:nowrap">26.2% → 47.3% → 23.2% (compresses)</td><td style="text-align:left;font-size:12px;line-height:1.5">Reported margin is 26.2%; year-1 margin is 47.3% (consensus implies 79%; capped at 47%, 1.5x the highest margin ever reported). This is a cyclical business, so we revert 60% of the way toward the through-cycle average of 7.1%, landing at 23.2% — crediting some but not all of current profitability as durable.</td></tr>
+  
+    <tr><td><b>Reinvestment (capex)</b></td><td class="mono" style="white-space:nowrap">41.1% → 34.8% of sales</td><td style="text-align:left;font-size:12px;line-height:1.5">Starts at the historical capex intensity (41.1%) against D&A of 31.6%, converging to 1.10x D&A by the terminal year — a steady state that funds growth without permanent over- or under-investment.</td></tr>
+  
+    <tr><td><b>Working capital</b></td><td class="mono" style="white-space:nowrap">8.8% of Δrevenue</td><td style="text-align:left;font-size:12px;line-height:1.5">Incremental working capital absorbs 8.8% of each year's revenue increase (historical median) — a cash drag as the business scales.</td></tr>
+  
+    <tr><td><b>Tax rate</b></td><td class="mono" style="white-space:nowrap">19.1%</td><td style="text-align:left;font-size:12px;line-height:1.5">Normalised to the trailing effective rate of 19.1%, applied to EBIT to derive NOPAT.</td></tr>
+  
+    <tr><td><b>Terminal growth</b></td><td class="mono" style="white-space:nowrap">2.5%</td><td style="text-align:left;font-size:12px;line-height:1.5">At or below long-run nominal GDP (4.0%); a mature going concern cannot outgrow the economy in perpetuity. Terminal reinvestment is g/ROIC.</td></tr>
   </tbody></table>
-  <p class="note">“A” marks figures taken directly from analyst consensus; unmarked forecast figures are
-     derived by holding the latest reported margin stable. The Levered FCF column ties exactly to the
-     10-year cash-flow forecast in the intrinsic valuation, so every number traces from revenue through
-     to the $34,784.07 fair value.</p>
+  <div class="three" style="margin-top:14px">
+    <div class="keep"><div class="exh">Revenue &amp; FCFF</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Revenue and FCFF projection"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">0</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">100</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">200</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">300</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">400</text><rect class="b-rev" x="39.7" y="142.3" width="17.2" height="57.7" rx="1.5"/><rect class="b-fcf" x="58.9" y="187.0" width="17.2" height="13.0" rx="1.5"/><text class="axis" x="57.9" y="220" text-anchor="middle">26E</text><rect class="b-rev" x="87.5" y="95.7" width="17.2" height="104.3" rx="1.5"/><rect class="b-fcf" x="106.7" y="173.3" width="17.2" height="26.7" rx="1.5"/><text class="axis" x="105.7" y="220" text-anchor="middle">27E</text><rect class="b-rev" x="135.3" y="84.8" width="17.2" height="115.2" rx="1.5"/><rect class="b-fcf" x="154.5" y="169.9" width="17.2" height="30.1" rx="1.5"/><text class="axis" x="153.5" y="220" text-anchor="middle">28E</text><rect class="b-rev" x="183.1" y="75.7" width="17.2" height="124.3" rx="1.5"/><rect class="b-fcf" x="202.3" y="170.5" width="17.2" height="29.5" rx="1.5"/><text class="axis" x="201.3" y="220" text-anchor="middle">29E</text><rect class="b-rev" x="230.9" y="67.9" width="17.2" height="132.1" rx="1.5"/><rect class="b-fcf" x="250.1" y="171.8" width="17.2" height="28.2" rx="1.5"/><text class="axis" x="249.1" y="220" text-anchor="middle">30E</text><rect class="b-rev" x="278.7" y="61.3" width="17.2" height="138.7" rx="1.5"/><rect class="b-fcf" x="297.9" y="173.8" width="17.2" height="26.2" rx="1.5"/><text class="axis" x="296.9" y="220" text-anchor="middle">31E</text><rect class="b-rev" x="326.5" y="55.3" width="17.2" height="144.7" rx="1.5"/><rect class="b-fcf" x="345.7" y="176.3" width="17.2" height="23.7" rx="1.5"/><text class="axis" x="344.7" y="220" text-anchor="middle">32E</text><rect class="b-rev" x="374.3" y="50.0" width="17.2" height="150.0" rx="1.5"/><rect class="b-fcf" x="393.5" y="179.2" width="17.2" height="20.8" rx="1.5"/><text class="axis" x="392.5" y="220" text-anchor="middle">33E</text><rect class="b-rev" x="422.1" y="44.9" width="17.2" height="155.1" rx="1.5"/><rect class="b-fcf" x="441.3" y="177.4" width="17.2" height="22.6" rx="1.5"/><text class="axis" x="440.3" y="220" text-anchor="middle">34E</text><rect class="b-rev" x="469.9" y="41.1" width="17.2" height="158.9" rx="1.5"/><rect class="b-fcf" x="489.1" y="175.6" width="17.2" height="24.4" rx="1.5"/><text class="axis" x="488.1" y="220" text-anchor="middle">35E</text><text class="axis" x="34" y="12">$bn  —  <tspan class="k-rev">■ revenue</tspan>  <tspan class="k-fcf">■ FCFF</tspan></text></svg></div>
+    <div class="keep"><div class="exh">EBIT margin path</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="EBIT margin path"><line class="grid" x1="34" y1="200.0" x2="512" y2="200.0"/><text class="axis" x="29" y="203.0" text-anchor="end">-35%</text><line class="grid" x1="34" y1="155.5" x2="512" y2="155.5"/><text class="axis" x="29" y="158.5" text-anchor="end">-13%</text><line class="grid" x1="34" y1="111.0" x2="512" y2="111.0"/><text class="axis" x="29" y="114.0" text-anchor="end">9%</text><line class="grid" x1="34" y1="66.5" x2="512" y2="66.5"/><text class="axis" x="29" y="69.5" text-anchor="end">31%</text><line class="grid" x1="34" y1="22.0" x2="512" y2="22.0"/><text class="axis" x="29" y="25.0" text-anchor="end">53%</text><polyline class="l-act" points="50.9,65.5 84.8,200.0 118.6,119.0 152.5,76.3"/><polyline class="l-est" points="152.5,76.3 186.4,33.5 220.2,33.5 254.1,41.7 287.9,49.9 321.8,58.0 355.6,66.2 389.5,74.4 423.4,82.5 457.2,82.5 491.1,82.5"/><line class="grid sep" x1="169.4" y1="22" x2="169.4" y2="200"/><text class="axis" x="50.9" y="220" text-anchor="middle">22A</text><text class="axis" x="84.8" y="220" text-anchor="middle">23A</text><text class="axis" x="118.6" y="220" text-anchor="middle">24A</text><text class="axis" x="152.5" y="220" text-anchor="middle">25A</text><text class="axis" x="186.4" y="220" text-anchor="middle">26E</text><text class="axis" x="254.1" y="220" text-anchor="middle">28E</text><text class="axis" x="321.8" y="220" text-anchor="middle">30E</text><text class="axis" x="389.5" y="220" text-anchor="middle">32E</text><text class="axis" x="457.2" y="220" text-anchor="middle">34E</text><text class="axis" x="34" y="12"><tspan class="k-act">● actual</tspan>  <tspan class="k-est">● estimate</tspan></text></svg></div>
+    <div class="keep"><div class="exh">EV → equity bridge</div><svg class="mini" viewBox="0 0 520 230" role="img" aria-label="Enterprise value to equity bridge"><rect class="b-pos" x="30.0" y="94.3" width="85.0" height="91.7" rx="2"/><text class="val" x="72.5" y="89.3" text-anchor="middle">$335.6bn</text><text class="axis" x="72.5" y="208" text-anchor="middle">PV explicit FCFF</text><rect class="b-pos" x="155.0" y="33.3" width="85.0" height="61.0" rx="2"/><text class="val" x="197.5" y="28.3" text-anchor="middle">$223.4bn</text><text class="axis" x="197.5" y="208" text-anchor="middle">PV terminal</text><rect class="b-neg" x="280.0" y="33.3" width="85.0" height="1.5" rx="2"/><text class="val" x="322.5" y="28.3" text-anchor="middle">$-5.0bn</text><text class="axis" x="322.5" y="208" text-anchor="middle">Net debt</text><rect class="b-tot" x="405.0" y="34.6" width="85.0" height="151.4" rx="2"/><text class="val" x="447.5" y="29.6" text-anchor="middle">$554.1bn</text><text class="axis" x="447.5" y="208" text-anchor="middle">Equity value</text><line class="grid" x1="10" y1="186.0" x2="510" y2="186.0"/></svg></div>
+  </div>
+  
+  <div class="two" style="margin-top:10px">
+    <div><div class="exh">Exhibit · DCF value per share, WACC × terminal growth (vs. price)</div><table class="sens"><thead><tr><th>WACC \ g</th><th>1.5%</th><th>2.0%</th><th>2.5%</th><th>3.0%</th><th>3.5%</th></tr></thead><tbody><tr><th>9.8%</th><td class="down2">$572</td><td class="down2">$577</td><td class="down2">$582</td><td class="down2">$588</td><td class="down2">$594</td></tr><tr><th>10.5%</th><td class="down2">$526</td><td class="down2">$529</td><td class="down2">$532</td><td class="down2">$535</td><td class="down2">$539</td></tr><tr><th>11.3%</th><td class="down2">$487</td><td class="down2">$489</td><td class="down2 base">$491</td><td class="down2">$492</td><td class="down2">$494</td></tr><tr><th>12.0%</th><td class="down2">$454</td><td class="down2">$455</td><td class="down2">$456</td><td class="down2">$457</td><td class="down2">$458</td></tr><tr><th>12.8%</th><td class="down2">$427</td><td class="down2">$427</td><td class="down2">$428</td><td class="down2">$429</td><td class="down2">$430</td></tr></tbody></table>
+      <p class="note">Shaded against the current price: green = above, red = below. Outlined cell = base case.</p></div>
+    <div>
+      <p>The business earns <b>11.8%</b> on capital versus a <b>11.3%</b> cost of capital — a positive spread of <b>57bps</b>, so growth creates value. Self-funding growth of 2.5% (reinvestment 21% × ROIC) frames how much of the terminal growth is organically financed rather than assumed.</p>
+      <h3>Model diagnostics</h3>
+      <table><tbody><tr><td>Terminal EV/EBITDA vs today</td><td class="mono">3.2x implied vs 59.3x current</td>
+        <td><span class="tag ok">ok</span></td></tr><tr><td>Terminal ROIC vs WACC</td><td class="mono">11.8% vs 11.3%</td>
+        <td><span class="tag ok">ok</span></td></tr></tbody></table>
+    </div>
+  </div>
+  
   
 
   
-  <div class="keep"><h2>Ratio analysis — leverage, coverage &amp; returns</h2><div class="hsp"></div></div>
+  <h2 class="sec"><span class="num">09</span>Ratio analysis — leverage, coverage & returns</h2>
   <table><thead><tr><th>Metric</th><th>FY2022A</th><th>FY2023A</th><th>FY2024A</th><th>FY2025A</th></tr></thead><tbody>
   
     <tr><td>Net debt / EBITDA</td><td class="mono">-0.1x</td><td class="mono">1.7x</td><td class="mono">0.6x</td><td class="mono">0.3x</td></tr>
@@ -390,122 +567,13 @@
   
 
   
-  <div class="keep"><h2>Intrinsic valuation — 2-Stage Free Cash Flow to Equity</h2><div class="hsp"></div></div>
-  <p>Fair value is built from <b>forward analyst estimates</b>, not historical cash flow — the
-     methodology used by Simply Wall St. The model is selected by sector: a 2-stage cash-flow
-     model for most companies, Excess Returns for financials, AFFO for REITs, or a dividend model
-     for consistent payers. Every figure below is traceable.</p>
-
-  <div class="callout">
-    <div>Fair value per share
-      <span class="big mono">$34,784.07</span>
-      <span class="up mono">+3566% vs price $948.80</span></div>
-    <p class="note" style="margin:6px 0 0">Discount rate (cost of equity) 9.18%
-      · terminal value 77% of total
-      · source: analyst levered-FCF consensus (10y) then fade to 2.5%</p>
-  </div>
-
-  
-  <div class="keep"><h3>10-year cash-flow forecast</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table><thead><tr><th>Year</th><th>Cash flow ($mn)</th><th>Source</th>
-    <th>Discount factor</th><th>Present value ($mn)</th></tr></thead><tbody>
-    
-    <tr><td class="mono">2026</td>
-        <td class="mono">82,813</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.916</td>
-        <td class="mono">75,847</td></tr>
-    
-    <tr><td class="mono">2027</td>
-        <td class="mono">169,001</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.839</td>
-        <td class="mono">141,766</td></tr>
-    
-    <tr><td class="mono">2028</td>
-        <td class="mono">326,004</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.768</td>
-        <td class="mono">250,466</td></tr>
-    
-    <tr><td class="mono">2029</td>
-        <td class="mono">592,433</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.704</td>
-        <td class="mono">416,878</td></tr>
-    
-    <tr><td class="mono">2030</td>
-        <td class="mono">1,010,399</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.644</td>
-        <td class="mono">651,185</td></tr>
-    
-    <tr><td class="mono">2031</td>
-        <td class="mono">1,610,329</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.590</td>
-        <td class="mono">950,536</td></tr>
-    
-    <tr><td class="mono">2032</td>
-        <td class="mono">2,386,515</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.541</td>
-        <td class="mono">1,290,210</td></tr>
-    
-    <tr><td class="mono">2033</td>
-        <td class="mono">3,270,131</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.495</td>
-        <td class="mono">1,619,212</td></tr>
-    
-    <tr><td class="mono">2034</td>
-        <td class="mono">4,115,468</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.454</td>
-        <td class="mono">1,866,379</td></tr>
-    
-    <tr><td class="mono">2035</td>
-        <td class="mono">4,719,417</td>
-        <td style="font-size:11.5px">Analyst</td>
-        <td class="mono">0.415</td>
-        <td class="mono">1,960,250</td></tr>
-    
-  </tbody></table>
-  
-
-  <div class="keep"><h3>Valuation build</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table class="kv"><tbody>
-    <tr><td>PV of next 10 years' cash flows</td><td class="mono">$9,222.73bn</td></tr><tr><td>Terminal value (Gordon)</td><td class="mono">$72,376.42bn</td></tr><tr><td>PV of terminal value</td><td class="mono">$30,062.16bn</td></tr><tr><td>Total equity value</td><td class="mono">$39,284.89bn</td></tr><tr><td>Shares outstanding</td><td class="mono">1,129mn</td></tr><tr><td>Value per share</td><td class="mono">$34,784.07</td></tr><tr><td>Discount to fair value</td><td class="mono">-3566.1%</td></tr>
-  </tbody></table>
-
-  <div class="keep"><h3>Discount rate — cost of equity</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <div class="two">
-    <div>
-      <table class="kv"><tbody>
-        <tr><td>Risk-free rate (5y avg 10y govt bond)</td><td class="mono">3.60%</td></tr><tr><td>Equity risk premium (Damodaran)</td><td class="mono">4.60%</td></tr><tr><td>Industry unlevered beta (technology)</td><td class="mono">1.200</td></tr><tr><td>Debt / equity</td><td class="mono">1.4%</td></tr><tr><td>Levered beta = unlev·(1+(1−t)·D/E)</td><td class="mono">1.214</td></tr><tr><td>Levered beta (clamped 0.8–2.0)</td><td class="mono">1.214</td></tr><tr><td>Cost of equity = Rf + β·ERP</td><td class="mono">9.18%</td></tr>
-      </tbody></table>
-    </div>
-    <div>
-      <p class="note">Cost of equity = risk-free rate + levered beta × equity risk premium. The
-        risk-free rate is a 5-year average of the 10-year government bond (not the spot rate, to avoid
-        volatile valuations). Beta is built bottom-up from the industry unlevered beta, re-levered to
-        the company's capital structure and clamped to a practical 0.8–2.0 band (Damodaran).</p>
-    </div>
-  </div>
-  <p class="note">Levered FCF to equity from analyst consensus, discounted at the cost of equity over 10 years plus a Gordon terminal. The forward estimates are the central input — history is used only where estimates are absent.</p>
-  
-
-  
-
-  
-  <div class="keep"><h2>Factor sensitivity map — what moves this stock</h2><div class="hsp"></div></div>
-  <p>Exposure levels are scored from the model and the historicals, with the mechanism spelled out.</p>
+  <h2 class="sec"><span class="num">10</span>Factor sensitivity map — what moves this stock</h2>
   <table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
-    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th>Why / mechanism</th></tr></thead><tbody>
+    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
   
     <tr><td>Macro</td><td><b>Interest rates / discount rate</b></td>
     <td><span class="tag med">Medium</span></td>
-    <td class="mono" style="text-align:left;font-size:11.5px">75bps of WACC ≈ $2.26/sh (7%); TV = 68% of EV</td>
+    <td class="mono" style="text-align:left;font-size:11.5px">75bps of WACC ≈ $38.03/sh (8%); TV = 40% of EV</td>
     <td style="text-align:left;font-size:12px;line-height:1.5">Long-duration cash flows: the further out the value sits (terminal-heavy), the more a shift in rates or the equity risk premium re-prices the stock, independent of operations.</td></tr>
   
     <tr><td>Macro</td><td><b>Economic cycle / demand</b></td>
@@ -514,8 +582,8 @@
     <td style="text-align:left;font-size:12px;line-height:1.5">Historical top-line dispersion is the cleanest read on cyclicality: a stable compounding base decouples from GDP; a volatile one imports the macro cycle into earnings.</td></tr>
   
     <tr><td>Macro</td><td><b>Inflation / input costs</b></td>
-    <td><span class="tag high">High</span></td>
-    <td class="mono" style="text-align:left;font-size:11.5px">−100bps EBIT margin ≈ −$2.50/sh; margin σ = 26.1%</td>
+    <td><span class="tag med">Medium</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">−100bps EBIT margin ≈ −$22.65/sh; margin σ = 26.1%</td>
     <td style="text-align:left;font-size:12px;line-height:1.5">Cost pass-through is the test: firms with pricing power hold margin through inflation; historical margin volatility shows how much of past cost shocks reached the P&L.</td></tr>
   
     <tr><td>Macro</td><td><b>Credit & refinancing</b></td>
@@ -525,8 +593,13 @@
   
     <tr><td>Micro</td><td><b>Competitive erosion</b></td>
     <td><span class="tag high">High</span></td>
-    <td class="mono" style="text-align:left;font-size:11.5px">ROIC−WACC spread = 31bps</td>
+    <td class="mono" style="text-align:left;font-size:11.5px">ROIC−WACC spread = 57bps</td>
     <td style="text-align:left;font-size:12px;line-height:1.5">Excess returns invite entry: the wider the spread, the bigger the prize for competitors — but also the bigger the buffer before growth stops creating value. A thin spread means small competitive slippage flips growth to value destruction.</td></tr>
+  
+    <tr><td>Micro</td><td><b>Execution vs expectations</b></td>
+    <td><span class="tag high">High</span></td>
+    <td class="mono" style="text-align:left;font-size:11.5px">Implied y1 growth 257.7% vs base 246.7%</td>
+    <td style="text-align:left;font-size:12px;line-height:1.5">Market expects MORE than our base — priced for execution. The equity reprices on the gap between delivery and what the tape already discounts, not on absolute results.</td></tr>
   
     <tr><td>Micro</td><td><b>Capital intensity</b></td>
     <td><span class="tag med">Medium</span></td>
@@ -541,19 +614,20 @@
   
 
   
-  <div class="keep"><h2>Catalysts &amp; what each lever is worth</h2><div class="hsp"></div></div>
-  <ul><li><b>Cost of capital:</b> every 75bps of WACC moves fair value by ≈$2.26/share (7%). Rate path and the equity risk premium are the single biggest swing factor.</li><li><b>Terminal growth:</b> 50bps of perpetuity growth is worth ≈$0.12/share — the market's read on the company's long-run competitive position.</li><li><b>Operating margin:</b> each 100bps of EBIT margin across the forecast is worth ≈$2.50/share — watch pricing power, mix and cost discipline in quarterly prints.</li><li><b>Top-line delivery:</b> our base assumes 6.7% year-one growth fading to 2.5%; sustained beats/misses versus that glide path are the cleanest re-rating trigger either way.</li></ul>
+  <h2 class="sec"><span class="num">11</span>Catalysts & what each lever is worth</h2>
+  <ul><li><b>Cost of capital:</b> every 75bps of WACC moves fair value by ≈$38.03/share (8%). Rate path and the equity risk premium are the single biggest swing factor.</li><li><b>Terminal growth:</b> 50bps of perpetuity growth is worth ≈$1.66/share — the market's read on the company's long-run competitive position.</li><li><b>Operating margin:</b> each 100bps of EBIT margin across the forecast is worth ≈$22.65/share — watch pricing power, mix and cost discipline in quarterly prints.</li><li><b>Top-line delivery:</b> our base assumes 246.7% year-one growth fading to 2.5%; sustained beats/misses versus that glide path are the cleanest re-rating trigger either way.</li></ul>
   
 
-  <div class="keep"><h2>Key risks</h2><div class="hsp"></div></div>
-  <ul><li>Single third-party data source: restatements, non-recurring items or classification differences can shift the output.</li></ul>
+  <h2 class="sec"><span class="num">12</span>Key risks</h2>
+  <ul><li>Earnings are cyclically elevated: forward EPS is 20.0x the through-cycle average. A normalisation of pricing, volumes or margins would reset the earnings base the multiples are applied to.</li><li>Estimate risk: consensus forecasts can be revised sharply, and the forward-multiple lenses move one-for-one with the earnings they are applied to.</li><li>Multiple risk: target multiples are anchored on sector medians; a de-rating of the peer group lowers the target regardless of company performance.</li><li>Single third-party data source: restatements, non-recurring items or classification differences can shift the output.</li></ul>
 
-  <div class="disc"><b>Methodology & disclaimer.</b> Generated by an automated, sector-aware valuation
-    engine from public data (yfinance). MU was classified as <b>Standard (2-Stage FCFE)</b>
-    and valued with the Simply Wall St methodology: a sector-appropriate intrinsic model (2-stage cash
-    flow to equity, excess returns for financials, AFFO for REITs, or a dividend model) anchored to
-    forward analyst estimates and discounted at the cost of equity. Terminal value uses the Gordon
-    growth method. Forward cash flows come from analyst consensus where available, extrapolated from
-    reported figures otherwise — they are not a substitute for fundamental judgement. Nothing here is
-    investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
+  <div class="disc"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
+    public data (Yahoo snapshot as of 2026-07-09). MU was classified as <b>Standard (forward multiples + DCF)</b>. The 12-month price target
+    triangulates several lenses — target multiples on consensus forward earnings (peer/sector-anchored and adjusted for
+    durable growth, leverage and earnings durability), a 10-year DCF with decaying growth and mean-reverting margins, and
+    sector-specific models — weights them by profile, applies plausibility guardrails, rolls the result forward at the cost
+    of equity net of dividends, and lightly anchors it to Street consensus when available. Reference multiples are
+    long-run developed-market medians; live peer medians replace them when fetched. Forward numbers come from analyst
+    consensus where available and from reported figures otherwise; they are not a substitute for fundamental judgement.
+    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
 </div></body></html>

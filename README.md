@@ -7,29 +7,56 @@ los modelos correctos para ese modelo de negocio, luego mezcla en un precio obje
 No es asesoramiento de inversión. Los inputs se derivan de forma mecánica; el juicio
 fundamental lo pones tú (por eso todo es override-able).
 
-## Selección de modelo por sector
+## Cómo se construye el precio objetivo
 
-| Perfil | Se detecta como | Modelos (peso) | Descuento |
-|---|---|---|---|
-| **Standard** | industrial, consumo, salud, software rentable | FCFF-DCF (55) · comps (30) · DDM (15) | WACC |
-| **Bank** | banca, servicios financieros | **Residual income** (50) · DDM (30) · P/B–ROE (20) | Ke |
-| **Insurance** | seguros, reaseguro | Residual income (45) · P/B–ROE (30) · DDM (25) | Ke |
-| **REIT** | REIT, real estate | **P/FFO** (45) · AFFO-yield (35) · DDM (20) | Ke |
-| **Utility** | utilities, eléctricas reguladas | **DDM multi-etapa** (45) · FCFF (30) · comps (25) | WACC |
-| **Cyclical** | energía, materiales, minería, O&G | **EBITDA normalizado mid-cycle** (45) · FCFF (30) · comps (25) | WACC |
-| **High-growth** | crecimiento >22% y margen <10% | FCFF horizonte largo (55) · EV/Sales (45) | WACC |
+El motor ya **no** valora con un único modelo. Cada compañía se clasifica por sector y se
+valora con varias **lentes** independientes que se triangulan, como hace una mesa de research:
 
-Los bancos y REITs **no usan FCFF** (para un banco la deuda es el negocio, no financiación;
-en un REIT la depreciación no-cash distorsiona el GAAP). Los pesos se renormalizan sobre los
-métodos que realmente producen valor (si no hay pares, comps se cae y se redistribuye).
+| Perfil | Se detecta como | Lentes (peso base) |
+|---|---|---|
+| **Standard** | industrial, consumo, salud, tech | DCF FCFF (35) · P/E fwd (30) · EV/EBITDA fwd (25) · DDM (10) |
+| **Bank** | banca, serv. financieros | P/B–ROE (35) · residual income (30) · P/E fwd (25) · DDM (10) |
+| **Insurance** | seguros | P/B–ROE (30) · residual income (30) · P/E fwd (30) · DDM (10) |
+| **REIT** | REIT, real estate | P/FFO (40) · AFFO yield (30) · DDM (15) · EV/EBITDA (15) |
+| **Utility** | utilities reguladas | P/E fwd (30) · DDM (25) · DCF (25) · EV/EBITDA (20) |
+| **Cyclical** | energía, minería, materiales | EBITDA mid-cycle (30) · DCF (30) · EV/EBITDA fwd (25) · P/E fwd (15) |
+| **High-growth** | crecimiento >22 % y margen <10 % | EV/Sales (35) · DCF (30) · P/E fwd (20) · P/B (15) |
 
-Puedes forzar el perfil con `--profile bank` si la auto-clasificación falla.
+Los pesos se renormalizan sobre las lentes que producen valor. Después:
+
+1. **Múltiplos forward (lentes relativas).** Múltiplo objetivo × EPS/EBITDA/ventas del consenso
+   (EPS NTM = media de FY+1 y FY+2). El múltiplo parte de la mediana de pares (60 %) y de una
+   tabla sectorial de referencia (40 %, `equityval/reference.py`; sirve sola si no hay pares) y
+   se ajusta por crecimiento *duradero*, apalancamiento y **durabilidad de los beneficios**: si
+   el EPS forward es muy superior a lo que la compañía ha ganado históricamente (memoria,
+   mineras, picos de ciclo) el múltiplo se reduce, porque el mercado paga menos por picos.
+2. **DCF acotado.** 10 años: consenso para los 1–2 primeros, después el crecimiento **decae
+   geométricamente** hacia el terminal y los márgenes **revierten a la media** (60 % en
+   cíclicas, 30 % en compounders); el margen implícito del consenso se limita a 1,5× el máximo
+   histórico. Ya no se puede extrapolar un +100 % durante una década.
+3. **Guardrails.** Una lente fuera de 0,2×–5× el precio se excluye; si se aleja >2,2× de la
+   mediana del resto se pondera un 60 % menos; el objetivo publicado se limita a 0,4×–2,5×; y
+   si el modelo no puede defender un número (menos de 2 lentes, o resultado forzado por un
+   guardrail) el informe sale **NOT RATED** en lugar de inventar un rating. Todo queda escrito.
+4. **Objetivo a 12 meses.** `PT = Valor justo × (1 + Ke) − dividendos`, con bear/bull de los
+   rangos de las lentes.
+5. **Contraste con la calle.** Si hay consenso, el objetivo se ancla ligeramente a él (peso
+   ≤ 30 %, escalado por nº de analistas; `--street-weight 0` lo desactiva). Siempre se muestran
+   por separado el objetivo del modelo, el de la calle y la divergencia.
+6. **Confianza** (High/Medium/Low) por nº de lentes, dispersión, acuerdo con la calle, peso del
+   valor terminal y banderas de calidad de datos.
+
+Rating a partir de la rentabilidad total esperada a 12 m: ≥ +15 % OVERWEIGHT · +5 % ADD ·
+±5 % NEUTRAL · −5 % REDUCE · ≤ −15 % UNDERWEIGHT.
+
+Los bancos y REITs **no usan FCFF** (para un banco la deuda es el negocio; en un REIT la
+depreciación no-cash distorsiona el GAAP). Puedes forzar el perfil con `--profile bank`.
 
 ## Instalación
 
 ```bash
 pip install -r requirements.txt
-# para PDF por CLI en local: instala wkhtmltopdf (o usa el botón "Save as PDF" del HTML)
+# para PDF por CLI: Chrome/Chromium (o wkhtmltopdf), o el botón "Save as PDF" del HTML
 ```
 
 ## Uso — CLI
@@ -45,7 +72,7 @@ python valorar.py CEG --erp 0.05 --terminal-growth 0.025 --exit-multiple 12 --pd
 python valorar.py SAN.MC --country-premium 0.012  # europea: prima país + divisa auto
 ```
 
-Exporta a PDF con `--pdf` (wkhtmltopdf → weasyprint como fallback), o abre el HTML y pulsa
+Exporta a PDF con `--pdf` (Chrome headless → wkhtmltopdf → weasyprint), o abre el HTML y pulsa
 el botón flotante **Save as PDF** (usa el print CSS optimizado; se oculta al imprimir).
 
 ## Uso — GitHub Actions (a demanda, eliges tú el valor)
@@ -59,7 +86,7 @@ el botón flotante **Save as PDF** (usa el print CSS optimizado; se oculta al im
    horizonte / múltiplo de salida. Run.
 4. Al terminar, descarga el artifact `valuation-<TICKER>` con el **HTML y el PDF**.
 
-Sin secret usa yfinance automáticamente. wkhtmltopdf se instala en el runner, así que el PDF
+Sin secret usa yfinance automáticamente. Chrome ya viene en el runner (y wkhtmltopdf se instala si faltara), así que el PDF
 sale sin tocar nada.
 
 
@@ -84,6 +111,9 @@ negativos entre paréntesis):
 Verificado: cero errores de fórmula y los valores del Excel cuadran al céntimo con el motor
 Python (incl. la rejilla de sensibilidad). Los workflows de GitHub suben el .xlsx junto al
 HTML/PDF, y la web de Pages enlaza "XLS" en cada tarjeta.
+
+Nota: la hoja **Target Price** del Excel reproduce la triangulación con pesos editables
+(valor justo, objetivo del modelo y objetivo publicado son fórmulas vivas).
 
 Nota: en Excel el terminal g y los drivers anuales son inputs independientes (como en un
 modelo de banca); en el motor Python cambiar el terminal también mueve el fade del crecimiento.
@@ -136,8 +166,8 @@ modelo), `dcf`, `scenarios`, `sens`, `comps`, `blend`.
 
 ## Metodología
 
-**Coste de capital.** Ke = Rf + β·ERP (+ prima país + tamaño). β bottom-up: deslevera betas de
-pares (Hamada `βu = βl/(1+(1-t)·D/E)`), promedia y relever­a al D/E propio. Kd = (Rf + spread
+**Coste de capital.** Ke = Rf + β·ERP (+ prima país + tamaño). β: mezcla 50/50 de la beta de regresión ajustada (Blume, 0,67·β+0,33) y la beta de industria
+relevereada (Hamada `βl = βu·(1+(1-t)·D/E)`) al D/E propio, acotada a 0,7–1,9. Kd = (Rf + spread
 sintético)·(1−t), spread desde interest coverage (rejilla tipo Damodaran). WACC con pesos a
 mercado (equity) y libros (deuda). Los perfiles de balance (banco/seguro/REIT) descuentan a **Ke**,
 no a WACC.
@@ -154,28 +184,54 @@ correcta para un banco.
 
 **REIT.** P/FFO (FFO = NI + depreciación) y AFFO capitalizado como perpetuidad creciente.
 
-**Cíclicas.** Margen EBIT through-cycle × múltiplo EV/EBITDA de ciclo → normaliza extremos.
+**Cíclicas.** Margen EBIT through-cycle × múltiplo EV/EBITDA de ciclo → normaliza extremos; los
+múltiplos forward se escalan por la durabilidad de los beneficios.
 
 ## Estructura
 
 ```
 equityval/
   schema.py         esquema de datos unificado
-  providers.py      FMP + yfinance
-  sectors.py        clasificación + perfiles de valoración
-  costofcapital.py  WACC / CAPM / Hamada / spread sintético
-  assumptions.py    drivers de proyección + escenarios
-  dcf.py            FCFF DCF + sensibilidad
+  providers.py      FMP + yfinance (+ pares, consenso, objetivos de la calle)
+  offline.py        instantáneas JSON de Yahoo -> mismo parser de producción, sin red
+  sectors.py        clasificación + perfiles y pesos de lentes
+  reference.py      múltiplos sectoriales de referencia, betas, pares curados
+  estimates.py      EPS/ventas forward, ciclicidad y durabilidad de beneficios
+  assumptions.py    drivers del DCF (decaimiento geométrico, reversión de márgenes)
+  costofcapital.py  WACC / CAPM / beta Blume + industria / spread sintético
+  dcf.py            FCFF DCF + sensibilidad + DCF inverso
   models.py         residual income, DDM, P/B–ROE, FFO, AFFO, normalizado
-  comps.py          comps por múltiplos
-  charts.py         football field, proyección, heatmap, bridge
-  report.py         ensamblado HTML (condicional por perfil) + Save-as-PDF
-  engine.py         orquestador sector-aware
-  demo_data.py      compañía sintética para pruebas offline
-valorar.py                       CLI (--pdf, --profile)
+  lenses.py         cada lente con rango y traza de auditoría
+  triangulate.py    mezcla, guardrails, objetivo a 12m, calle, confianza, NOT RATED
+  theme.py          tokens de diseño "Investment Clock" (un único sitio para re-skin)
+  charts.py         esfera de valoración, rueda de fases, football field (SVG)
+  report.py         informe HTML + Save-as-PDF
+  excel_export.py   modelo Excel con fórmulas vivas (+ hoja Target Price)
+  engine.py         orquestador
+tests/              regresión con instantáneas reales (MU, SNDK, NVDA, CEG, GFI, UEC)
+valorar.py                       CLI (--pdf, --xlsx, --profile, --snapshot, --street-weight)
 streamlit_app.py                 app interactiva
-.github/workflows/valuation.yml  Action on-demand (workflow_dispatch)
+.github/workflows/               valuation.yml, pages.yml, tests.yml
 ```
+
+## Diseño "Investment Clock"
+
+Esfera de 270° con 12 horas como identidad: la aguja marca la rentabilidad esperada a 12 m,
+el arco dorado es el rango bear–bull y el triángulo "S" el consenso de la calle. La rueda de
+cuatro fases (Recovery → Overheat → Stagflation → Reflation) muestra en qué fases suele liderar
+el sector de la compañía (mapa sectorial clásico de Merrill Lynch; es afinidad ilustrativa, no
+una lectura macro actual). Pantalla oscura, impresión/PDF en claro. Todos los colores viven en
+`equityval/theme.py`.
+
+## Offline y tests
+
+```bash
+python valorar.py --snapshot tests/fixtures/MU.json --pdf --xlsx   # reproducible, sin red
+python -m pytest tests -q
+```
+
+El PDF se genera con Chrome/Chromium headless si lo encuentra (`CHROME_BIN` para forzarlo),
+con wkhtmltopdf y weasyprint como alternativas.
 
 ## Límites
 
@@ -183,45 +239,3 @@ streamlit_app.py                 app interactiva
 - Un único data source: ojo con restatements, one-offs y clasificaciones raras.
 - La clasificación es por keywords de sector/industria; verifica el tag del informe y usa
   `--profile` si hace falta.
-
-## Dos lentes de valoración: escéptico vs. creyente (FCFE)
-
-Para nombres cotizando muy por encima de sus flujos actuales (CEG, growth, infraestructura),
-el DCF conservador se queda corto frente al mercado — y eso es correcto, no un bug. El informe
-ahora muestra **dos lentes**:
-
-- **Escéptico (FCFF DCF):** valora el flujo de caja que la empresa genera hoy, descontado al WACC.
-- **Creyente (FCFE 2 etapas):** capitaliza la senda de *levered FCF* de los analistas a 10 años,
-  descontada al **cost of equity** (beta sectorial unlevered→relevered, cap 0.8–2.0). Replica la
-  metodología de Simply Wall St.
-
-Entre ambas, un **puente de valoración** descompone la diferencia en sus 4 palancas
-(flujo histórico vs analistas, horizonte, tasa de descuento, crecimiento terminal), cada una
-cuantificada en $/acción. Verificado: reproduce Simply Wall St al céntimo ($507 vs $510 para CEG).
-
-El Excel incluye hojas **FCFE** y **Bridge** con fórmulas vivas — cambias los inputs azules
-(FCF de analistas, Rf, ERP, beta, g) y todo recalcula. El puente lleva un check que debe dar 0.
-
-## Metodología Simply Wall St (v2 — modelo principal)
-
-El valor razonable se calcula ahora con la **metodología completa de Simply Wall St**,
-anclada a **estimaciones forward de analistas** (no al pasado). El modelo se selecciona
-automáticamente por sector, igual que hace SWS:
-
-- **2-Stage Free Cash Flow to Equity** (caso general: growth, tech, utilities, IPPs):
-  Levered FCF de consenso de analistas a 10 años + terminal Gordon, descontado al cost of equity.
-- **Excess Returns Model** (bancos, seguros, financieras): valor = book value + PV de retornos
-  por encima del cost of equity.
-- **AFFO 2-Stage** (REITs): descuenta AFFO en vez de FCF (fallback FFO → NAV).
-- **Dividend Discount Model** (pagadores de dividendo consistente sin estimaciones de FCF).
-
-**Cost of equity** (común a todos): Rf (media 5 años del bono 10y) + beta × ERP, con beta
-bottom-up (unlevered de industria, re-levered a la estructura de la empresa, cap 0.8–2.0).
-
-Verificado: reproduce Simply Wall St al céntimo — CEG $510.30 vs su $510.16, cost of equity
-7.11%. La hoja Excel "SWS Valuation" lleva el modelo completo con fórmulas vivas (162 fórmulas,
-cero errores, cuadra con el motor al céntimo). Cambias los inputs azules (FCF de analistas, Rf,
-ERP, beta, g) y todo recalcula.
-
-El análisis DCF conservador, escenarios y sensibilidad se conservan como material de soporte,
-pero **el titular es la valoración SWS forward-looking**.

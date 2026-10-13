@@ -23,10 +23,13 @@ from .schema import CompanyData, Estimates, PeerData, YearFinancials
 #  Helpers
 # --------------------------------------------------------------------------- #
 def _f(x, default=0.0) -> float:
+    """float(x), but None / NaN / inf all become `default` (Yahoo frames are full of NaN,
+    and one NaN balance-sheet cell used to turn the whole valuation into 'nan')."""
     try:
         if x is None:
             return default
-        return float(x)
+        v = float(x)
+        return v if v == v and v not in (float("inf"), float("-inf")) else default
     except (TypeError, ValueError):
         return default
 
@@ -164,12 +167,24 @@ class FMPProvider:
                         est.revenue_growth_2y = (_f(future[1].get("estimatedRevenueAvg"))
                                                  / _f(future[0].get("estimatedRevenueAvg")) - 1)
                     est.eps_next = _f(future[0].get("estimatedEpsAvg")) or None
+                    # explicit consensus paths (FY+1, FY+2, ...) for the forward-multiple lenses
+                    est.revenue_path = [(int(a["date"][:4]), _f(a.get("estimatedRevenueAvg")))
+                                        for a in future if _f(a.get("estimatedRevenueAvg")) > 0]
+                    est.eps_path = [(int(a["date"][:4]), _f(a.get("estimatedEpsAvg")))
+                                    for a in future if _f(a.get("estimatedEpsAvg")) > 0]
+                    counts = [int(_f(a.get("numAnalystsEps"))) for a in future
+                              if _f(a.get("numAnalystsEps"))]
+                    if counts:
+                        est.num_analysts = max(counts)
         except Exception:
             pass
         try:
             tgt = self._raw(f"{self.STABLE}/price-target-consensus", symbol=ticker)
             if tgt:
                 est.target_price_mean = _f(tgt[0].get("targetConsensus")) or None
+                est.target_price_high = _f(tgt[0].get("targetHigh")) or None
+                est.target_price_low = _f(tgt[0].get("targetLow")) or None
+                est.target_price_median = _f(tgt[0].get("targetMedian")) or None
         except Exception:
             pass
 
@@ -331,6 +346,10 @@ class YFinanceProvider:
             mi = g(bs, "Minority Interest")
             shares_y = g(fin, "Diluted Average Shares", "Basic Average Shares") \
                 or _f(info.get("sharesOutstanding")) or 1
+            # Yahoo pads annual frames with an all-NaN oldest column; a phantom zero-revenue
+            # year would corrupt every CAGR, margin average and cyclicality test downstream.
+            if not rev and not ni and not ocf and not ebit:
+                continue
             yfin.append(YearFinancials(
                 year=yr, revenue=rev, ebit=ebit, ebitda=ebitda, depreciation_amort=da,
                 interest_expense=abs(g(fin, "Interest Expense")), pretax_income=pretax,
@@ -366,6 +385,9 @@ class YFinanceProvider:
             target_price_low=_f(info.get("targetLowPrice")) or None,
             num_analysts=info.get("numberOfAnalystOpinions"),
             eps_growth_lt=_f(info.get("earningsGrowth")) or None,
+            target_price_median=_f(info.get("targetMedianPrice")) or None,
+            recommendation_mean=_f(info.get("recommendationMean")) or None,
+            forward_eps=_f(info.get("forwardEps")) or None,
         )
         # base levered FCF (FCFE proxy) = operating cash flow - capex, latest year
         base_fcfe = yfin[-1].operating_cash_flow - yfin[-1].capex if yfin else 0.0
@@ -413,8 +435,9 @@ class YFinanceProvider:
         last_eps = yfin[-1].eps_diluted if yfin else 0.0
         fy = last_year or 0
 
-        def _annual_points(tbl, base_level):
-            """Return [(year, level)] for 0y and +1y, sanity-checked against base."""
+        def _annual_points(tbl, base_level, allow_negative=False):
+            """Return [(year, level)] for 0y and +1y. EPS may be negative for loss-makers
+            (that is information the valuation lenses need); revenue never is."""
             pts = []
             if tbl is None or getattr(tbl, "empty", True) or "avg" not in tbl.columns:
                 return pts
@@ -422,7 +445,7 @@ class YFinanceProvider:
             for label, yr in (("0y", fy + 1), ("+1y", fy + 2)):
                 if label in tbl.index:
                     v = _f(tbl.loc[label, "avg"])
-                    if v and v > 0:
+                    if v == v and v != 0 and (allow_negative or v > 0):
                         pts.append((yr, v))
             # If '0y' actually corresponds to the current (unreported) year it may
             # equal ~base; that's fine. We DON'T invent scale — just take avg as-is.
@@ -447,7 +470,10 @@ class YFinanceProvider:
                     if key in ge.index and col is not None:
                         g = _f(ge.loc[key, col])
                         if g == g and -0.5 < g < 3.0:
-                            lt_growth = g; break
+                            lt_growth = g
+                            if key == "+5y":
+                                est.analyst_growth_5y = g      # a real published LTG
+                            break
         except Exception:
             lt_growth = None
         # fallback (2): growth in the revenue_estimate table
@@ -480,7 +506,7 @@ class YFinanceProvider:
             pass
         # eps path
         try:
-            eps_pts = _annual_points(t.earnings_estimate, last_eps)
+            eps_pts = _annual_points(t.earnings_estimate, last_eps, allow_negative=True)
             if eps_pts:
                 est.eps_path = list(eps_pts)
         except Exception:
@@ -494,7 +520,6 @@ class YFinanceProvider:
         # the company's own through-cycle FCFE/net-income conversion ratio. This is
         # far more accurate than growing a single low historical FCFE number, which
         # understated CEG badly (gave $1.3bn vs the ~$4.5bn analysts imply).
-        term = 0.035
         # through-cycle FCFE/NI conversion, from history (bounded to sane range)
         ni_hist = [yy.net_income for yy in yfin if yy.net_income and yy.net_income > 0]
         fcfe_hist = [yy.operating_cash_flow - yy.capex for yy in yfin]
@@ -522,43 +547,17 @@ class YFinanceProvider:
                 ni_path.append((yr, eps * _sh_ni))
         fcfe_path = []
         if ni_path:
-            # covered years: FCFE = analyst NI × conversion
-            last_cov_fcfe = None
-            for (yr, ni) in ni_path[:10]:
-                f = ni * conv
-                fcfe_path.append((yr, f))
-                last_cov_fcfe = f
-            # extend to 10 years fading growth to terminal
-            if fcfe_path and len(fcfe_path) < 10:
-                if len(fcfe_path) >= 2:
-                    g_last = fcfe_path[-1][1] / fcfe_path[-2][1] - 1
-                else:
-                    g_last = term
-                yr = fcfe_path[-1][0]; f = fcfe_path[-1][1]
-                n_more = 10 - len(fcfe_path)
-                for k in range(n_more):
-                    g = g_last + (term - g_last) * (k + 1) / (n_more + 1)
-                    g = max(g, term)
-                    yr += 1; f = f * (1 + g)
-                    fcfe_path.append((yr, f))
+            # covered years only: FCFE = analyst NI x conversion. Extending beyond the
+            # analyst horizon is the engine's job (bounded, mean-reverting) -- extending
+            # here at the last observed growth rate compounded a +100% step for 8 years
+            # and produced $34,000 targets for a $950 stock.
+            fcfe_path = [(yr, ni * conv) for (yr, ni) in ni_path[:10]]
             est.fcfe_path = fcfe_path
             est.fcfe_base = fcfe_path[0][1] if fcfe_path else base_fcfe
         elif base_fcfe > 0 and last_year:
-            # no analyst earnings estimates: fall back to grown historical FCFE
-            path = list(growth_path)
-            f = base_fcfe
-            for i in range(10):
-                if i < len(path):
-                    gr = path[i]
-                elif path:
-                    remain = 10 - len(path)
-                    step = (i - len(path) + 1) / max(remain, 1)
-                    gr = path[-1] + (term - path[-1]) * step
-                else:
-                    gr = term
-                f = f * (1 + gr)
-                fcfe_path.append((last_year + i + 1, f))
-            est.fcfe_path = fcfe_path
+            # no analyst earnings estimates: base on the latest levered FCF; the engine
+            # grows it with a bounded fade.
+            est.fcfe_path = []
             est.fcfe_base = base_fcfe
 
         # --- robust price / shares / market cap, resilient to empty info ------
@@ -605,23 +604,47 @@ class YFinanceProvider:
         )
 
     def peer(self, ticker: str) -> Optional[PeerData]:
-        import yfinance as yf
         try:
-            info = yf.Ticker(ticker).info
+            info = self._retry(lambda: self._make_ticker(ticker).info, tries=2, base_delay=2.0) or {}
             mc = _f(info.get("marketCap"))
+            if not mc:
+                return None
+            ebitda = _f(info.get("ebitda"))
+            price = _f(info.get("currentPrice")) or _f(info.get("regularMarketPrice"))
             return PeerData(
                 ticker=ticker.upper(), name=info.get("shortName", ticker), market_cap=mc,
                 ev=_f(info.get("enterpriseValue")) or mc,
-                ebitda=_f(info.get("ebitda")), ebit=_f(info.get("ebitda")) * 0.8,
+                ebitda=ebitda, ebit=ebitda * 0.8,
                 revenue=_f(info.get("totalRevenue")), net_income=_f(info.get("netIncomeToCommon")),
-                eps=_f(info.get("trailingEps")), price=_f(info.get("currentPrice")),
+                eps=_f(info.get("trailingEps")), price=price,
                 fcf=_f(info.get("freeCashflow")),
+                fwd_eps=_f(info.get("forwardEps")),
+                book_value_ps=_f(info.get("bookValue")),
+                ev_ebitda_direct=_f(info.get("enterpriseToEbitda")),
+                ev_sales_direct=_f(info.get("enterpriseToRevenue")),
+                growth=_f(info.get("earningsGrowth")),
             )
         except Exception:
             return None
 
     def peer_list(self, ticker: str, limit: int = 8) -> list[str]:
-        return []
+        """Peers from Yahoo's own industry top-companies if available, else a curated map."""
+        from .reference import peer_candidates
+        names: list[str] = []
+        try:
+            import yfinance as yf
+            info = self._make_ticker(ticker).info or {}
+            key = info.get("industryKey")
+            if key and hasattr(yf, "Industry"):
+                top = yf.Industry(key).top_companies
+                if top is not None and not top.empty:
+                    names = [str(i) for i in top.index if str(i).upper() != ticker.upper()]
+            sector, industry = info.get("sector", ""), info.get("industry", "")
+        except Exception:
+            sector = industry = ""
+        curated = peer_candidates(ticker, sector, industry, limit)
+        merged = list(dict.fromkeys(curated + names))      # curated first, de-duplicated
+        return merged[:limit]
 
 
 # --------------------------------------------------------------------------- #

@@ -69,6 +69,11 @@ class Estimates:
     eps_path: list = field(default_factory=list)
     fcfe_path: list = field(default_factory=list)     # (year, levered_fcf) for 2-stage FCFE
     fcfe_base: Optional[float] = None                 # base levered FCF the path grows from
+    # Street cross-check (all optional): used to sanity-check and lightly anchor the target
+    target_price_median: Optional[float] = None
+    recommendation_mean: Optional[float] = None       # 1 = strong buy ... 5 = sell
+    forward_eps: Optional[float] = None               # provider's own forward EPS
+    analyst_growth_5y: Optional[float] = None         # strict analyst long-term growth, if published
 
 
 @dataclass
@@ -143,10 +148,26 @@ class PeerData:
     eps: float
     price: float
     fcf: float
+    # forward / balance-sheet fields (optional; filled when the provider has them)
+    fwd_eps: float = 0.0
+    book_value_ps: float = 0.0
+    ev_ebitda_direct: float = 0.0      # provider-quoted multiples, used if our own calc is empty
+    ev_sales_direct: float = 0.0
+    growth: float = 0.0                # analyst/earnings growth, decimal
+
+    @property
+    def fwd_pe(self):
+        return self.price / self.fwd_eps if self.fwd_eps and self.fwd_eps > 0 and self.price else None
+
+    @property
+    def pb(self):
+        return self.price / self.book_value_ps if self.book_value_ps and self.book_value_ps > 0 else None
 
     @property
     def ev_ebitda(self):
-        return self.ev / self.ebitda if self.ebitda else None
+        if self.ebitda and self.ebitda > 0 and self.ev:
+            return self.ev / self.ebitda
+        return self.ev_ebitda_direct or None
 
     @property
     def ev_ebit(self):
@@ -154,7 +175,9 @@ class PeerData:
 
     @property
     def ev_sales(self):
-        return self.ev / self.revenue if self.revenue else None
+        if self.revenue and self.revenue > 0 and self.ev:
+            return self.ev / self.revenue
+        return self.ev_sales_direct or None
 
     @property
     def pe(self):

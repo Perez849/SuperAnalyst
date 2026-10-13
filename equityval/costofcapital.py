@@ -139,11 +139,26 @@ def compute_wacc(
         method = f"bottom-up, {len(peer_betas)} peers"
         notes.append(f"Bottom-up beta: peers unlevered (avg βu={beta_u:.2f}) then "
                      f"relevered at D/E={de:.2f}.")
-    elif data.beta:
-        beta_used, method = data.beta, "reported"
     else:
-        beta_used, method = 1.0, "default 1.0"
-        notes.append("No beta available; defaulted to 1.0.")
+        # Single-name regression betas are noisy (a memory maker can print 2.1+). Practitioners
+        # blend: Blume-adjust the raw beta toward 1, and average it with a bottom-up industry
+        # beta re-levered at the company's own D/E. Bounded so one bad regression cannot move
+        # the discount rate by hundreds of basis points.
+        from .reference import lookup
+        ref = lookup(data.sector, data.industry)
+        beta_ind = hamada_relever(ref.unlev_beta, de, tax_rate)
+        raw = data.beta if (data.beta and 0.0 < data.beta < 4.0) else None
+        if raw is not None:
+            blume = 0.67 * raw + 0.33
+            beta_used = 0.5 * blume + 0.5 * beta_ind
+            method = "blended: 50% Blume-adjusted regression, 50% industry bottom-up"
+            notes.append(f"Regression beta {raw:.2f} -> Blume {blume:.2f}; industry beta "
+                         f"{beta_ind:.2f} ({ref.label}, re-levered at D/E {de:.2f}).")
+        else:
+            beta_used, method = beta_ind, f"industry bottom-up ({ref.label})"
+            notes.append("No regression beta available; using the industry beta re-levered "
+                         f"at D/E {de:.2f}.")
+        beta_used = min(max(beta_used, 0.70), 1.90)
 
     ke = risk_free + beta_used * (erp) + country_premium + size_premium
 

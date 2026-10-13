@@ -1,14 +1,11 @@
-"""Assemble the sector-aware, Wall-Street-detailed research report (standalone HTML)."""
+"""Assemble the sector-aware research note (standalone HTML, Investment Clock design)."""
 from __future__ import annotations
 
 from datetime import date
-from types import SimpleNamespace
 
 from jinja2 import Template
 
-from . import charts
-from .schema import CompanyData
-from .sectors import Profile
+from . import charts, theme
 
 
 def fmt_money(v, cur="$"):
@@ -31,64 +28,74 @@ def spct(v, dp=1):
     return "—" if v is None else f"{v*100:+.{dp}f}%"
 
 
-def derive_rating(u):
-    if u >= 0.20:  return "OVERWEIGHT", "up"
-    if u >= 0.05:  return "ADD", "up"
-    if u > -0.05:  return "NEUTRAL", "flat"
-    if u > -0.20:  return "REDUCE", "down"
-    return "UNDERWEIGHT", "down"
+def derive_rating(u, rated: bool = True):
+    """Rating from the 12-month expected total return (price move + dividend yield)."""
+    return theme.rating_for(u, rated)
 
 
-_METHOD_ORDER = ["fcff_dcf", "residual_income", "ddm", "pb_roe", "ffo_multiple",
-                 "affo_yield", "normalized", "comps"]
-
-
-def build_thesis(data, spec, methods, target, upside, blend, discount_rate,
-                 dcf, diagnostics, reverse, sws=None):
+def build_thesis(data, spec, tr, fwd, dcf, reverse, rating):
     cur = data.currency_symbol
     y = data.latest
-    direction = "undervalued" if upside > 0.05 else ("overvalued" if upside < -0.05 else "fairly valued")
-    rating, _ = derive_rating(upside)
+    used = [l for l in tr.lenses if l.eff_weight > 0]
+    names = ", ".join(l.label for l in used) or "no lens"
     paras = []
 
-    model_label = sws.label if sws else "an intrinsic cash-flow model"
-    p1 = (f"We initiate our independent valuation of <b>{data.name} ({data.ticker})</b> with a "
-          f"<b>{rating}</b> stance and a fair value of <b>{fmt_ps(target, cur)}</b>, "
-          f"{spct(upside,0)} against the current {fmt_ps(data.price, cur)}. Fair value is derived "
-          f"using the <b>{model_label}</b>, selected for this company's sector — anchored to "
-          f"forward analyst estimates and discounted at a {pct(discount_rate,1)} cost of equity.")
-    if sws and sws.source:
-        p1 += f" Cash flows are sourced from {sws.source}."
+    if tr.rated:
+        direction = ("undervalued" if tr.total_return > 0.05 else
+                     "overvalued" if tr.total_return < -0.05 else "fairly valued")
+        p1 = (f"We rate <b>{data.name} ({data.ticker})</b> <b>{rating}</b> with a 12-month price target of "
+              f"<b>{fmt_ps(tr.target, cur)}</b> — a {spct(tr.upside, 0)} move from "
+              f"{fmt_ps(data.price, cur)}"
+              + (f" and a {spct(tr.total_return, 0)} total return including the dividend" if tr.dps else "")
+              + f". The shares look {direction} on {len(used)} lens{'es' if len(used) != 1 else ''}: {names}. "
+              f"Their weighted fair value today is <b>{fmt_ps(tr.fair_value, cur)}</b>, rolled forward at the "
+              f"{pct(tr.ke, 1)} cost of equity.")
+    else:
+        p1 = (f"We do <b>not rate {data.name} ({data.ticker})</b>: {tr.rating_note}. The indicative value of "
+              f"{fmt_ps(tr.fair_value, cur)} per share is shown for reference only and should not be read "
+              f"as a call against the current price of {fmt_ps(data.price, cur)}.")
     paras.append(p1)
 
     growth = data.cagr("revenue")
-    p2 = (f"{data.name} generated {fmt_money(y.revenue, cur)} of revenue at a {pct(y.ebit_margin,0)} "
-          f"EBIT margin in the latest fiscal year, having compounded the top line at "
-          f"{pct(growth,1) if growth else 'n/a'} over the historical window. "
-          f"Market capitalisation stands at {fmt_money(data.market_cap, cur)} with "
-          f"{fmt_money(abs(data.net_debt), cur)} of net {'debt' if data.net_debt>=0 else 'cash'}.")
-    paras.append(p2)
+    paras.append(
+        f"{data.name} generated {fmt_money(y.revenue, cur)} of revenue at a {pct(y.ebit_margin,0)} EBIT margin "
+        f"in the latest fiscal year, having compounded the top line at "
+        f"{pct(growth,1) if growth is not None else 'n/a'} over the historical window. Market capitalisation "
+        f"stands at {fmt_money(data.market_cap, cur)} with {fmt_money(abs(data.net_debt), cur)} of net "
+        f"{'debt' if data.net_debt >= 0 else 'cash'}.")
 
-    if sws and sws.terminal_pct:
-        p3 = (f"Consistent with a long-duration cash-flow profile, {pct(sws.terminal_pct,0)} of the "
-              f"intrinsic value sits in the terminal value — the present value of cash flows beyond "
-              f"the explicit 10-year forecast. This is normal for a growth or infrastructure asset and "
-              f"underlines that the valuation rests on analyst growth expectations being realised.")
-        paras.append(p3)
+    if fwd.eps_ntm:
+        base = (f"Consensus EPS of {fmt_ps(fwd.eps_fy1, cur)}"
+                + (f" and {fmt_ps(fwd.eps_fy2, cur)}" if fwd.eps_fy2 else "")
+                + f" gives an NTM figure of {fmt_ps(fwd.eps_ntm, cur)}, i.e. {data.price/fwd.eps_ntm:.1f}x at "
+                  f"today's price." if fwd.eps_ntm > 0 else
+                f"Consensus EPS is negative (\u2212{cur}{abs(fwd.eps_ntm):,.2f}), so earnings-based lenses do not apply.")
+        if fwd.cycle.durability < 0.999:
+            base += (f" Because forward earnings are {fwd.cycle.peak_ratio:.1f}x what the business has earned "
+                     f"through the cycle, we scale target multiples by {fwd.cycle.durability:.2f} — the "
+                     f"market pays less for peak earnings, and so do we.")
+        paras.append(base)
 
-    # Contrast with the analyst price target — a different question, shown honestly.
-    if sws and data.estimates.target_price_mean:
-        tp = data.estimates.target_price_mean
-        tp_up = tp / data.price - 1 if data.price else 0
-        rel = "below" if tp < target else "above"
-        p4 = (f"By way of contrast, the 12-month analyst price target of {fmt_ps(tp, cur)} "
-              f"({spct(tp_up,0)}) sits {rel} our intrinsic fair value. These measure different things: "
-              f"our fair value is what the business is worth on its projected cash flows, while the price "
-              f"target is where analysts expect the shares to trade near-term. A persistent gap is normal "
-              f"and reflects how much of the intrinsic value the market is currently willing to pay for.")
-        paras.append(p4)
+    if tr.street:
+        st = tr.street
+        rel = "above" if tr.model_target > st.mean else "below"
+        p = (f"For context, the Street's mean 12-month target is {fmt_ps(st.mean, cur)} "
+             f"({spct(st.upside, 0)}{', ' + str(st.n) + ' analysts' if st.n else ''}). Our model-only target of "
+             f"{fmt_ps(tr.model_target, cur)} sits {abs(tr.divergence):.0%} {rel} it")
+        if tr.street_weight > 0:
+            p += (f"; the published target gives the consensus a {tr.street_weight:.0%} weight, a deliberate "
+                  f"hedge against model error that we disclose rather than hide.")
+        else:
+            p += "; the published target is purely model-driven."
+        paras.append(p)
+
+    if dcf and reverse and reverse.get("solved"):
+        paras.append(
+            f"A reverse DCF shows the market is discounting year-one revenue growth of "
+            f"{pct(reverse['implied_y1_growth'],1)} against our {pct(reverse['base_y1_growth'],1)} base — "
+            + ("the price demands less than we model." if reverse["base_y1_growth"] > reverse["implied_y1_growth"]
+               else "the price already discounts more than we model."))
     return paras
-
 
 
 
@@ -388,162 +395,303 @@ def build_factor_exposure(data, profile, dcf, bd, sens, diagnostics, reverse, di
     return out
 
 
-TEMPLATE = Template(r"""<!DOCTYPE html>
+
+TEMPLATE = Template(r"""{%- macro colors(t) -%}
+body{background:{{t.bg}};color:{{t.ink}}}
+a{color:{{t.brass}}}
+.eyebrow,.muted,.note,.tile .k,.kv .k,th,.sub,.scale,.axis,.tag.neutral{color:{{t.muted}}}
+.topline{color:{{t.muted}}}
+.masthead{border-top:3px solid {{t.brass}}}
+h1 .tk{color:{{t.muted}}}
+h2.sec{color:{{t.brass}};border-bottom:1px solid {{t.hair}}}
+h2.sec .num{color:{{t.muted}}}
+.card,.tile,.sidebar,.lens,.callout{background:{{t.surface}};border:1px solid {{t.hair}};box-shadow:{{t.shadow}}}
+.callout{border-left:3px solid {{t.brass}}}
+.profiletag{border:1px solid {{t.brass}};color:{{t.brass}}}
+th{border-bottom:1px solid {{t.hair}}} td{border-bottom:1px solid {{t.hair}}}
+tr.total td{border-top:1px solid {{t.ink}}}
+tr.hist td{background:{{t.surface2}};color:{{t.muted}}}
+tr.divider td{border-bottom:1px solid {{t.brass}}}
+tr.off td{color:{{t.muted}};text-decoration:line-through;text-decoration-color:{{t.hair}}}
+.kv{border-bottom:1px solid {{t.hair}}}
+.pill.up{background:{{t.up}};color:#06130D} .pill.down{background:{{t.down}};color:#1B0705} .pill.flat{background:{{t.flat}};color:#0A0F1C}
+.up{color:{{t.up}}} .down{color:{{t.down}}} .flat{color:{{t.flat}}}
+.tag.ok,.tag.low{background:{{t.ok_bg}};color:{{t.up}}} .tag.warn,.tag.high{background:{{t.bad_bg}};color:{{t.down}}}
+.tag.med{background:{{t.warn_bg}};color:{{t.brass}}} .tag.neutral{background:{{t.surface2}}}
+.fam{border:1px solid {{t.hair}};color:{{t.muted}}}
+.bar-w{background:{{t.surface2}}} .bar-w i{background:{{t.brass}}}
+.guard{background:{{t.warn_bg}};border-left:3px solid {{t.brass}}}
+.disc{color:{{t.muted}};border-top:1px solid {{t.hair}}}
+.pdfbtn{background:{{t.brass}};color:{{t.bg}}}
+/* dial */
+.dial .tick{stroke:{{t.hair}};stroke-width:1} .dial .tick-major{stroke:{{t.muted}};stroke-width:1.6}
+.dial .band{fill:none;stroke-width:15;stroke-linecap:butt}
+.dial .b-down2{stroke:{{t.down}}} .dial .b-down{stroke:{{t.down}};opacity:.55} .dial .b-flat{stroke:{{t.flat}};opacity:.7}
+.dial .b-up{stroke:{{t.up}};opacity:.6} .dial .b-up2{stroke:{{t.up}}}
+.dial .range{fill:none;stroke:{{t.brass}};stroke-width:5;stroke-linecap:round;opacity:.95}
+.dial .scale{fill:{{t.muted}};font:600 9.5px {{ font_sans }}}
+.dial .street{fill:{{t.brass}}} .dial .street-t{fill:{{t.brass}}}
+.dial .hand{stroke-width:4;stroke-linecap:round} .dial .hand-up{stroke:{{t.up}}} .dial .hand-down{stroke:{{t.down}}} .dial .hand-flat{stroke:{{t.ink}}}
+.dial .hub-ring{fill:none;stroke:{{t.brass}};stroke-width:1.2} .dial .hub{fill:{{t.surface}}}
+.dial .hub-k{fill:{{t.muted}};font:700 7.5px {{ font_sans }};letter-spacing:.14em}
+.dial .hub-v{fill:{{t.ink}};font:600 25px {{ font_serif }}}
+.dial .hub-r{font:800 11px {{ font_sans }};letter-spacing:.14em}
+.dial .hub-up{fill:{{t.up}}} .dial .hub-down{fill:{{t.down}}} .dial .hub-flat{fill:{{t.muted}}}
+.dial .hub-s{fill:{{t.muted}};font:500 9px {{ font_mono }}}
+/* phase wheel */
+.wheel .seg{stroke:{{t.bg}};stroke-width:2}
+.wheel .seg-recovery{fill:{{t.recovery}}} .wheel .seg-overheat{fill:{{t.overheat}}}
+.wheel .seg-stagflation{fill:{{t.stagflation}}} .wheel .seg-reflation{fill:{{t.reflation}}}
+.wheel .seg.lit{opacity:1} .wheel .seg.lit2{opacity:.55} .wheel .seg.dim{opacity:.16}
+.wheel .ph-n{font:800 11px {{ font_sans }};letter-spacing:.1em;fill:#08101C}
+.wheel .ph-s,.wheel .ph-a{font:500 8.5px {{ font_sans }};fill:#08101C}
+.wheel .dim{fill:{{t.muted}}}
+.wheel .wheel-hub{fill:{{t.surface}};stroke:{{t.hair}}} .wheel .wheel-arrow{fill:none;stroke:{{t.brass}};stroke-width:2.2}
+.wheel .wheel-head{fill:{{t.brass}}} .wheel .wheel-c{fill:{{t.muted}};font:700 9px {{ font_sans }};letter-spacing:.2em}
+/* football field + minis */
+.ff .grid,.mini .grid{stroke:{{t.hair}};stroke-width:1} .mini .sep{stroke-dasharray:3 3}
+.ff .axis,.mini .axis{fill:{{t.muted}};font:500 9.5px {{ font_mono }}}
+.ff .lbl{fill:{{t.ink}};font:600 11.5px {{ font_sans }}} .ff .lbl-street,.ff .lbl-target{fill:{{t.brass}}}
+.ff .sub{fill:{{t.muted}};font:500 9.5px {{ font_sans }}}
+.ff .bar-lens{fill:{{t.reflation}};opacity:.28;stroke:{{t.reflation}}} .ff .bar-street{fill:{{t.brass}};opacity:.22;stroke:{{t.brass}}}
+.ff .bar-target{fill:{{t.up}};opacity:.22;stroke:{{t.up}}} .ff .pt-lens{fill:{{t.reflation}}} .ff .pt-street{fill:{{t.brass}}} .ff .pt-target{fill:{{t.up}}}
+.ff .val,.mini .val{fill:{{t.ink}};font:600 10.5px {{ font_mono }}}
+.ff .v-price{stroke:{{t.down}};stroke-width:1.6;stroke-dasharray:5 4} .ff .v-price-t{fill:{{t.down}};font:700 10px {{ font_sans }}}
+.ff .v-target{stroke:{{t.up}};stroke-width:1.8} .ff .v-target-t{fill:{{t.up}};font:700 10px {{ font_sans }}}
+.mini .b-pos{fill:{{t.reflation}}} .mini .b-neg{fill:{{t.down}}} .mini .b-tot{fill:{{t.brass}}}
+.mini .b-rev{fill:{{t.reflation}}} .mini .b-fcf{fill:{{t.brass}}} .mini .k-rev{fill:{{t.reflation}}} .mini .k-fcf{fill:{{t.brass}}}
+.mini .l-act{fill:none;stroke:{{t.ink}};stroke-width:2.2} .mini .l-est{fill:none;stroke:{{t.brass}};stroke-width:2.2;stroke-dasharray:5 3}
+.mini .k-act{fill:{{t.ink}}} .mini .k-est{fill:{{t.brass}}}
+table.sens th{background:{{t.surface2}}} table.sens td{border:1px solid {{t.bg}}}
+table.sens td.up2{background:{{t.up}};color:#06130D} table.sens td.up{background:{{t.ok_bg}};color:{{t.up}}}
+table.sens td.flat{background:{{t.surface2}}} table.sens td.down{background:{{t.bad_bg}};color:{{t.down}}} table.sens td.down2{background:{{t.down}};color:#1B0705}
+table.sens td.base{outline:2px solid {{t.brass}};outline-offset:-2px;font-weight:800}
+{%- endmacro -%}
+<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ d.ticker }} — Equity Research</title>
+<title>{{ d.ticker }} — Equity Research · Investment Clock</title>
 <style>
-  :root{--ink:#0E1116;--paper:#FBFBF9;--teal:#0F6466;--up:#1B7A5A;--down:#B23A48;
-    --hair:#C9C9C2;--muted:#6B6F76;--gold:#B9892E;--hist:#F1F0EA;}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--paper);color:var(--ink);
-    font-family:"Helvetica Neue",Arial,system-ui,sans-serif;font-size:14.5px;line-height:1.55;}
-  .wrap{max-width:900px;margin:0 auto;padding:48px 42px 80px;}
-  .serif{font-family:"Iowan Old Style",Palatino,"Palatino Linotype",Georgia,serif;}
-  .mono{font-family:ui-monospace,"SF Mono","Menlo",monospace;font-variant-numeric:tabular-nums;}
-  .eyebrow{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:600;}
-  h1{font-size:34px;line-height:1.08;margin:.15em 0 .1em;font-weight:600;}
-  h2{font-size:12.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);font-weight:700;
-    margin:42px 0 12px;padding-bottom:8px;border-bottom:1.5px solid var(--ink);}
-  h3{font-size:14.5px;margin:22px 0 4px;font-weight:600;}
-  .masthead{border-top:3px solid var(--ink);padding-top:14px;}
-  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;color:var(--muted);}
-  .hero{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 6px;}
-  .pill{display:inline-block;padding:5px 14px;border-radius:2px;font-weight:700;font-size:13px;
-    letter-spacing:.08em;color:#fff;}
-  .pill.up{background:var(--up)} .pill.down{background:var(--down)} .pill.flat{background:var(--muted)}
-  .profiletag{display:inline-block;padding:3px 10px;border:1px solid var(--teal);color:var(--teal);
-    font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;border-radius:2px;margin-top:10px;}
-  .stat{flex:1;min-width:140px;border:1px solid var(--hair);padding:11px 14px;background:#fff;}
-  .stat .k{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
-  .stat .v{font-size:25px;font-weight:600;margin-top:2px}
-  .stat .v.up{color:var(--up)} .stat .v.down{color:var(--down)}
-  p{margin:0 0 13px} .lead p:first-child{font-size:16px}
+  @page{size:A4;margin:11mm 9mm}
+  body{margin:0;font-family:{{ font_sans }};font-size:14px;line-height:1.55;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .wrap{max-width:1000px;margin:0 auto;padding:40px 36px 80px}
+  .serif{font-family:{{ font_serif }}} .mono{font-family:{{ font_mono }};font-variant-numeric:tabular-nums}
+  .eyebrow{font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:700}
+  h1{font-size:38px;line-height:1.05;margin:.12em 0 .1em;font-weight:600;letter-spacing:-.01em}
+  h1 .tk{font-size:20px;letter-spacing:.04em}
+  h3{font-size:13.5px;margin:22px 0 6px;font-weight:700}
+  h2.sec{font-size:11.5px;letter-spacing:.18em;text-transform:uppercase;font-weight:800;margin:46px 0 14px;padding-bottom:9px}
+  h2.sec .num{margin-right:10px;font-weight:600}
+  .masthead{padding-top:14px}
+  .topline{display:flex;justify-content:space-between;align-items:baseline;font-size:11.5px}
+  .hero{display:grid;grid-template-columns:1fr 340px;gap:30px;align-items:center;margin-top:18px}
+  .tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:18px}
+  .tile{padding:13px 16px;border-radius:10px}
+  .tile .k{font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700}
+  .tile .v{font-size:25px;font-weight:600;margin-top:3px;line-height:1.15}
+  .tile .s{font-size:11px;margin-top:2px;opacity:.8}
+  .pill{display:inline-block;padding:4px 14px;border-radius:3px;font-weight:800;font-size:12.5px;letter-spacing:.1em}
+  .profiletag{display:inline-block;padding:3px 10px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;border-radius:3px;margin-top:10px}
+  .dial,.wheel{width:100%;height:auto;display:block}
+  p{margin:0 0 13px} .lead p:first-child{font-size:15.5px}
   table{width:100%;border-collapse:collapse;font-size:12.5px;margin:6px 0 4px}
-  th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--hair)}
-  th:first-child,td:first-child{text-align:left}
-  thead th{border-bottom:1.5px solid var(--ink);font-size:10.5px;letter-spacing:.05em;
-    text-transform:uppercase;color:var(--muted)}
-  tr.total td{border-top:1.5px solid var(--ink);font-weight:700;border-bottom:none}
-  tr.hist td{background:var(--hist);color:var(--muted)}
-  tr.divider td{border-bottom:1.5px solid var(--ink);padding:0;height:0}
-  .src{display:inline-block;font-size:8px;font-weight:700;color:var(--teal);
-    border:1px solid var(--teal);border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
-  img.chart{width:100%;margin:10px 0 4px;border:1px solid var(--hair);background:#fff}
-  .two{display:table;width:100%;table-layout:fixed;border-spacing:22px 0;margin-left:-22px;
-    width:calc(100% + 44px);}
-  .two>div{display:table-cell;vertical-align:top;}
-  .note{font-size:11.5px;color:var(--muted);margin-top:6px}
-  ul{margin:6px 0 13px;padding-left:20px} li{margin:3px 0}
-  .kv{display:flex;justify-content:space-between;border-bottom:1px solid var(--hair);padding:5px 0;font-size:12.5px}
-  .kv .mono{font-weight:600}
-  .methodcard{border:1px solid var(--hair);background:#fff;padding:16px 18px;margin:14px 0;}
-  .methodcard.primary{border-left:3px solid var(--teal);}
-  .assum td:last-child{text-align:left;color:var(--ink);font-size:12px;line-height:1.5}
-  .assum td.path{white-space:nowrap;color:var(--teal);font-weight:600}
-  .callout{border:1px solid var(--teal);background:#fff;padding:14px 16px;margin:14px 0;
-    border-left:3px solid var(--teal);}
-  .callout .big{font-size:22px;font-weight:600;}
-  .lenses{display:table;width:100%;table-layout:fixed;border-spacing:14px 0;margin:14px -14px;
-    width:calc(100% + 28px);}
-  .lens{display:table-cell;vertical-align:top;border:1px solid var(--hair);background:#fff;
-    padding:16px 18px;width:50%;}
-  .lens.believer{border:1.5px solid var(--teal);}
-  .lenskicker{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);
-    font-weight:700;}
-  .lenstitle{font-size:13px;font-weight:600;margin:2px 0 8px;}
-  .lensbig{font-size:30px;font-weight:600;line-height:1;}
-  .lensup{font-size:13px;margin:4px 0 8px;}
-  table.kv{width:100%;border-collapse:collapse;}
-  table.kv td{padding:4px 0;border-bottom:1px solid var(--hair);font-size:12.5px;}
-  table.kv td:last-child{text-align:right;}
-  .tag{display:inline-block;font-size:10px;padding:1px 7px;border-radius:2px;font-weight:700;
-    letter-spacing:.04em;text-transform:uppercase;}
-  .tag.ok{background:#E3F0E9;color:var(--up)} .tag.warn{background:#F6E7E3;color:var(--down)}
-  .tag.neutral{background:#EDEDE7;color:var(--muted)}
-  .cols{display:table;width:100%;table-layout:fixed;border-spacing:0;}
-  .cols>div{display:table-cell;vertical-align:top;padding-right:26px;}
-  .cols>aside{display:table-cell;vertical-align:top;width:255px;}
-  .sidebar{border:1px solid var(--hair);background:#fff;padding:12px 14px;margin-top:24px;}
-  .sidetitle{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);
-    font-weight:700;border-bottom:1.5px solid var(--ink);padding-bottom:6px;margin-bottom:4px;}
-  tr.grptop td{border-top:1.5px solid var(--ink);}
-  .exh{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);
-    font-weight:700;margin:14px 0 2px;}
-  @media(max-width:760px){.cols,.cols>div,.cols>aside{display:block;width:auto;padding-right:0}}
-  .keep{page-break-inside:avoid;}
-  .hsp{height:150px;margin-bottom:-150px;}
-  .tag.high{background:#F6E7E3;color:var(--down)} .tag.med{background:#F5EEDC;color:var(--gold)}
-  .tag.low{background:#E3F0E9;color:var(--up)}
-  .disc{font-size:11px;color:var(--muted);margin-top:40px;border-top:1px solid var(--hair);padding-top:14px;line-height:1.5}
-  .pdfbtn{position:fixed;right:20px;bottom:20px;background:var(--ink);color:#fff;border:none;padding:11px 18px;
-    font-size:13px;font-weight:600;border-radius:3px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2);z-index:99;}
-  @media(max-width:660px){.two,.two>div{display:block;width:auto;margin-left:0}.wrap{padding:28px 18px 60px}h1{font-size:27px}}
-  @media print{.wrap{max-width:100%}body{font-size:11px}.pdfbtn{display:none}h2{margin-top:24px}
-    .methodcard,.callout,img.chart{page-break-inside:avoid}tr{page-break-inside:avoid}thead{display:table-header-group}}
+  th,td{padding:6px 8px;text-align:right} th:first-child,td:first-child{text-align:left}
+  thead th{font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+  tr.total td{font-weight:700} tr.grptop td{border-top:1px solid currentColor}
+  .card,.callout{padding:16px 18px;border-radius:10px;margin:12px 0}
+  .cols{display:grid;grid-template-columns:1fr 270px;gap:30px}
+  .sidebar{padding:12px 16px;border-radius:10px;margin-top:6px;align-self:start}
+  .sidetitle{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;margin-bottom:4px}
+  .kv{display:flex;justify-content:space-between;padding:5px 0;font-size:12.5px} .kv .mono{font-weight:600}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:22px} .three{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  .lenses{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .lens{padding:14px 16px;border-radius:10px;break-inside:avoid}
+  .lens h4{margin:0;font-size:13.5px} .lens .big{font-size:24px;font-weight:600;margin:4px 0 2px}
+  .lens table{font-size:11.5px} .lens td:last-child{text-align:right}
+  .fam{display:inline-block;font-size:9px;letter-spacing:.1em;text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-left:6px;font-weight:700}
+  .tag{display:inline-block;font-size:9.5px;padding:1px 7px;border-radius:3px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .bar-w{display:inline-block;width:70px;height:6px;border-radius:3px;vertical-align:middle;margin-right:6px} .bar-w i{display:block;height:6px;border-radius:3px}
+  .guard{padding:10px 14px;border-radius:6px;margin:6px 0;font-size:12.5px}
+  .note{font-size:11.5px;margin-top:6px}
+  .src{display:inline-block;font-size:8px;font-weight:800;border:1px solid currentColor;border-radius:2px;padding:0 2px;vertical-align:middle;line-height:1.3}
+  .exh{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;margin:16px 0 4px}
+  ul{margin:6px 0 13px;padding-left:20px} li{margin:4px 0}
+  .disc{font-size:11px;margin-top:44px;padding-top:14px;line-height:1.55}
+  table.sens{table-layout:fixed;text-align:center} table.sens td,table.sens th{text-align:center;padding:7px 4px;font-family:{{ font_mono }};font-size:11.5px}
+  .pdfbtn{position:fixed;right:20px;bottom:20px;border:none;padding:11px 18px;font-size:13px;font-weight:700;border-radius:6px;cursor:pointer;z-index:99}
+  .keep{break-inside:avoid;page-break-inside:avoid} h2.sec,h3{break-after:avoid;page-break-after:avoid}
+  .wheelbox{max-width:300px} svg text{font-family:{{ font_sans }}}
+  @media(max-width:820px){.hero,.cols,.two,.three,.lenses{grid-template-columns:1fr}.wrap{padding:24px 16px 60px}h1{font-size:30px}.dial{max-width:340px;margin:auto}}
+  @media screen{ {{ colors(s) }} }
+  @media print{ {{ colors(p) }} .pdfbtn{display:none} .wrap{max-width:100%;padding:0} body{font-size:11px}
+    .hero{grid-template-columns:1fr 280px} h1{font-size:30px} .lens,.card,.callout,tr,svg{break-inside:avoid;page-break-inside:avoid}
+    thead{display:table-header-group} .pill.up,.pill.down,.pill.flat{color:#fff}
+    table.sens td.up2,table.sens td.down2{color:#fff} .wheel .ph-n,.wheel .ph-s,.wheel .ph-a{fill:#fff} }
 </style></head><body>
 <button class="pdfbtn" onclick="window.print()">Save as PDF</button>
 <div class="wrap">
+{% set n = namespace(i=0) %}
+{%- macro sec(title) -%}{% set n.i = n.i + 1 %}<h2 class="sec"><span class="num">{{ '%02d'|format(n.i) }}</span>{{ title }}</h2>{%- endmacro -%}
 
   <div class="masthead">
-    <div class="topline"><span class="eyebrow">Equity Research · Independent Valuation</span>
+    <div class="topline"><span class="eyebrow">Equity Research · Investment Clock</span>
       <span class="mono">{{ report_date }}</span></div>
-    <div class="eyebrow" style="margin-top:18px">{{ d.sector }}{% if d.industry %} · {{ d.industry }}{% endif %}</div>
-    <h1 class="serif">{{ d.name }} <span class="mono" style="font-size:22px;color:var(--muted)">{{ d.ticker }}</span></h1>
-    <div><span class="profiletag">{{ spec.label }}</span></div>
+    <div class="eyebrow" style="margin-top:20px">{{ d.sector }}{% if d.industry %} · {{ d.industry }}{% endif %}</div>
+    <h1 class="serif">{{ d.name|e }} <span class="mono tk">{{ d.ticker }}</span></h1>
+    <span class="profiletag">{{ spec.label }}</span>
     <div class="hero">
-      <div class="stat"><div class="k">Rating</div><div class="v"><span class="pill {{ rating_dir }}">{{ rating }}</span></div></div>
-      <div class="stat"><div class="k">Fair value</div><div class="v mono">{{ fmt_ps(target) }}</div></div>
-      <div class="stat"><div class="k">Price</div><div class="v mono">{{ fmt_ps(d.price) }}</div></div>
-      <div class="stat"><div class="k">Upside</div>
-        <div class="v mono {{ 'up' if upside>=0 else 'down' }}">{{ spct(upside,0) }}</div></div>
+      <div>
+        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span class="pill {{ rating_dir }}">{{ rating }}</span>
+          <span class="muted mono" style="font-size:12px">12-month horizon · confidence <b>{{ tr.confidence }}</b></span>
+        </div>
+        <div class="tiles">
+          {% if tr.rated %}
+          <div class="tile"><div class="k">12M price target</div>
+            <div class="v mono">{{ fmt_ps(tr.target) }}</div>
+            <div class="s mono">bear {{ fmt_ps(tr.bear) }} · bull {{ fmt_ps(tr.bull) }}</div></div>
+          <div class="tile"><div class="k">Expected total return</div>
+            <div class="v mono {{ rating_dir }}">{{ spct(tr.total_return,0) }}</div>
+            <div class="s mono">price {{ spct(tr.upside,0) }}{% if tr.dps %} + yield {{ pct(tr.dps/d.price,1) }}{% endif %}</div></div>
+          {% else %}
+          <div class="tile"><div class="k">Indicative value</div>
+            <div class="v mono muted">{{ fmt_ps(tr.fair_value) }}</div>
+            <div class="s">reference only · not a price target</div></div>
+          <div class="tile"><div class="k">Expected total return</div>
+            <div class="v mono muted">n/a</div>
+            <div class="s">{{ tr.rating_note }}</div></div>
+          {% endif %}
+          <div class="tile"><div class="k">Fair value today</div>
+            <div class="v mono">{{ fmt_ps(tr.fair_value) }}</div>
+            <div class="s mono">{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</div></div>
+          <div class="tile"><div class="k">Street consensus</div>
+            {% if tr.street %}<div class="v mono">{{ fmt_ps(tr.street.mean) }}</div>
+            <div class="s mono">{{ spct(tr.street.upside,0) }}{% if tr.street.n %} · {{ tr.street.n }} analysts{% endif %}</div>
+            {% else %}<div class="v mono muted">n/a</div><div class="s">no consensus available</div>{% endif %}</div>
+        </div>
+        <div class="note mono" style="margin-top:12px">Price {{ fmt_ps(d.price) }} · Ke {{ pct(tr.ke,2) }} · discount rate {{ pct(discount_rate,2) }} · data: {{ d.provider }}</div>
+      </div>
+      <div>{{ clock_svg|safe }}</div>
     </div>
-    <div class="note mono">Discount rate {{ pct(discount_rate,2) }} · data: {{ d.provider }}</div>
   </div>
 
   <div class="cols">
     <div>
-      <h2 style="margin-top:24px">Investment thesis</h2>
+      {{ sec('Investment thesis') }}
       <div class="lead">{% for p in thesis %}<p>{{ p|safe }}</p>{% endfor %}</div>
       <p class="note">{{ spec.rationale }}</p>
     </div>
     <aside class="sidebar">
       <div class="sidetitle">Key data</div>
-      {% for k,v in key_data %}<div class="kv"><span>{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
+      {% for k,v in key_data %}<div class="kv"><span class="k">{{ k }}</span><span class="mono">{{ v }}</span></div>{% endfor %}
     </aside>
   </div>
 
+  {{ sec('Valuation summary — what each lens says') }}
+  <div class="keep">
+    <div class="exh">Exhibit 1 · Value per share by lens vs. price, Street and our 12-month target</div>
+    {{ ff_svg|safe }}
+  </div>
+  <table><thead><tr><th>Lens</th><th>Type</th><th>Fair value today</th><th>Range</th><th>Weight</th><th>Status</th></tr></thead><tbody>
+  {% for l in tr.lenses %}
+    <tr{% if l.status=='excluded' %} class="off"{% endif %}>
+      <td>{{ l.label }}</td><td><span class="fam">{{ l.family }}</span></td>
+      <td class="mono">{{ fmt_ps(l.value) }}</td><td class="mono">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }}</td>
+      <td class="mono"><span class="bar-w"><i style="width:{{ (l.eff_weight*100)|round|int }}%"></i></span>{{ pct(l.eff_weight,0) }}</td>
+      <td>{% if l.status=='ok' and not l.status_note %}<span class="tag ok">used</span>
+          {% elif l.status=='excluded' %}<span class="tag warn">excluded</span>
+          {% else %}<span class="tag med">{{ 'winsorised' if l.status=='winsorized' else 'down-weighted' }}</span>{% endif %}
+          {% if l.status_note %}<div class="note" style="margin:0;text-align:right">{{ l.status_note }}</div>{% endif %}</td></tr>
+  {% endfor %}
+    <tr class="total grptop"><td>Blended fair value (today)</td><td></td><td class="mono">{{ fmt_ps(tr.fair_value) }}</td>
+      <td class="mono">{{ fmt_ps(tr.fair_low) }} – {{ fmt_ps(tr.fair_high) }}</td><td></td><td></td></tr>
+    <tr><td>× (1 + Ke) − dividends → model 12-month target</td><td></td><td class="mono">{{ fmt_ps(tr.model_target) }}</td>
+      <td></td><td></td><td></td></tr>
+    {% if tr.street %}<tr><td>Street mean target{% if tr.street_weight>0 %} <span class="muted">(weight {{ pct(tr.street_weight,0) }})</span>{% endif %}</td><td></td>
+      <td class="mono">{{ fmt_ps(tr.street.mean) }}</td>
+      <td class="mono">{% if tr.street.low and tr.street.high %}{{ fmt_ps(tr.street.low) }} – {{ fmt_ps(tr.street.high) }}{% endif %}</td><td></td><td></td></tr>{% endif %}
+    {% if tr.rated %}<tr class="total grptop"><td>Published 12-month price target</td><td></td><td class="mono">{{ fmt_ps(tr.target) }}</td>
+      <td class="mono">{{ fmt_ps(tr.bear) }} – {{ fmt_ps(tr.bull) }}</td><td></td>
+      <td class="{{ rating_dir }}"><b>{{ spct(tr.upside,0) }}</b></td></tr>
+    {% else %}<tr class="total grptop"><td>No published target — NOT RATED</td><td></td><td class="mono muted">{{ fmt_ps(tr.fair_value) }}</td>
+      <td></td><td></td><td><span class="tag neutral">NR</span></td></tr>{% endif %}
+  </tbody></table>
+  <div class="two" style="margin-top:14px">
+    <div>
+      <h3>Confidence: {{ tr.confidence }}</h3>
+      <ul>{% for r in tr.confidence_reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+    </div>
+    <div>
+      <h3>Guardrails &amp; disclosures</h3>
+      {% for g in tr.guardrails %}<div class="guard">{{ g }}</div>{% else %}<p class="note">No guardrail intervened: every lens landed in the plausible band and no Street anchor was applied.</p>{% endfor %}
+      {% for f in fwd.flags %}<div class="guard">{{ f }}</div>{% endfor %}
+    </div>
+  </div>
+
+  {{ sec('The lenses in detail') }}
+  <p>Each lens is an independent answer to <i>what is a share worth?</i> Relative lenses apply a target
+     multiple to forward numbers; the DCF values the cash flows; sector lenses use the model that fits
+     the business. Every input is shown so any number can be challenged.</p>
+  <div class="lenses">
+  {% for l in tr.lenses %}
+    <div class="lens">
+      <h4>{{ l.label }} <span class="fam">{{ l.family }}</span></h4>
+      <div class="big mono">{{ fmt_ps(l.value) }}</div>
+      <div class="note mono" style="margin:0 0 6px">{{ fmt_ps(l.low) }} – {{ fmt_ps(l.high) }} · {{ pct(l.eff_weight,0) }} weight</div>
+      <table><tbody>{% for k,v in l.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}</tbody></table>
+      <p class="note">{{ l.note }}</p>
+    </div>
+  {% endfor %}
+  </div>
+
+  {{ sec('Earnings quality & cycle') }}
+  <div class="two">
+    <div>
+      <table class="kvt"><tbody>
+        <tr><td>Trailing EPS</td><td class="mono">{{ fmt_ps(fwd.eps_ltm) }}</td></tr>
+        <tr><td>Consensus EPS FY{{ fwd.fy1_year }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy1) }}</td></tr>
+        <tr><td>Consensus EPS FY{{ fwd.fy1_year+1 }}</td><td class="mono">{{ fmt_ps(fwd.eps_fy2) }}</td></tr>
+        <tr><td>NTM EPS used</td><td class="mono"><b>{{ fmt_ps(fwd.eps_ntm) }}</b></td></tr>
+        <tr><td>Through-cycle (historical average) EPS</td><td class="mono">{{ fmt_ps(fwd.cycle.norm_eps) }}</td></tr>
+        <tr><td>Forward ÷ through-cycle</td><td class="mono">{{ ('%.1fx'|format(fwd.cycle.peak_ratio)) if fwd.cycle.peak_ratio else '—' }}</td></tr>
+        <tr><td>Durable EPS growth used</td><td class="mono">{{ pct(fwd.growth,1) }}</td></tr>
+        <tr><td>Earnings-durability factor on multiples</td><td class="mono">×{{ '%.2f'|format(fwd.cycle.durability) }}</td></tr>
+        <tr><td>Basis</td><td>{{ fwd.basis }}</td></tr>
+      </tbody></table>
+    </div>
+    <div>
+      <p><b>{{ 'Cyclical or in an earnings inflection.' if fwd.cycle.is_cyclical else 'No cyclicality flags.' }}</b>
+         {% if fwd.cycle.reasons %}{{ fwd.cycle.reasons|join('; ') }}.{% else %}Revenue and margins show no peak-to-trough pattern in the reported history, so forward earnings are capitalised at the full target multiple.{% endif %}</p>
+      <p class="note">Growth source: {{ fwd.growth_src }}. Multiples price <i>durable</i> growth, so a one-year recovery step is never extrapolated, and when forward EPS is far above what the business has historically earned the target multiple is scaled down — the market pays less for peak earnings.</p>
+    </div>
+  </div>
+
+  {{ sec('Where it sits on the Investment Clock') }}
+  <div class="two" style="align-items:center">
+    <div class="wheelbox">{{ wheel_svg|safe }}</div>
+    <div>
+      <p><b>{{ phase_primary_name }}</b>{% if phase_secondary_name %} and <b>{{ phase_secondary_name }}</b>{% endif %}
+         are the phases in which {{ d.sector or 'this sector' }} has historically led, on the classic Merrill Lynch Investment Clock
+         sector map (growth × inflation, rotating clockwise: Recovery → Overheat → Stagflation → Reflation).</p>
+      <p class="note">Illustrative sector affinity, not a call on where the economy is today: this tool reads company
+         fundamentals and consensus, not macro data. Use it to ask whether the thesis above needs the cycle to cooperate.</p>
+    </div>
+  </div>
+
   {% if finsum %}
-  <div class="keep"><h2>Financial summary &amp; valuation</h2><div class="hsp"></div></div>
+  {{ sec('Financial summary & valuation') }}
   <table><thead><tr><th>{{ d.currency_symbol }}, per share where noted</th>
     {% for c in finsum.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
   {% for label, vals in finsum.rows.items() %}
     <tr {% if label in ['EV/EBITDA'] %}class="grptop"{% endif %}>
-      <td{% if label in ['growth'] %} style="color:var(--muted);padding-left:18px"{% endif %}>{{ label }}</td>
+      <td{% if label in ['growth'] %} style="padding-left:18px" class="muted"{% endif %}>{{ label }}</td>
       {% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
   {% endfor %}</tbody></table>
   <p class="note">{{ finsum.note }}</p>
   {% endif %}
 
-  <div class="keep"><div class="keep"><h2>Valuation summary</h2><div class="hsp"></div></div>
-  <div class="exh">Exhibit 1 · Fair value vs. price</div>
-  <img class="chart" src="{{ ff_chart }}" alt="Football field"></div>
-  <table><thead><tr><th>Estimate</th><th>Value / share</th><th>Upside</th></tr></thead><tbody>
-  {% for r in summary_rows %}
-    <tr{% if r.primary %} class="total"{% endif %}><td>{{ r.label }}</td>
-    <td class="mono">{{ fmt_ps(r.value) }}</td>
-    <td class="mono {{ 'up' if r.up>=0 else 'down' }}">{{ spct(r.up,0) }}</td></tr>
-  {% endfor %}
-  </tbody></table>
-  <p class="note">The headline fair value is the intrinsic valuation (Simply Wall St methodology,
-     analyst-driven cash flows). The analyst price target is a 12-month price forecast shown for
-     contrast — it answers a different question (where the market may trade the stock) and is not
-     part of the intrinsic value.</p>
-
   {% if model_rows %}
-  <div class="keep"><h2>Financial model — historicals &amp; analyst forecast</h2><div class="hsp"></div></div>
-  <p>Reported actuals (A) followed by the analyst-estimate forecast (E). The <b>Levered FCF</b> column
-     is the exact cash-flow stream discounted in the intrinsic valuation below — the P&amp;L, the cash
-     flow and the fair value are one reconciled chain.</p>
+  {{ sec('Financial model — historicals & projected P&L') }}
   <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Growth</th><th>EBIT</th><th>Margin</th>
     <th>Net income</th><th>EPS</th></tr></thead><tbody>
   {% for r in model_rows %}{% if r.hist %}
@@ -564,93 +712,47 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
     {% endfor %}
   {% endif %}
   </tbody></table>
+  <p class="note">“A” marks figures taken directly from analyst consensus; other forecast rows are the DCF base case with
+     flat interest and the normalised tax rate.</p>
+  {% endif %}
 
-  {% if fwd_model %}
-  <div class="keep"><h3>Bridge to levered free cash flow (what the DCF discounts)</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table><thead><tr><th>Fiscal year</th><th>Revenue</th><th>Net income</th><th>Levered FCF</th>
-    <th>FCF margin</th><th>Source</th></tr></thead><tbody>
-    {% for f in fwd_model.years %}
-    <tr><td class="mono">{{ f.year }}E</td>
-    <td class="mono">{{ fmt_money(f.revenue) }}</td>
-    <td class="mono">{{ fmt_money(f.net_income) }}</td>
-    <td class="mono"><b>{{ fmt_money(f.levered_fcf) }}</b></td>
-    <td class="mono">{{ pct(f.fcf_margin,1) }}</td>
-    <td style="font-size:11px">{{ f.fcf_src }}</td></tr>
-    {% endfor %}
-  </tbody></table>
-  <p class="note">“A” marks figures taken directly from analyst consensus; unmarked forecast figures are
-     derived by holding the latest reported margin stable. The Levered FCF column ties exactly to the
-     10-year cash-flow forecast in the intrinsic valuation, so every number traces from revenue through
-     to the {{ fmt_ps(sws.vps) }} fair value.</p>
+  {% if dcf %}
+  {{ sec('DCF cross-check — drivers & sensitivity') }}
+  <table class="assum"><thead><tr><th>Driver</th><th>Path</th><th style="text-align:left">Why</th></tr></thead><tbody>
+  {% for drv, path, why in assumptions %}
+    <tr><td><b>{{ drv }}</b></td><td class="mono" style="white-space:nowrap">{{ path }}</td><td style="text-align:left;font-size:12px;line-height:1.5">{{ why }}</td></tr>
+  {% endfor %}</tbody></table>
+  <div class="three" style="margin-top:14px">
+    <div class="keep"><div class="exh">Revenue &amp; FCFF</div>{{ proj_svg|safe }}</div>
+    <div class="keep"><div class="exh">EBIT margin path</div>{{ margin_svg|safe }}</div>
+    <div class="keep"><div class="exh">EV → equity bridge</div>{{ bridge_svg|safe }}</div>
+  </div>
+  {% if sens_html %}
+  <div class="two" style="margin-top:10px">
+    <div><div class="exh">Exhibit · DCF value per share, WACC × terminal growth (vs. price)</div>{{ sens_html|safe }}
+      <p class="note">Shaded against the current price: green = above, red = below. Outlined cell = base case.</p></div>
+    <div>
+      {% if returns_comment %}<p>{{ returns_comment|safe }}</p>{% endif %}
+      {% if diagnostics and diagnostics.flags %}<h3>Model diagnostics</h3>
+      <table><tbody>{% for k, v, st in diagnostics.flags %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td>
+        <td><span class="tag {{ 'ok' if st=='ok' else 'warn' }}">{{ st }}</span></td></tr>{% endfor %}</tbody></table>{% endif %}
+    </div>
+  </div>
+  {% endif %}
   {% endif %}
 
   {% if ratios %}
-  <div class="keep"><h2>Ratio analysis — leverage, coverage &amp; returns</h2><div class="hsp"></div></div>
+  {{ sec('Ratio analysis — leverage, coverage & returns') }}
   <table><thead><tr><th>Metric</th>{% for c in ratios.cols %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>
   {% for label, vals in ratios.rows %}
     <tr><td>{{ label }}</td>{% for v in vals %}<td class="mono">{{ v }}</td>{% endfor %}</tr>
   {% endfor %}</tbody></table>
   {% endif %}
 
-  {% if sws %}
-  <div class="keep"><h2>Intrinsic valuation — {{ sws.label }}</h2><div class="hsp"></div></div>
-  <p>Fair value is built from <b>forward analyst estimates</b>, not historical cash flow — the
-     methodology used by Simply Wall St. The model is selected by sector: a 2-stage cash-flow
-     model for most companies, Excess Returns for financials, AFFO for REITs, or a dividend model
-     for consistent payers. Every figure below is traceable.</p>
-
-  <div class="callout">
-    <div>Fair value per share
-      <span class="big mono">{{ fmt_ps(sws.vps) }}</span>
-      <span class="{{ 'up' if sws.upside >= 0 else 'down' }} mono">{{ spct(sws.upside,0) }} vs price {{ fmt_ps(d.price) }}</span></div>
-    <p class="note" style="margin:6px 0 0">Discount rate (cost of equity) {{ pct(sws.discount_rate,2) }}
-      {% if sws.terminal_pct %}· terminal value {{ pct(sws.terminal_pct,0) }} of total{% endif %}
-      · source: {{ sws.source }}</p>
-  </div>
-
-  {% if sws.build %}
-  <div class="keep"><h3>10-year cash-flow forecast</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table><thead><tr><th>Year</th><th>Cash flow ({{ d.currency_symbol }}mn)</th><th>Source</th>
-    <th>Discount factor</th><th>Present value ({{ d.currency_symbol }}mn)</th></tr></thead><tbody>
-    {% for b in sws.build %}
-    <tr><td class="mono">{{ b.year }}</td>
-        <td class="mono">{{ '{:,.0f}'.format(b.cf/1e6) }}</td>
-        <td style="font-size:11.5px">{{ b.src }}</td>
-        <td class="mono">{{ '%.3f'|format(b.disc) }}</td>
-        <td class="mono">{{ '{:,.0f}'.format(b.pv/1e6) }}</td></tr>
-    {% endfor %}
-  </tbody></table>
-  {% endif %}
-
-  <div class="keep"><h3>Valuation build</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <table class="kv"><tbody>
-    {% for k,v in sws.rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}
-  </tbody></table>
-
-  <div class="keep"><h3>Discount rate — cost of equity</h3><div class="hsp" style="height:110px;margin-bottom:-110px"></div></div>
-  <div class="two">
-    <div>
-      <table class="kv"><tbody>
-        {% for k,v in sws.beta_rows %}<tr><td>{{ k }}</td><td class="mono">{{ v }}</td></tr>{% endfor %}
-      </tbody></table>
-    </div>
-    <div>
-      <p class="note">Cost of equity = risk-free rate + levered beta × equity risk premium. The
-        risk-free rate is a 5-year average of the 10-year government bond (not the spot rate, to avoid
-        volatile valuations). Beta is built bottom-up from the industry unlevered beta, re-levered to
-        the company's capital structure and clamped to a practical 0.8–2.0 band (Damodaran).</p>
-    </div>
-  </div>
-  <p class="note">{{ sws.note }}</p>
-  {% endif %}
-
-  {% endif %}
-
   {% if factors %}
-  <div class="keep"><h2>Factor sensitivity map — what moves this stock</h2><div class="hsp"></div></div>
-  <p>Exposure levels are scored from the model and the historicals, with the mechanism spelled out.</p>
+  {{ sec('Factor sensitivity map — what moves this stock') }}
   <table><thead><tr><th style="width:8%">Type</th><th style="width:20%">Factor</th>
-    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th>Why / mechanism</th></tr></thead><tbody>
+    <th style="width:9%">Exposure</th><th style="width:24%">Evidence</th><th style="text-align:left">Why / mechanism</th></tr></thead><tbody>
   {% for f in factors %}
     <tr><td>{{ f.cat }}</td><td><b>{{ f.factor }}</b></td>
     <td><span class="tag {{ 'high' if f.level=='High' else ('med' if f.level=='Medium' else 'low') }}">{{ f.level }}</span></td>
@@ -660,61 +762,65 @@ TEMPLATE = Template(r"""<!DOCTYPE html>
   {% endif %}
 
   {% if catalysts %}
-  <div class="keep"><h2>Catalysts &amp; what each lever is worth</h2><div class="hsp"></div></div>
+  {{ sec('Catalysts & what each lever is worth') }}
   <ul>{% for c in catalysts %}<li>{{ c|safe }}</li>{% endfor %}</ul>
   {% endif %}
 
-  <div class="keep"><h2>Key risks</h2><div class="hsp"></div></div>
+  {{ sec('Key risks') }}
   <ul>{% for r in risks %}<li>{{ r }}</li>{% endfor %}</ul>
 
-  <div class="disc"><b>Methodology & disclaimer.</b> Generated by an automated, sector-aware valuation
-    engine from public data ({{ d.provider }}). {{ d.ticker }} was classified as <b>{{ spec.label }}</b>
-    and valued with the Simply Wall St methodology: a sector-appropriate intrinsic model (2-stage cash
-    flow to equity, excess returns for financials, AFFO for REITs, or a dividend model) anchored to
-    forward analyst estimates and discounted at the cost of equity. Terminal value uses the Gordon
-    growth method. Forward cash flows come from analyst consensus where available, extrapolated from
-    reported figures otherwise — they are not a substitute for fundamental judgement. Nothing here is
-    investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
+  <div class="disc"><b>Methodology &amp; disclaimer.</b> Generated by an automated, sector-aware valuation engine from
+    public data ({{ d.provider }}). {{ d.ticker }} was classified as <b>{{ spec.label }}</b>. The 12-month price target
+    triangulates several lenses — target multiples on consensus forward earnings (peer/sector-anchored and adjusted for
+    durable growth, leverage and earnings durability), a 10-year DCF with decaying growth and mean-reverting margins, and
+    sector-specific models — weights them by profile, applies plausibility guardrails, rolls the result forward at the cost
+    of equity net of dividends, and lightly anchors it to Street consensus when available. Reference multiples are
+    long-run developed-market medians; live peer medians replace them when fetched. Forward numbers come from analyst
+    consensus where available and from reported figures otherwise; they are not a substitute for fundamental judgement.
+    Nothing here is investment advice, a recommendation, or an offer to transact. Do your own due diligence.</div>
 </div></body></html>""")
+
+
+
+def _football_rows(tr, data):
+    rows = []
+    for l in tr.lenses:
+        if l.status == "excluded":
+            continue
+        rows.append({"label": l.label, "sub": f"{l.eff_weight:.0%} weight", "low": l.low,
+                     "high": l.high, "point": l.value, "kind": "lens"})
+    if tr.street:
+        lo = tr.street.low or tr.street.mean * 0.85
+        hi = tr.street.high or tr.street.mean * 1.15
+        rows.append({"label": "Street targets (12m)", "sub": f"{tr.street.n} analysts" if tr.street.n else "consensus",
+                     "low": lo, "high": hi, "point": tr.street.mean, "kind": "street"})
+    rows.append({"label": "Our 12-month target", "sub": "bear – bull", "low": tr.bear,
+                 "high": tr.bull, "point": tr.target, "kind": "target"})
+    return rows
 
 
 def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenarios,
                  sens, comps, base_drivers, diagnostics, reverse, target, upside, blend, risks,
-                 sws=None, fwd_model=None):
+                 tr, fwd, ref, fwd_model=None, peers=None):
     cur = data.currency_symbol
+    price = data.price
+    rating, rdir = derive_rating(tr.total_return, tr.rated)
+    yld = tr.dps / price if price else 0.0
+    bear_ret = tr.bear / price - 1 + yld
+    bull_ret = tr.bull / price - 1 + yld
+    street_ret = (tr.street.mean / price - 1 + yld) if tr.street else None
 
-    # Football field + summary are built around the SWS intrinsic value (the
-    # headline). Supporting methods (DCF scenario range, comps) are shown only as
-    # context, never blended into the headline — that blending was the source of
-    # the earlier contradictory "$81 + $358 = $510" nonsense.
-    ff_rows, summary_rows = [], []
-    if sws:
-        # primary: the SWS intrinsic value, with a sensible band around it
-        lo = sws.value_per_share * 0.9
-        hi = sws.value_per_share * 1.1
-        ff_rows.append({"label": sws.label, "low": lo, "high": hi,
-                        "point": sws.value_per_share})
-        summary_rows.append({"label": sws.label + " (fair value)",
-                             "value": sws.value_per_share, "up": sws.upside,
-                             "primary": True})
-    # analyst price target as an external cross-check (contrast, not blended)
-    if data.estimates.target_price_mean:
-        tp = data.estimates.target_price_mean
-        lo_t = data.estimates.target_price_low or tp * 0.9
-        hi_t = data.estimates.target_price_high or tp * 1.1
-        ff_rows.append({"label": "Analyst price target (12m)", "low": lo_t,
-                        "high": hi_t, "point": tp})
-        summary_rows.append({"label": "Analyst price target (12m consensus)", "value": tp,
-                             "up": tp / data.price - 1 if data.price else 0,
-                             "primary": False})
+    clock = charts.valuation_clock(
+        tr.total_return, bear_ret, bull_ret, street_ret, rating, rdir,
+        fmt_ps(tr.target, cur) if tr.rated else "n/a", fmt_ps(price, cur), tr.rated, tr.confidence)
+    ph1, ph2 = theme.phases_for(data.sector, profile.value)
+    wheel = charts.phase_wheel(ph1, ph2)
+    ff = charts.football_field(_football_rows(tr, data), price, tr.target if tr.rated else None, cur)
 
-    rating, rdir = derive_rating(upside)
-    thesis = build_thesis(data, spec, methods, target, upside, blend, discount_rate, dcf, diagnostics, reverse, sws=sws)
-
-    # assumptions rationale (FCFF profiles)
+    thesis = build_thesis(data, spec, tr, fwd, dcf, reverse, rating)
     assumptions = base_drivers.rationale if base_drivers else None
 
-    # combined historical + forecast model rows
+    # historical + forecast model rows (DCF base case)
     model_rows = []
     if dcf and base_drivers:
         tax = base_drivers.tax_rate
@@ -725,39 +831,28 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
             eff = eff if (eff is not None and 0 <= eff <= 0.6) else tax
             nopat = y.ebit * (1 - eff)
             fcff = nopat + y.depreciation_amort - y.capex - y.change_in_nwc
-            growth = (y.revenue / prev.revenue - 1) if prev else None
+            growth = (y.revenue / prev.revenue - 1) if prev and prev.revenue else None
             model_rows.append({"year": y.year, "hist": True, "revenue": y.revenue,
                                "growth": growth, "ebit": y.ebit, "margin": y.ebit_margin,
-                               "nopat": y.net_income, "eps": y.eps_diluted,
-                               "fcff": fcff, "conv": (fcff/nopat if nopat else None),
-                               "last_hist": idx == len(hist)-1})
+                               "nopat": y.net_income, "eps": y.eps_diluted, "fcff": fcff,
+                               "conv": (fcff / nopat if nopat else None), "last_hist": idx == len(hist) - 1})
             prev = y
-        prev_rev = hist[-1].revenue
-        for f in dcf.forecast:
-            model_rows.append({"year": f.year, "hist": False, "revenue": f.revenue,
-                               "growth": f.revenue/prev_rev-1, "ebit": f.ebit, "margin": f.ebit_margin,
-                               "nopat": f.nopat, "fcff": f.fcff, "conv": (f.fcff/f.nopat if f.nopat else None),
-                               "last_hist": False})
-            prev_rev = f.revenue
 
-    # returns commentary
     returns_comment = ""
     if diagnostics:
         rt, wc = diagnostics.get("roic_term"), discount_rate
         if rt is not None:
             spread = (rt - wc) * 10000
             if rt > wc:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on incremental capital versus a "
-                    f"<b>{pct(wc,1)}</b> cost of capital — a positive spread of <b>{spread:.0f}bps</b>. "
-                    f"Growth therefore creates value and the model rightly capitalises it at a premium to book. "
-                    f"The implied self-funding growth of {pct(diagnostics.get('fundamental_g'),1)} "
-                    f"(reinvestment {pct(diagnostics.get('reinvest_rate'),0)} × ROIC) frames how much "
-                    f"of our terminal growth is organically financed rather than assumed.")
+                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital versus a <b>{pct(wc,1)}</b> "
+                    f"cost of capital — a positive spread of <b>{spread:.0f}bps</b>, so growth creates value. "
+                    f"Self-funding growth of {pct(diagnostics.get('fundamental_g'),1)} (reinvestment "
+                    f"{pct(diagnostics.get('reinvest_rate'),0)} × ROIC) frames how much of the terminal growth is "
+                    f"organically financed rather than assumed.")
             else:
-                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital against a <b>{pct(wc,1)}</b> "
-                    f"cost of capital — a negative spread of <b>{abs(spread):.0f}bps</b>. Growth here "
-                    f"<b>destroys</b> value, so the terminal assumptions deserve scrutiny: a company that cannot "
-                    f"out-earn its capital cost should not trade above replacement value.")
+                returns_comment = (f"The business earns <b>{pct(rt,1)}</b> on capital against a <b>{pct(wc,1)}</b> cost of "
+                    f"capital — a negative spread of <b>{abs(spread):.0f}bps</b>. Growth here <b>destroys</b> value, "
+                    f"so terminal assumptions deserve scrutiny.")
 
     key_data = build_key_data(data, dcf, base_drivers)
     finsum = build_finsum(data, dcf, base_drivers)
@@ -765,38 +860,29 @@ def build_report(data, profile, spec, wacc, discount_rate, methods, dcf, scenari
     catalysts = build_catalysts(data, dcf, base_drivers, sens, wacc)
     factors = build_factor_exposure(data, profile, dcf, base_drivers, sens, diagnostics, reverse, discount_rate)
 
-    # --- SWS intrinsic valuation: expose vps for the template -----------------
-    sws_ctx = None
-    if sws:
-        sws_ctx = SimpleNamespace(
-            label=sws.label, method=sws.method, vps=sws.value_per_share,
-            upside=sws.upside, discount_rate=sws.discount_rate,
-            terminal_pct=sws.terminal_pct, rows=sws.rows, build=sws.build,
-            beta_rows=sws.beta_rows, note=sws.note, source=sws.source,
-        )
-
     kw = dict(
+        s=theme.SCREEN, p=theme.PRINT, font_sans=theme.FONT_SANS, font_serif=theme.FONT_SERIF,
+        font_mono=theme.FONT_MONO,
         key_data=key_data, finsum=finsum, ratios=ratios, catalysts=catalysts, factors=factors,
-        sws=sws_ctx, fwd_model=fwd_model,
-        d=data, spec=spec, report_date=date.today().strftime("%d %b %Y"),
-        rating=rating, rating_dir=rdir, target=target, upside=upside, thesis=thesis,
-        discount_rate=discount_rate,
-        summary_rows=summary_rows, model_rows=model_rows,
-        comps=comps, risks=risks, dcf=dcf,
-        ff_chart=charts.football_field(ff_rows, data.price, cur),
+        fwd_model=fwd_model, d=data, spec=spec, report_date=date.today().strftime("%d %b %Y"),
+        rating=rating, rating_dir=rdir, tr=tr, fwd=fwd, thesis=thesis, discount_rate=discount_rate,
+        model_rows=model_rows, risks=risks, dcf=dcf, assumptions=assumptions,
+        diagnostics=diagnostics, returns_comment=returns_comment,
+        clock_svg=clock, wheel_svg=wheel, ff_svg=ff,
+        phase_primary_name=theme.PHASE_NAMES[ph1][0],
+        phase_secondary_name=theme.PHASE_NAMES[ph2][0] if ph2 else "",
         fmt_money=lambda v: fmt_money(v, cur), fmt_ps=lambda v: fmt_ps(v, cur),
-        pct=pct, spct=spct,
+        pct=pct, spct=spct, sens_html="", proj_svg="", margin_svg="", bridge_svg="",
     )
     if dcf:
         hist = data.years[-4:] if len(data.years) >= 4 else data.years
-        kw["margins_chart"] = charts.margins_returns_chart(
+        kw["margin_svg"] = charts.margin_lines(
             [y.year for y in hist], [y.ebit_margin or 0 for y in hist],
-            [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast], cur)
-        kw["proj_chart"] = charts.projection_chart([f.year for f in dcf.forecast],
-            [f.revenue for f in dcf.forecast], [f.fcff for f in dcf.forecast], cur)
-        kw["bridge_chart"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt,
-            dcf.minority, dcf.equity_value, cur)
-        kw["sens_chart"] = charts.sensitivity_heatmap(sens, cur) if sens else None
-    else:
-        kw["proj_chart"] = kw["bridge_chart"] = kw["sens_chart"] = kw["margins_chart"] = None
+            [f.year for f in dcf.forecast], [f.ebit_margin for f in dcf.forecast])
+        kw["proj_svg"] = charts.projection(
+            [f.year for f in dcf.forecast], [f.revenue for f in dcf.forecast],
+            [f.fcff for f in dcf.forecast], cur)
+        kw["bridge_svg"] = charts.ev_bridge(dcf.pv_explicit, dcf.pv_tv, dcf.net_debt, dcf.minority,
+                                            dcf.equity_value, cur)
+        kw["sens_html"] = charts.sensitivity_table(sens, price, cur) if sens else ""
     return TEMPLATE.render(**kw)

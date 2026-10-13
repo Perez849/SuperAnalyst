@@ -39,11 +39,13 @@ jobs:
       - uses: actions/setup-python@v5
         with: {python-version: "3.12", cache: "pip"}
 
-      - name: Install deps + wkhtmltopdf
+      - name: Install deps
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          sudo apt-get update && sudo apt-get install -y wkhtmltopdf
+
+      - name: Ensure a PDF engine (Chrome ships on the runner; wkhtmltopdf is the fallback)
+        run: command -v google-chrome >/dev/null || (sudo apt-get update && sudo apt-get install -y wkhtmltopdf)
 
       - name: Generate report into docs/reports
         env:
