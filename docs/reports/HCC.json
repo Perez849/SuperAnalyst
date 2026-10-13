@@ -4,10 +4,10 @@
   "sector": "Basic Materials",
   "profile": "cyclical",
   "currency": "$",
-  "price": 93.92,
+  "price": 94.02,
   "target": 104.23,
-  "upside": 0.1098,
-  "total_return": 0.1132,
+  "upside": 0.1086,
+  "total_return": 0.112,
   "rating": "ADD",
   "rated": true,
   "fair_value": 95.42,
@@ -15,7 +15,7 @@
   "bull": 122.85,
   "confidence": "High",
   "street": 109.17,
-  "street_upside": 0.1623,
+  "street_upside": 0.1611,
   "cycle": {
     "phase": "Estanflaci\u00f3n",
     "asof": "2026-10",
@@ -28,7 +28,7 @@
     "source": "live"
   },
   "date": "2026-10-13",
-  "generated_at": "2026-10-13T12:49:24Z",
+  "generated_at": "2026-10-13T13:49:44Z",
   "html": "HCC.html",
   "pdf": "HCC.pdf",
   "xlsx": "HCC.xlsx"
